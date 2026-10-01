@@ -32,11 +32,10 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
     for (final entity in base.listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;
       final source = _relative(rootPath, entity.absolute.path);
-      final content = entity.readAsStringSync();
+      final content = _withoutComments(entity.readAsStringSync());
       final directives = RegExp(
-        r'''^\s*(import|export|part(?:\s+of)?)\s+([^;]*);''',
+        r'''^\s*(import|export|part)\s+['"][^'"]+['"][^;]*;''',
         multiLine: true,
-        dotAll: true,
       );
       for (final match in directives.allMatches(content)) {
         final directive = match.group(1)!;
@@ -44,7 +43,7 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
           violations.add(ArchitectureViolation('R9', source, directive));
         }
         final uris = RegExp(r'''['"]([^'"]+)['"]''');
-        for (final uriMatch in uris.allMatches(match.group(2)!)) {
+        for (final uriMatch in uris.allMatches(match.group(0)!)) {
           final uri = uriMatch.group(1)!;
           dependencies.add(
             _Dependency(
@@ -55,6 +54,15 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
             ),
           );
         }
+      }
+      final partOf = RegExp(
+        r'''^\s*part\s+of\s+(?:['"][^'"]+['"]|[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*;''',
+        multiLine: true,
+      );
+      for (final match in partOf.allMatches(content)) {
+        violations.add(
+          ArchitectureViolation('R9', source, match.group(0)!.trim()),
+        );
       }
     }
   }
@@ -128,10 +136,9 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
                     target.startsWith('lib/data/audio/') ||
                     target.startsWith('lib/data/repositories/impl/'))) ||
             dependency.uri == 'package:flutter/services.dart' ||
-            (dependency.uri.startsWith('package:') &&
-                !dependency.uri.startsWith('package:flutter/') &&
-                !dependency.uri.startsWith('package:synesterra_core/') &&
-                !dependency.uri.startsWith('package:synesterra/')))) {
+            _pluginPackages.any(
+              (name) => dependency.uri.startsWith('package:$name/'),
+            ))) {
       fail('R5', dependency);
     }
 
@@ -152,13 +159,15 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
       }
     } else if (target != null) {
       if (target.startsWith('lib/data/repositories/impl/') &&
-          !source.startsWith('lib/app/')) {
+          !source.startsWith('lib/app/') &&
+          !source.startsWith('lib/data/repositories/impl/')) {
         fail('R7', dependency);
       }
       if ((target.startsWith('lib/data/services/') ||
               target.startsWith('lib/data/audio/')) &&
           !source.startsWith('lib/app/') &&
-          !source.startsWith('lib/data/repositories/impl/')) {
+          !source.startsWith('lib/data/repositories/impl/') &&
+          !_sameRestrictedArea(source, target)) {
         fail('R7', dependency);
       }
     }
@@ -171,22 +180,27 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
     }
   }
 
-  final active = <String>{};
+  final stack = <String>[];
+  final activeIndex = <String, int>{};
   final visited = <String>{};
-  bool visit(String node) {
-    if (active.contains(node)) return true;
-    if (!visited.add(node)) return false;
-    active.add(node);
+  void visit(String node) {
+    visited.add(node);
+    activeIndex[node] = stack.length;
+    stack.add(node);
     for (final next in graph[node] ?? const <String>{}) {
-      if (visit(next)) {
-        final edge = edges['$node->$next'];
-        if (edge != null) fail('R8', edge);
-        active.remove(node);
-        return true;
+      final cycleStart = activeIndex[next];
+      if (cycleStart != null) {
+        final cycle = [...stack.skip(cycleStart), next];
+        for (var i = 0; i < cycle.length - 1; i++) {
+          final edge = edges['${cycle[i]}->${cycle[i + 1]}'];
+          if (edge != null) fail('R8', edge);
+        }
+      } else if (!visited.contains(next)) {
+        visit(next);
       }
     }
-    active.remove(node);
-    return false;
+    stack.removeLast();
+    activeIndex.remove(node);
   }
 
   for (final node in graph.keys) {
@@ -196,6 +210,75 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
 }
 
 String _slash(String path) => path.replaceAll('\\', '/');
+
+// Keep this list in sync with platform packages adopted by the app.
+const _pluginPackages = {
+  'audio_session',
+  'device_info_plus',
+  'file_picker',
+  'just_audio',
+  'package_info_plus',
+  'path_provider',
+  'permission_handler',
+  'share_plus',
+  'shared_preferences',
+  'url_launcher',
+};
+
+bool _sameRestrictedArea(String source, String target) => const [
+  'lib/data/audio/',
+  'lib/data/services/',
+  'lib/data/repositories/impl/',
+].any((area) => source.startsWith(area) && target.startsWith(area));
+
+String _withoutComments(String source) {
+  final output = StringBuffer();
+  var index = 0;
+  var blockDepth = 0;
+  var lineComment = false;
+  String? quote;
+  while (index < source.length) {
+    final char = source[index];
+    final next = index + 1 < source.length ? source[index + 1] : '';
+    if (lineComment) {
+      if (char == '\n') lineComment = false;
+      output.write(char == '\n' ? '\n' : ' ');
+    } else if (blockDepth > 0) {
+      if (char == '/' && next == '*') {
+        blockDepth++;
+        output.write('  ');
+        index++;
+      } else if (char == '*' && next == '/') {
+        blockDepth--;
+        output.write('  ');
+        index++;
+      } else {
+        output.write(char == '\n' ? '\n' : ' ');
+      }
+    } else if (quote != null) {
+      output.write(char);
+      if (char == '\\' && next.isNotEmpty) {
+        output.write(next);
+        index++;
+      } else if (char == quote) {
+        quote = null;
+      }
+    } else if (char == '/' && next == '/') {
+      lineComment = true;
+      output.write('  ');
+      index++;
+    } else if (char == '/' && next == '*') {
+      blockDepth = 1;
+      output.write('  ');
+      index++;
+    } else {
+      if (char == "'" || char == '"') quote = char;
+      output.write(char);
+    }
+    index++;
+  }
+  return output.toString();
+}
 
 String _relative(String root, String path) =>
     _slash(path).substring(root.length + 1);

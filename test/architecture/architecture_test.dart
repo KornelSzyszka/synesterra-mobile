@@ -10,6 +10,23 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
+  test('valid sibling imports and pure Dart packages are allowed', () {
+    final violations = scanArchitecture(
+      Directory('test/architecture/fixtures/passing'),
+    );
+    expect(violations, isEmpty, reason: violations.join('\n'));
+  });
+
+  test('R8 does not blame an edge leading into a cycle', () {
+    final violations = scanArchitecture(
+      Directory('test/architecture/fixtures/r8'),
+    ).where((violation) => violation.rule == 'R8');
+    expect(violations, hasLength(2));
+    expect(violations.any((v) => v.file.endsWith('lead_in.dart')), isFalse);
+    expect(violations.map((v) => v.file), contains('lib/app/entry.dart'));
+    expect(violations.map((v) => v.file), contains('lib/shared/helper.dart'));
+  });
+
   for (var number = 1; number <= 9; number++) {
     final rule = 'R$number';
     test('$rule fixture reports its file and rule', () {
