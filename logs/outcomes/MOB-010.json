@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-01",
+  "task": "MOB-010",
+  "prefix": "MOB",
+  "size": "M",
+  "risk": "risk-platform",
+  "agent": "codex",
+  "model": "gpt-6-sol",
+  "reasoning": "medium",
+  "success": true,
+  "attempts": 3,
+  "escalation": null,
+  "error_type": "misread-task",
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": 20,
+  "tokens": null,
+  "notes": "Initial fixture assertion and analyzer diagnostics needed corrections; final local checks passed. CI and cross-review pending."
+}

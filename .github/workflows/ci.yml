@@ -60,6 +60,10 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      - name: Test pure Dart core
+        working-directory: packages/synesterra_core
+        run: dart test
+
       - name: Build debug APK
         run: flutter build apk --debug
 
