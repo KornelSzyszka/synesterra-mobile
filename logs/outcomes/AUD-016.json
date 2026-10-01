@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "AUD-016",
+  "prefix": "AUD",
+  "size": "L",
+  "risk": "risk-audio",
+  "agent": "claude",
+  "model": "claude-opus-5-5",
+  "reasoning": "medium",
+  "success": true,
+  "attempts": 2,
+  "escalation": null,
+  "error_type": "environment",
+  "review": null,
+  "ci": null,
+  "evidence": "static",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "ADR 0002 proposed (shared C++ core, Oboe, AVAudioEngine + AVAudioSourceNode, dart:ffi hot path, channels for lifecycle, spike gates G1-G9); attempt 1 lost to 'API Error: Connection lost mid-response' before any file was written; Mermaid parsed with mermaid 11 + jsdom, 39 source URLs checked; awaits Codex class-L review and Founder architecture gate"
+}
