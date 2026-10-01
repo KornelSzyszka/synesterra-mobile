@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "DOM-015",
+  "prefix": "DOM",
+  "size": "L",
+  "risk": "risk-platform",
+  "agent": "codex",
+  "model": "gpt-6-sol",
+  "reasoning": "medium",
+  "success": true,
+  "attempts": 1,
+  "escalation": "Asked coordinator about NFC without a runtime dependency; raw Unicode code-point limit approved as a documented deviation, tracked by #18.",
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "unit",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Initial local test fixture and validation-path failures were fixed before review; core and architecture tests pass."
+}
