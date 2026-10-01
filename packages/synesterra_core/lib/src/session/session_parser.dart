@@ -27,6 +27,14 @@ class SessionExportEnvelope {
     required this.createdWithVersion,
     required this.session,
   }) {
+    _validateExportedAt(exportedAt);
+    _validateCreatedWithVersion(createdWithVersion);
+    if (utf8.encode(jsonEncode(toJson())).length > 128 * 1024) {
+      throw ArgumentError('Export exceeds 128 KiB');
+    }
+  }
+
+  static void _validateExportedAt(String exportedAt) {
     final timestamp = DateTime.tryParse(exportedAt);
     if (!_utcTimestamp.hasMatch(exportedAt) ||
         timestamp == null ||
@@ -38,15 +46,16 @@ class SessionExportEnvelope {
         timestamp.second != int.parse(exportedAt.substring(17, 19))) {
       throw ArgumentError.value(exportedAt, 'exportedAt');
     }
+  }
+
+  static void _validateCreatedWithVersion(String createdWithVersion) {
     if (createdWithVersion.isEmpty ||
         createdWithVersion.runes.length > 32 ||
         createdWithVersion.runes.any((rune) => rune > 0x7f)) {
       throw ArgumentError.value(createdWithVersion, 'createdWithVersion');
     }
-    if (utf8.encode(jsonEncode(toJson())).length > 128 * 1024) {
-      throw ArgumentError('Export exceeds 128 KiB');
-    }
   }
+
   static final _utcTimestamp = RegExp(
     r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)$',
   );
@@ -103,6 +112,65 @@ Map<String, dynamic> _object(Object? input, String path, Set<String> keys) {
   return input;
 }
 
+Map<String, dynamic> _headerObject(Object? input, String path) {
+  if (input is! Map<String, dynamic>) {
+    _fail(path, 'validation_error', 'Expected object');
+  }
+  return input;
+}
+
+void _checkDocumentHeader(Object? raw, String path) {
+  final map = _headerObject(raw, path);
+  if (!map.containsKey('format')) {
+    _fail('$path.format', 'validation_error', 'Missing field');
+  }
+  if (map['format'] != 'polyrhythmer.session') {
+    _fail('$path.format', 'validation_error', 'Unsupported format');
+  }
+  if (!map.containsKey('version')) {
+    _fail('$path.version', 'validation_error', 'Missing field');
+  }
+  if (map['version'] != 2) {
+    _fail(
+      '$path.version',
+      'unsupported_version',
+      'Unsupported document version',
+    );
+  }
+  if (!map.containsKey('revision')) {
+    _fail('$path.revision', 'validation_error', 'Missing field');
+  }
+  if (map['revision'] != 0) {
+    _fail(
+      '$path.revision',
+      'unsupported_version',
+      'Unsupported document revision',
+    );
+  }
+}
+
+Map<String, dynamic> _checkEnvelopeHeader(Object? raw) {
+  final map = _headerObject(raw, r'$');
+  if (!map.containsKey('format')) {
+    _fail(r'$.format', 'validation_error', 'Missing field');
+  }
+  if (map['format'] != 'polyrhythmer.session-export') {
+    _fail(r'$.format', 'validation_error', 'Unsupported format');
+  }
+  if (!map.containsKey('envelopeVersion')) {
+    _fail(r'$.envelopeVersion', 'validation_error', 'Missing field');
+  }
+  if (map['envelopeVersion'] != 1) {
+    _fail(
+      r'$.envelopeVersion',
+      'unsupported_version',
+      'Unsupported envelope version',
+    );
+  }
+  _checkDocumentHeader(map['session'], r'$.session');
+  return map;
+}
+
 List<dynamic> _list(Object? value, String path) {
   if (value is! List<dynamic>) {
     _fail(path, 'validation_error', 'Expected array');
@@ -138,12 +206,19 @@ num _number(Object? value, String path) {
   return value;
 }
 
-T _construct<T>(String path, T Function() create) {
+T _construct<T>(
+  String path,
+  T Function() create, {
+  bool appendArgumentName = true,
+}) {
   try {
     return create();
   } on ArgumentError catch (error) {
+    final fieldPath = appendArgumentName && error.name != null
+        ? '$path.${error.name}'
+        : path;
     _fail(
-      path,
+      fieldPath,
       'validation_error',
       error.message?.toString() ?? 'Invalid value',
     );
@@ -289,6 +364,7 @@ Scene _scene(Object? raw, String path) {
 }
 
 SessionDocument _document(Object? raw, String path) {
+  _checkDocumentHeader(raw, path);
   final map = _object(raw, path, {
     'format',
     'version',
@@ -301,23 +377,6 @@ SessionDocument _document(Object? raw, String path) {
     'defaultSceneId',
     'presentation',
   });
-  if (map['format'] != 'polyrhythmer.session') {
-    _fail('$path.format', 'validation_error', 'Unsupported format');
-  }
-  if (map['version'] != 2) {
-    _fail(
-      '$path.version',
-      'unsupported_version',
-      'Unsupported document version',
-    );
-  }
-  if (map['revision'] != 0) {
-    _fail(
-      '$path.revision',
-      'unsupported_version',
-      'Unsupported document revision',
-    );
-  }
   final transport = _object(map['transport'], '$path.transport', {
     'beatUnit',
     'bpm',
@@ -349,29 +408,41 @@ SessionDocument _document(Object? raw, String path) {
       'Title exceeds 80 code points or contains controls',
     );
   }
+  final parsedTransport = _construct(
+    '$path.transport',
+    () => SessionTransport(
+      bpm: _number(transport['bpm'], '$path.transport.bpm'),
+      practiceCycleBeats: _rational(
+        transport['practiceCycleBeats'],
+        '$path.transport.practiceCycleBeats',
+      ),
+    ),
+  );
+  final parsedClick = _construct(
+    '$path.referenceClick',
+    () => ReferenceClick(
+      _int(click['subdivision'], '$path.referenceClick.subdivision'),
+    ),
+  );
+  final parsedPresentation = _construct(
+    '$path.presentation',
+    () => Presentation(
+      _string(presentation['visualMode'], '$path.presentation.visualMode'),
+    ),
+  );
   return _construct(
     path,
     () => SessionDocument(
       title: title,
-      transport: SessionTransport(
-        bpm: _number(transport['bpm'], '$path.transport.bpm'),
-        practiceCycleBeats: _rational(
-          transport['practiceCycleBeats'],
-          '$path.transport.practiceCycleBeats',
-        ),
-      ),
-      referenceClick: ReferenceClick(
-        _int(click['subdivision'], '$path.referenceClick.subdivision'),
-      ),
+      transport: parsedTransport,
+      referenceClick: parsedClick,
       randomSeed: _int(map['randomSeed'], '$path.randomSeed'),
       scenes: [
         for (var i = 0; i < scenes.length; i++)
           _scene(scenes[i], '$path.scenes[$i]'),
       ],
       defaultSceneId: _string(map['defaultSceneId'], '$path.defaultSceneId'),
-      presentation: Presentation(
-        _string(presentation['visualMode'], '$path.presentation.visualMode'),
-      ),
+      presentation: parsedPresentation,
     ),
   );
 }
@@ -467,6 +538,7 @@ ParseResult<SessionDocument> parseSessionDocument(String source) =>
 
 ParseResult<SessionExportEnvelope> parseSessionEnvelope(String source) =>
     _parse(source, (raw) {
+      _checkEnvelopeHeader(raw);
       final map = _object(raw, r'$', {
         'format',
         'envelopeVersion',
@@ -474,16 +546,6 @@ ParseResult<SessionExportEnvelope> parseSessionEnvelope(String source) =>
         'createdWith',
         'session',
       });
-      if (map['format'] != 'polyrhythmer.session-export') {
-        _fail(r'$.format', 'validation_error', 'Unsupported format');
-      }
-      if (map['envelopeVersion'] != 1) {
-        _fail(
-          r'$.envelopeVersion',
-          'unsupported_version',
-          'Unsupported envelope version',
-        );
-      }
       final created = _object(map['createdWith'], r'$.createdWith', {
         'app',
         'version',
@@ -491,15 +553,30 @@ ParseResult<SessionExportEnvelope> parseSessionEnvelope(String source) =>
       if (created['app'] != 'Polyrhythmer') {
         _fail(r'$.createdWith.app', 'validation_error', 'Unsupported app');
       }
+      final exportedAt = _string(map['exportedAt'], r'$.exportedAt');
+      final createdWithVersion = _string(
+        created['version'],
+        r'$.createdWith.version',
+      );
+      _construct<void>(
+        r'$.exportedAt',
+        () => SessionExportEnvelope._validateExportedAt(exportedAt),
+        appendArgumentName: false,
+      );
+      _construct<void>(
+        r'$.createdWith.version',
+        () => SessionExportEnvelope._validateCreatedWithVersion(
+          createdWithVersion,
+        ),
+        appendArgumentName: false,
+      );
+      final session = _document(map['session'], r'$.session');
       return _construct(
         r'$',
         () => SessionExportEnvelope(
-          exportedAt: _string(map['exportedAt'], r'$.exportedAt'),
-          createdWithVersion: _string(
-            created['version'],
-            r'$.createdWith.version',
-          ),
-          session: _document(map['session'], r'$.session'),
+          exportedAt: exportedAt,
+          createdWithVersion: createdWithVersion,
+          session: session,
         ),
       );
     });

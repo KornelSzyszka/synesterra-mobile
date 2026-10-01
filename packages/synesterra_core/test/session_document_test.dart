@@ -331,4 +331,80 @@ void main() {
     (badApp['createdWith'] as Map)['app'] = 'Other';
     expect(parseSessionEnvelope(jsonEncode(badApp)).isSuccess, false);
   });
+
+  test('constructor validation reports the exact field path', () {
+    final bpm = fixture();
+    (bpm['transport'] as Map)['bpm'] = 500;
+    expect(parse(bpm).errors.single.path, r'$.transport.bpm');
+
+    final subdivision = fixture();
+    (subdivision['referenceClick'] as Map)['subdivision'] = 7;
+    expect(
+      parse(subdivision).errors.single.path,
+      r'$.referenceClick.subdivision',
+    );
+
+    final visualMode = fixture();
+    (visualMode['presentation'] as Map)['visualMode'] = 'unknown';
+    expect(parse(visualMode).errors.single.path, r'$.presentation.visualMode');
+
+    final velocity = jsonDecode(jsonEncode(fixture())) as Map<String, dynamic>;
+    stepAt(velocity)['velocity'] = 1.1;
+    expect(
+      parse(velocity).errors.single.path,
+      r'$.scenes[0].layers[0].pattern.steps[0].velocity',
+    );
+
+    final envelope = SessionExportEnvelope(
+      exportedAt: '2026-10-02T12:00:00Z',
+      createdWithVersion: '1.0',
+      session: parse(fixture()).value!,
+    ).toJson();
+    final badTime = jsonDecode(jsonEncode(envelope)) as Map<String, dynamic>;
+    badTime['exportedAt'] = 'invalid';
+    expect(
+      parseSessionEnvelope(jsonEncode(badTime)).errors.single.path,
+      r'$.exportedAt',
+    );
+    final badVersion = jsonDecode(jsonEncode(envelope)) as Map<String, dynamic>;
+    (badVersion['createdWith'] as Map)['version'] = 'a' * 33;
+    expect(
+      parseSessionEnvelope(jsonEncode(badVersion)).errors.single.path,
+      r'$.createdWith.version',
+    );
+  });
+
+  test('unsupported versions take priority over unknown fields', () {
+    final document = fixture()
+      ..['version'] = 3
+      ..['futureField'] = true;
+    final documentError = parse(document).errors.single;
+    expect(documentError.code, 'unsupported_version');
+    expect(documentError.path, r'$.version');
+
+    final envelope = SessionExportEnvelope(
+      exportedAt: '2026-10-02T12:00:00Z',
+      createdWithVersion: '1.0',
+      session: parse(fixture()).value!,
+    ).toJson();
+    final newerEnvelope =
+        jsonDecode(jsonEncode(envelope)) as Map<String, dynamic>;
+    newerEnvelope['envelopeVersion'] = 2;
+    newerEnvelope['futureField'] = true;
+    final envelopeError = parseSessionEnvelope(
+      jsonEncode(newerEnvelope),
+    ).errors.single;
+    expect(envelopeError.code, 'unsupported_version');
+    expect(envelopeError.path, r'$.envelopeVersion');
+
+    final newerSession =
+        jsonDecode(jsonEncode(envelope)) as Map<String, dynamic>;
+    (newerSession['session'] as Map)['version'] = 3;
+    newerSession['futureField'] = true;
+    final sessionError = parseSessionEnvelope(
+      jsonEncode(newerSession),
+    ).errors.single;
+    expect(sessionError.code, 'unsupported_version');
+    expect(sessionError.path, r'$.session.version');
+  });
 }
