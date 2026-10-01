@@ -38,6 +38,19 @@ void main() {
           reason: '$palette $foreground on surface',
         );
       }
+      for (final layerColor in tokens.layerColors) {
+        final disabled = tokens.disabledLayerText(layerColor);
+        final chipBackground = Color.alphaBlend(
+          disabled.withValues(alpha: .12),
+          tokens.surface,
+        );
+        expect(
+          _contrast(disabled, chipBackground),
+          greaterThanOrEqualTo(4.5),
+          reason: '$palette disabled $layerColor on chip',
+        );
+        expect(disabled, isNot(tokens.muted));
+      }
       expect(
         _contrast(tokens.text, tokens.background),
         greaterThanOrEqualTo(4.5),
@@ -48,5 +61,17 @@ void main() {
       );
     }
     expect(SynesterraTokens.layerPalette, hasLength(12));
+  });
+
+  test('platform font families have explicit fallbacks', () {
+    expect(SynesterraFonts.serif(TargetPlatform.iOS), 'Georgia');
+    expect(SynesterraFonts.monospace(TargetPlatform.iOS), 'Menlo');
+    expect(SynesterraFonts.serif(TargetPlatform.android), 'serif');
+    expect(SynesterraFonts.monospace(TargetPlatform.android), 'monospace');
+    for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+      expect(SynesterraFonts.uiFallback(platform), isNotEmpty);
+      expect(SynesterraFonts.serifFallback(platform), isNotEmpty);
+      expect(SynesterraFonts.monospaceFallback(platform), isNotEmpty);
+    }
   });
 }

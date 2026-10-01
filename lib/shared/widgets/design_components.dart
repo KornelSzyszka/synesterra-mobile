@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../theme/synesterra_theme.dart';
@@ -58,7 +60,14 @@ class LayerChip extends StatelessWidget {
     ),
     child: Text(
       number.toString().padLeft(2, '0'),
-      style: TextStyle(color: color, fontFamily: 'monospace', fontSize: 11),
+      style: TextStyle(
+        color: color,
+        fontFamily: SynesterraFonts.monospace(Theme.of(context).platform),
+        fontFamilyFallback: SynesterraFonts.monospaceFallback(
+          Theme.of(context).platform,
+        ),
+        fontSize: 11,
+      ),
     ),
   );
 }
@@ -72,6 +81,7 @@ class NumberStepper extends StatelessWidget {
     required this.onChanged,
     required this.label,
     required this.color,
+    this.repeatOnHold = false,
   });
   final int value;
   final int min;
@@ -79,6 +89,7 @@ class NumberStepper extends StatelessWidget {
   final ValueChanged<int>? onChanged;
   final String label;
   final Color color;
+  final bool repeatOnHold;
 
   @override
   Widget build(BuildContext context) {
@@ -86,11 +97,14 @@ class NumberStepper extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _button(
-          Icons.remove,
-          'Decrease $label',
-          value > min ? () => onChanged?.call(value - 1) : null,
-          tokens,
+        _StepperButton(
+          icon: Icons.remove,
+          tooltip: 'Decrease $label',
+          onPressed: onChanged != null && value > min
+              ? () => onChanged!(value - 1)
+              : null,
+          repeatOnHold: repeatOnHold,
+          tokens: tokens,
         ),
         SizedBox(
           width: 82,
@@ -100,7 +114,10 @@ class NumberStepper extends StatelessWidget {
                 '$value',
                 style: TextStyle(
                   color: color,
-                  fontFamily: 'serif',
+                  fontFamily: SynesterraFonts.serif(Theme.of(context).platform),
+                  fontFamilyFallback: SynesterraFonts.serifFallback(
+                    Theme.of(context).platform,
+                  ),
                   fontSize: 36,
                   height: 1,
                 ),
@@ -110,35 +127,115 @@ class NumberStepper extends StatelessWidget {
                 maxLines: 1,
                 style: TextStyle(
                   color: tokens.muted,
-                  fontFamily: 'monospace',
+                  fontFamily: SynesterraFonts.monospace(
+                    Theme.of(context).platform,
+                  ),
+                  fontFamilyFallback: SynesterraFonts.monospaceFallback(
+                    Theme.of(context).platform,
+                  ),
                   fontSize: 9,
                 ),
               ),
             ],
           ),
         ),
-        _button(
-          Icons.add,
-          'Increase $label',
-          value < max ? () => onChanged?.call(value + 1) : null,
-          tokens,
+        _StepperButton(
+          icon: Icons.add,
+          tooltip: 'Increase $label',
+          onPressed: onChanged != null && value < max
+              ? () => onChanged!(value + 1)
+              : null,
+          repeatOnHold: repeatOnHold,
+          tokens: tokens,
         ),
       ],
     );
   }
+}
 
-  Widget _button(
-    IconData icon,
-    String tooltip,
-    VoidCallback? callback,
-    SynesterraTokens tokens,
-  ) => IconButton(
-    tooltip: tooltip,
-    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-    icon: Icon(icon, size: 18),
-    color: tokens.text,
-    disabledColor: tokens.muted,
-    onPressed: onChanged == null ? null : callback,
+class _StepperButton extends StatefulWidget {
+  const _StepperButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    required this.repeatOnHold,
+    required this.tokens,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final bool repeatOnHold;
+  final SynesterraTokens tokens;
+
+  @override
+  State<_StepperButton> createState() => _StepperButtonState();
+}
+
+class _StepperButtonState extends State<_StepperButton> {
+  Timer? _timer;
+  int _repeatCount = 0;
+
+  void _stop() {
+    _timer?.cancel();
+    _timer = null;
+    _repeatCount = 0;
+  }
+
+  void _repeat() {
+    if (widget.onPressed == null) {
+      _stop();
+      return;
+    }
+    widget.onPressed!();
+    _repeatCount++;
+    // A long press begins after Flutter's gesture timeout. Then a user can
+    // cross the full BPM range quickly without making short taps jump values.
+    final interval = _repeatCount < 10 ? 140 : (_repeatCount < 25 ? 90 : 50);
+    _timer = Timer(Duration(milliseconds: interval), _repeat);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StepperButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.onPressed == null || !widget.repeatOnHold) _stop();
+  }
+
+  @override
+  void dispose() {
+    _stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: widget.tooltip,
+    child: Semantics(
+      label: widget.tooltip,
+      button: true,
+      enabled: widget.onPressed != null,
+      onTap: widget.onPressed,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        excludeFromSemantics: true,
+        onTap: widget.onPressed,
+        onLongPressStart: widget.repeatOnHold && widget.onPressed != null
+            ? (_) => _repeat()
+            : null,
+        onLongPressEnd: widget.repeatOnHold ? (_) => _stop() : null,
+        onLongPressCancel: widget.repeatOnHold ? _stop : null,
+        child: SizedBox.square(
+          dimension: 48,
+          child: Icon(
+            widget.icon,
+            size: 18,
+            color: widget.onPressed == null
+                ? widget.tokens.muted
+                : widget.tokens.text,
+          ),
+        ),
+      ),
+    ),
   );
 }
 

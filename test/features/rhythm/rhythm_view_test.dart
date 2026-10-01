@@ -41,6 +41,17 @@ void main() {
     expect(find.text('Layer 4'), findsOneWidget);
     expect(find.text('120'), findsOneWidget);
 
+    final offLayerStepper = find.byKey(const Key('layer-1-beats'));
+    await tester.tap(
+      find.descendant(
+        of: offLayerStepper,
+        matching: find.byTooltip('Increase beats / cycle'),
+      ),
+    );
+    await tester.pump();
+    expect(repository.settings.layers[1].enabled, isFalse);
+    expect(repository.settings.layers[1].beatsPerCycle, 5);
+
     await tester.tap(find.byKey(const Key('layer-0-enabled')));
     await tester.pump();
     expect(repository.settings.layers.first.enabled, isFalse);

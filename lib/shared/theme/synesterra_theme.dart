@@ -31,6 +31,14 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
   Color get focus => accent;
   Color get onAccent => background;
 
+  // A slight blend keeps layer identity while meeting text contrast on the
+  // tinted chip background in all three palettes.
+  Color disabledLayerText(Color layerColor) =>
+      Color.lerp(surface, layerColor, .88)!;
+
+  Color disabledLayerSwatch(Color layerColor) =>
+      Color.lerp(surface, layerColor, .55)!;
+
   static const layerPalette = <Color>[
     Color(0xffe4b46a),
     Color(0xff81b6bf),
@@ -123,9 +131,40 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
   }
 }
 
+class SynesterraFonts {
+  const SynesterraFonts._();
+
+  static bool _isApple(TargetPlatform platform) =>
+      platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
+
+  static String ui(TargetPlatform platform) =>
+      _isApple(platform) ? 'CupertinoSystemText' : 'sans-serif';
+
+  static List<String> uiFallback(TargetPlatform platform) => _isApple(platform)
+      ? const ['Helvetica Neue', 'sans-serif']
+      : const ['Roboto'];
+
+  static String serif(TargetPlatform platform) =>
+      _isApple(platform) ? 'Georgia' : 'serif';
+
+  static List<String> serifFallback(TargetPlatform platform) =>
+      _isApple(platform)
+      ? const ['Times New Roman', 'serif']
+      : const ['Noto Serif', 'Georgia'];
+
+  static String monospace(TargetPlatform platform) =>
+      _isApple(platform) ? 'Menlo' : 'monospace';
+
+  static List<String> monospaceFallback(TargetPlatform platform) =>
+      _isApple(platform)
+      ? const ['Courier New', 'monospace']
+      : const ['Roboto Mono', 'Menlo'];
+}
+
 ThemeData synesterraTheme(SynesterraPalette palette) {
   final tokens = SynesterraTokens.forPalette(palette);
   final base = ThemeData.dark(useMaterial3: true);
+  final platform = base.platform;
   return base.copyWith(
     scaffoldBackgroundColor: tokens.background,
     colorScheme: ColorScheme.dark(
@@ -147,7 +186,8 @@ ThemeData synesterraTheme(SynesterraPalette palette) {
     textTheme: base.textTheme.apply(
       bodyColor: tokens.text,
       displayColor: tokens.text,
-      fontFamily: 'sans-serif',
+      fontFamily: SynesterraFonts.ui(platform),
+      fontFamilyFallback: SynesterraFonts.uiFallback(platform),
     ),
     extensions: [tokens],
   );

@@ -25,7 +25,10 @@ class RhythmView extends StatelessWidget {
           '◉  synesterra',
           style: TextStyle(
             color: tokens.text,
-            fontFamily: 'serif',
+            fontFamily: SynesterraFonts.serif(Theme.of(context).platform),
+            fontFamilyFallback: SynesterraFonts.serifFallback(
+              Theme.of(context).platform,
+            ),
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -81,7 +84,13 @@ class RhythmView extends StatelessWidget {
                             '${state.layers.length}',
                             style: TextStyle(
                               color: tokens.muted,
-                              fontFamily: 'monospace',
+                              fontFamily: SynesterraFonts.monospace(
+                                Theme.of(context).platform,
+                              ),
+                              fontFamilyFallback:
+                                  SynesterraFonts.monospaceFallback(
+                                    Theme.of(context).platform,
+                                  ),
                             ),
                           ),
                         ],
@@ -113,6 +122,7 @@ class RhythmView extends StatelessWidget {
                         label: 'BPM',
                         color: tokens.text,
                         onChanged: viewModel.setTempo,
+                        repeatOnHold: true,
                       ),
                     ],
                   ),
@@ -145,7 +155,9 @@ class _LayerRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = SynesterraTokens.of(context);
     final layerColor = tokens.layerColors[index];
-    final displayColor = enabled ? layerColor : tokens.muted;
+    final displayColor = enabled
+        ? layerColor
+        : tokens.disabledLayerText(layerColor);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -162,7 +174,7 @@ class _LayerRow extends StatelessWidget {
                   'Layer ${index + 1}',
                   style: TextStyle(
                     color: displayColor,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: enabled ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
               ),
@@ -186,7 +198,11 @@ class _LayerRow extends StatelessWidget {
                     border: Border.all(color: tokens.border),
                     borderRadius: BorderRadius.circular(5),
                   ),
-                  child: ColoredBox(color: enabled ? layerColor : tokens.muted),
+                  child: ColoredBox(
+                    color: enabled
+                        ? layerColor
+                        : tokens.disabledLayerSwatch(layerColor),
+                  ),
                 ),
               ),
               const Spacer(),
@@ -197,7 +213,7 @@ class _LayerRow extends StatelessWidget {
                 max: 16,
                 label: 'beats / cycle',
                 color: displayColor,
-                onChanged: enabled ? onBeats : null,
+                onChanged: onBeats,
               ),
             ],
           ),
