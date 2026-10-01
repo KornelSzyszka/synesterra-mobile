@@ -3,4 +3,12 @@ Standalone Flutter/Dart app for Synesterra on Android and iOS.
 
 This repository is reserved for the native mobile app. The existing TypeScript web/PWA laboratory lives in [synesterra-web](https://github.com/KornelSzyszka/synesterra-web).
 
-Current status: repository bootstrap only. The Flutter app and physical-device audio validation have not started yet.
+Current status: Flutter scaffold and CI only. The app logic and physical-device audio validation have not started yet.
+
+## Documentation
+
+- [Architecture](docs/architecture.md): module layout and dependency direction (diagram).
+- [Agent collaboration and model routing](docs/agents/README.md).
+- [docs/](docs/README.md): index, including where patterns, code documentation and charts belong.
+
+Quality gates: format, analyze, test and a debug APK build run in [CI](.github/workflows/ci.yml); iOS is built on demand. Emulator runs and unit tests do not prove audio timing or behaviour on a physical phone.
