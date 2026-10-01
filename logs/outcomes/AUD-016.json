@@ -11,11 +11,11 @@
   "attempts": 2,
   "escalation": null,
   "error_type": "environment",
-  "review": null,
-  "ci": null,
+  "review": "changes",
+  "ci": "green",
   "evidence": "static",
   "failure_cost": null,
   "minutes": null,
   "tokens": null,
-  "notes": "ADR 0002 proposed (shared C++ core, Oboe, AVAudioEngine + AVAudioSourceNode, dart:ffi hot path, channels for lifecycle, spike gates G1-G9); attempt 1 lost to 'API Error: Connection lost mid-response' before any file was written; Mermaid parsed with mermaid 11 + jsdom, 39 source URLs checked; awaits Codex class-L review and Founder architecture gate"
+  "notes": "ADR 0002 proposed; attempt 1 lost to 'API Error: Connection lost mid-response' before any file was written. Review codex gpt-6-sol high, round 1 changes-requested (1 blocker: cancelFrom after the transport guard; 2 major: minLead vs audible output tail, OpenSL ES has no getTimestamp/getFramesWritten; 2 minor: G3/G5 definitions, no signed iOS path), all fixed in round 2. Founder C++ question answered; option C (flutter_soloud discovery spike, needs Flutter >= 3.41) added and recommended. Mermaid parsed with mermaid 11 + jsdom, 52 source URLs checked; awaits re-review and the Founder architecture gate"
 }
