@@ -11,11 +11,11 @@
   "attempts": 1,
   "escalation": null,
   "error_type": null,
-  "review": null,
+  "review": "changes",
   "ci": null,
   "evidence": "static",
   "failure_cost": null,
   "minutes": null,
   "tokens": null,
-  "notes": "private .local workspace moved into AGENTS.md, CLAUDE.md, docs/agents, docs/testing.md, docs/decisions, issue and PR templates; ADR R2 wording clarified"
+  "notes": "private untracked agent workspace moved into AGENTS.md, CLAUDE.md, docs/agents, docs/testing.md, docs/decisions, issue and PR templates; ADR R2 wording clarified"
 }
