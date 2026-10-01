@@ -15,6 +15,7 @@ flowchart TD
         audio["data/audio/<br/>PlaybackScheduler, engine bridge"]
     end
     subgraph core["packages/synesterra_core (pure Dart)"]
+        corePublic["synesterra_core.dart + src/core_identity.dart<br/>public entry point"]
         session["session/<br/>SessionDocument, migration, SessionProject"]
         rhythm["rhythm/"]
         harmony["harmony/"]
@@ -44,10 +45,11 @@ flowchart TD
     classDef planned stroke-dasharray: 5 5,fill:#f6f6f6,color:#333
     classDef exists fill:#dff3e4,color:#111
     class main exists
+    class corePublic exists
     class root,features,shared,repos,impl,services,audio,session,rhythm,harmony,playback,ports,native planned
 ```
 
-Dependency rules R1–R9 and the real-time hand-off (who owns audio time, runtime state and stale-event cancellation) are in decision 0001; architecture tests will enforce the rules. In short:
+Dependency rules R1–R9 and the real-time hand-off (who owns audio time, runtime state and stale-event cancellation) are in decision 0001; [architecture tests](modules/architecture-tests.md) enforce the import boundaries. In short:
 - the core imports nothing from Flutter, plugins or I/O;
 - features reach data only through abstract repositories;
 - data never imports the UI;
