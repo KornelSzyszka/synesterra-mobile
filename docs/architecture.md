@@ -1,6 +1,6 @@
 # Architecture
 
-Hybrid DDD-lite, as described in [decision 0001](decisions/0001-architecture-style.md) (proposed). It has a pure Dart core with music logic and ports, a Flutter app built with MVVM and grouped by feature, and native audio behind adapters. Solid boxes exist in the repository today. Dashed boxes are planned and have no code yet.
+Hybrid DDD-lite, as described in [decision 0001](decisions/0001-architecture-style.md) (accepted). It has a pure Dart core with music logic and ports, a Flutter app built with MVVM and grouped by feature, and native audio behind adapters. Solid boxes exist in the repository today. Dashed boxes are planned and have no code yet.
 
 ```mermaid
 flowchart TD

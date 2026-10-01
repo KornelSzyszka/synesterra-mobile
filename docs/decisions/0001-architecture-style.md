@@ -1,8 +1,8 @@
 # 0001 — Architecture style: hybrid DDD-lite
 
-- **Status:** proposed. Needs Founder acceptance (`architecture` gate, issue #9).
+- **Status:** accepted by the Founder on 2026-10-01 (`architecture` gate, issue #9).
 - **Date:** 2026-10-01
-- **Enforced by:** architecture tests (#10), once this ADR is accepted.
+- **Enforced by:** architecture tests (#10).
 
 ## Context
 
