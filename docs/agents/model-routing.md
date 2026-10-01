@@ -27,13 +27,43 @@ For this project the failure cost dominates. A failed audio-timing change costs 
 | medium: `risk-platform` (build, gradle/xcode, persistence) | `M` | `M` | `L` |
 | high: `risk-audio`, user-data corruption, physical device is the only proof | `L` | `L` | `L` + review by another agent |
 
-The table is a floor, not the final choice: within the allowed classes prefer the model with the lowest expected cost once outcome data exists. Never use class `S` for `lib/audio/`, `android/`, `ios/` or data migrations.
+The table is a floor, not the final choice: within the allowed classes prefer the model with the lowest expected cost once outcome data exists. Never use class `S` for `lib/data/audio/`, `packages/synesterra_core/lib/src/playback/`, `android/`, `ios/` or data migrations.
+
+## Models per class
+
+| Class | Codex | Claude | Reasoning |
+|---|---|---|---|
+| `S` | `gpt-5.6-luna` | `claude-haiku-4-5` | low |
+| `M` | `gpt-5.6-terra` | `claude-sonnet-5-5` | medium |
+| `L` | `gpt-6-sol` | `claude-opus-5-5` | high (medium for scoped work) |
+| `X` | `gpt-6-astra` | `claude-opus-5-5` / `claude-fable-5-1` | high |
+
+Check that a model is available before you change this table. `tool/model_log.dart` maps each model to its class; add new models there too.
+
+Codex notes, verified 2026-10-01:
+- Codex CLI 0.144.1 rejected the `gpt-6*` models ("not supported when using Codex with a ChatGPT account"). On 0.159.3 they work. If a model is rejected, compare `codex --version` with `npm view @openai/codex version` before suspecting the account.
+- The standalone Windows install updates with the official `install.ps1`. Run it in `pwsh` (not Windows PowerShell 5.1) with `CODEX_HOME` cleared, because Orca terminals set it to the Orca account directory.
+- Without `--model` and `--effort`, an Orca Codex worker uses the default from `~/.codex/config.toml`. Always pass both in `worker-start`, matching the issue's minimum class.
+
+## Context budget
+
+| Class | Input | Typical scope |
+|---|---:|---|
+| `S` | ~4k tokens | the issue + up to 3 small sources |
+| `M` | ~12k | the issue + up to 8 relevant files |
+| `L` | ~30k | the issue + a discovery pass + selected modules |
+
+Read in slices (`rg`, Graphify when `graphify-out/` exists). Check external documentation (Flutter, plugins, Android/iOS audio) in official sources (Context7) rather than from memory.
 
 ## Escalation
 
 - Raise reasoning effort before changing the model.
 - A repeated failure needs a new hypothesis or a higher class, not an identical retry. Retries of the same model on the same task are correlated, not independent trials.
 - Change class when: two reasonable attempts failed; the decision crosses three or more module boundaries; an error could corrupt user data, audio timing or platform compatibility; requirements stay contradictory after research.
+
+## Worker reply
+
+The full result goes into the PR. A worker reports back in at most five points: status, PR, up to three findings, tests run and not run, blocker or next step. In Orca this is the `worker_done` body.
 
 ## Cost reference
 

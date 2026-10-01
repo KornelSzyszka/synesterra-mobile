@@ -1,0 +1,51 @@
+name: Task
+description: One task for an agent or the Founder. Task ID = area prefix + this issue's number (e.g. DOM-007 for #7).
+title: "[DOM] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Title prefix = owning area: `[DOM]`, `[AUD]`, `[UX]`, `[MOB]`, `[QA]`, `[REL]`, `[AGT]`.
+        Add labels: one or more `domain:*`, `kind:*`, highest `risk:*` (if any), one `size:*`, `horizon:*`; `founder-review` / `decision-gate` when the Founder is involved.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One measurable outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable conditions, as a checklist.
+      value: "- [ ] "
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Narrowest commands and the required evidence level (docs/testing.md).
+    validations:
+      required: true
+  - type: textarea
+    id: brief
+    attributes:
+      label: Agent brief
+      description: What an agent needs beyond the goal.
+      value: |
+        - Owner role:
+        - Agent: codex | claude | any
+        - Minimum model class (docs/agents/model-routing.md): S | M | L | X
+        - Context (read only these first):
+        - Write scope:
+        - Depends on: #
+        - Decision gate: none | product | experience | musical | business | architecture | release
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
