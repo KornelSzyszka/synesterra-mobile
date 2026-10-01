@@ -46,7 +46,7 @@ lib/
   app/                              composition root: the only place that imports concrete implementations
   data/repositories/                abstract repositories (importable by features)
   data/repositories/impl/           concrete repositories (importable by app/ only)
-  data/services/                    stateless adapters: files, share sheet, platform info (importable by repositories and app/)
+  data/services/                    stateless adapters: files, share sheet, platform info (importable by repositories/impl/ and app/)
   data/audio/                       the stateful audio shell: PlaybackScheduler and the native engine bridge (see below)
   features/<feature>/               views (widgets) and view models of one feature
   shared/                           widgets, theme and formatting used by 2+ features
@@ -63,10 +63,12 @@ Who owns what (the backend ADR later fills in the engine, thread and lookahead):
 |---|---|
 | Source of audio time | native engine, exposed through the `AudioClock` port (implemented in `data/audio/`) |
 | `RuntimePerformanceState` (transport, current/pending scene, tempo, `generation`) | `PlaybackRepository`, the single source of truth; view models read it and send commands to it |
-| Mapping beats ↔ audio time, next planning window | pure functions in `core/playback` (`TempoMap`, window maths) |
-| Which events fall in a window | `EventPlanner(project, runtime, window)`, pure, half-open window `from <= event < to` |
+| Mapping audio time → beat window, and event beats → audio timestamps | pure functions in `core/playback` (`TempoMap`, window maths) |
+| Which events fall in a window | `EventPlanner(project, runtime, [fromBeat, toBeat))`: pure, absolute beats in, domain events with beat positions out (PLR-010 §9) |
 | Waking up, asking for the next window, handing events over | `PlaybackScheduler` in `data/audio/` (the imperative shell) |
-| Playing events at audio timestamps; dropping stale ones | native engine through the `VoiceSink` port |
+| Playing events at audio timestamps; dropping stale ones | native engine through the `VoiceSink` port, which receives only audio-clock timestamps, never beats |
+
+**Units.** The planner works only in absolute beats. Only `TempoMap` converts between beats and audio-clock time. `PlaybackScheduler` performs both conversions by calling core functions: before planning (audio time → beat window) and before `VoiceSink.schedule` (event beat → audio timestamp).
 
 **Generation rule.** Every change that invalidates already-planned audio increments `generation` in `RuntimePerformanceState`. Such changes are pause, stop, a tempo or scene change, an edit while playing, or an audio interruption. Every event handed to `VoiceSink` carries the generation it was planned under. On a new generation, `PlaybackScheduler` calls `VoiceSink.cancelFrom(generation)` and plans again from the current audio time. The native side never plays an event from an older generation. After a stall, late events are skipped, not replayed in a burst (a `change-safety` invariant).
 
@@ -82,11 +84,14 @@ sequenceDiagram
     PR->>PS: state changed
     PS->>N: cancelFrom(generation) when generation changed
     loop each wake-up
-        PS->>N: AudioClock.now()
-        PS->>Core: window(now, lookahead, TempoMap)
-        PS->>Core: EventPlanner(project, runtime, window)
-        Core-->>PS: events in [from, to)
-        PS->>N: VoiceSink.schedule(events, generation)
+        PS->>N: AudioClock.now() (audio time)
+        PS->>Core: TempoMap.beatWindow(now, now + lookahead)
+        Core-->>PS: [fromBeat, toBeat)
+        PS->>Core: EventPlanner(project, runtime, [fromBeat, toBeat))
+        Core-->>PS: domain events at beat positions
+        PS->>Core: TempoMap.audioTimeOf(event beats)
+        Core-->>PS: events at audio timestamps
+        PS->>N: VoiceSink.schedule(timed events, generation)
     end
     N-->>PR: position (read-only, for UI and visualization)
 ```
