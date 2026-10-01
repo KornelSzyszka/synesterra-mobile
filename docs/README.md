@@ -5,6 +5,7 @@ All documentation is in English. Diagrams use Mermaid (rendered by GitHub, no ex
 | Document | Purpose |
 |---|---|
 | [architecture.md](architecture.md) | Module layout, dependency direction, which parts exist or are planned |
+| [decisions/](decisions/) | Architecture decisions; [0001](decisions/0001-architecture-style.md): hybrid DDD-lite (accepted) |
 | [agents/](agents/README.md) | Agent collaboration rules and model routing |
 | [../logs/](../logs/README.md) | Model outcome data, one JSON file per task, validated in CI |
 
