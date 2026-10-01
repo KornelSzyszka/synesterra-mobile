@@ -23,8 +23,13 @@ const _modelClass = {
   'gpt-6-astra': 'X',
 };
 
-// Minimum model class by risk tag.
-const _riskFloor = {'risk-platform': 'M', 'risk-audio': 'L'};
+// Minimum model class by failure cost (risk) and size; mirrors the hard-floor
+// table in docs/agents/model-routing.md. Risks not listed use the low row.
+const _floor = {
+  'low': {'S': 'S', 'M': 'M', 'L': 'M'},
+  'risk-platform': {'S': 'M', 'M': 'M', 'L': 'L'},
+  'risk-audio': {'S': 'L', 'M': 'L', 'L': 'L'},
+};
 
 // Error types that count against the model's success rate.
 const _modelFaults = {'misread-task', 'missing-context', 'model-limit'};
@@ -189,12 +194,13 @@ void _validate(String name, Map<String, Object?> v, List<String> errors) {
   if (model != null && cls == null) {
     err('unknown model "$model"; add it to _modelClass');
   } else if (cls != null) {
-    final floor = _riskFloor[v['risk']];
+    final row = _floor[v['risk']] ?? _floor['low']!;
+    final floor = row[v['size']];
     if (floor != null && _classRank[cls]! < _classRank[floor]!) {
-      err('$model is class $cls, below floor $floor for ${v['risk']}');
-    }
-    if (v['size'] == 'L' && _classRank[cls]! < _classRank['M']!) {
-      err('size L requires class M or higher');
+      err(
+        '$model is class $cls, below floor $floor for '
+        '${v['risk']} x size ${v['size']}',
+      );
     }
   }
 }
