@@ -48,6 +48,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get --enforce-lockfile
 
+      - name: Validate model outcome log
+        run: dart run tool/check_model_log.dart
+
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed .
 
