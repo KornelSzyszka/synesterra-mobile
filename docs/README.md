@@ -6,7 +6,7 @@ All documentation is in English. Diagrams use Mermaid (rendered by GitHub, no ex
 |---|---|
 | [architecture.md](architecture.md) | Module layout, dependency direction, which parts exist or are planned |
 | [agents/](agents/README.md) | Agent collaboration rules and model routing |
-| [../logs/model-outcomes.md](../logs/model-outcomes.md) | Model outcome log (data, validated in CI) |
+| [../logs/](../logs/README.md) | Model outcome data, one JSON file per task, validated in CI |
 
 ## Where new material goes
 
