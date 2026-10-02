@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
@@ -10,6 +12,18 @@ class FailingRepository extends InMemoryInstrumentLibraryRepository {
   @override
   Future<void> save(Instrument instrument) =>
       Future.error(Exception('disk full'));
+}
+
+class DelayedRepository extends InMemoryInstrumentLibraryRepository {
+  final saveStarted = Completer<void>();
+  final allowSave = Completer<void>();
+
+  @override
+  Future<void> save(Instrument instrument) async {
+    saveStarted.complete();
+    await allowSave.future;
+    await super.save(instrument);
+  }
 }
 
 Instrument stored({String id = 'mine-1', String name = 'Mine'}) => Instrument(
@@ -294,6 +308,28 @@ void main() {
       expect(await vm.save(), isFalse);
       expect(repository.snapshot.value.instruments, isEmpty);
     });
+
+    test(
+      'an edit during a save remains dirty after that save finishes',
+      () async {
+        final delayedRepository = DelayedRepository();
+        final vm = InstrumentEditorViewModel(
+          repository: delayedRepository,
+          audition: NoopInstrumentAuditionRepository(),
+          newId: newId,
+        )..setName('Saved name');
+
+        final saving = vm.save();
+        await delayedRepository.saveStarted.future;
+        vm.setDecayMs(900);
+        delayedRepository.allowSave.complete();
+
+        expect(await saving, isTrue);
+        expect(vm.instrument.name, 'Saved name');
+        expect(vm.instrument.decayMs, 900);
+        expect(vm.dirty, isTrue);
+      },
+    );
 
     test(
       'a failed save is reported, nothing is called saved, the draft stays',

@@ -42,6 +42,34 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
     }
   }
 
+  Future<void> _startFrom(Instrument preset) async {
+    final vm = widget.viewModel;
+    if (vm.dirty) {
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Discard unsaved changes?'),
+          content: const Text('Starting from a preset replaces this draft.'),
+          actions: [
+            TextButton(
+              key: const Key('start-from-cancel'),
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Keep editing'),
+            ),
+            TextButton(
+              key: const Key('start-from-discard'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Discard'),
+            ),
+          ],
+        ),
+      );
+      if (discard != true || !mounted) return;
+    }
+    vm.startFrom(preset);
+    vm.audition();
+  }
+
   @override
   void dispose() {
     widget.viewModel.removeListener(_syncName);
@@ -63,12 +91,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _StartFrom(
-                    onPick: (preset) {
-                      vm.startFrom(preset);
-                      vm.audition();
-                    },
-                  ),
+                  _StartFrom(onPick: _startFrom),
                   const SizedBox(height: 12),
                   DesignPanel(
                     child: Column(
