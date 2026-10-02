@@ -1,57 +1,137 @@
 import 'package:flutter/material.dart';
+import 'package:synesterra_core/synesterra_core.dart';
 
+import '../../data/repositories/instrument_library_repository.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
+import 'instrument_editor_view_model.dart';
+import 'instrument_panel.dart';
 
-/// Editor with three panels. Only the panel titles are fixed here; each panel
-/// replaces its placeholder when its turn comes.
-class EditorView extends StatelessWidget {
-  const EditorView({super.key});
+/// Editor with three panels. Instrument is real; Loop and Arrangement are
+/// placeholders until their turn.
+class EditorView extends StatefulWidget {
+  const EditorView({
+    super.key,
+    required this.instrumentLibrary,
+    this.initialInstrument,
+    this.editsExisting = false,
+  });
+
+  final InstrumentLibraryRepository instrumentLibrary;
+
+  /// Null starts a new instrument.
+  final Instrument? initialInstrument;
+
+  /// True when [initialInstrument] comes from the library and is edited in
+  /// place; false makes a copy (a factory preset).
+  final bool editsExisting;
+
+  @override
+  State<EditorView> createState() => _EditorViewState();
+}
+
+class _EditorViewState extends State<EditorView> {
+  late final InstrumentEditorViewModel _instrument = InstrumentEditorViewModel(
+    repository: widget.instrumentLibrary,
+    instrument: widget.initialInstrument,
+    existing: widget.editsExisting,
+  );
+
+  @override
+  void dispose() {
+    _instrument.dispose();
+    super.dispose();
+  }
+
+  /// Leaving with unsaved changes asks first; the safe answer is Cancel.
+  Future<void> _confirmLeave() async {
+    final navigator = Navigator.of(context);
+    final choice = await showDialog<_LeaveChoice>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unsaved changes'),
+        content: const Text('Save this instrument before leaving?'),
+        actions: [
+          TextButton(
+            key: const Key('leave-discard'),
+            onPressed: () => Navigator.pop(context, _LeaveChoice.discard),
+            child: const Text('Discard'),
+          ),
+          TextButton(
+            key: const Key('leave-cancel'),
+            autofocus: true,
+            onPressed: () => Navigator.pop(context, _LeaveChoice.cancel),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            key: const Key('leave-save'),
+            onPressed: _instrument.canSave
+                ? () => Navigator.pop(context, _LeaveChoice.save)
+                : null,
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    switch (choice) {
+      case _LeaveChoice.discard:
+        navigator.pop();
+      case _LeaveChoice.save:
+        if (await _instrument.save()) navigator.pop();
+      case _LeaveChoice.cancel || null:
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Editor'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(key: Key('editor-tab-instrument'), text: 'Instrument'),
-              Tab(key: Key('editor-tab-loop'), text: 'Loop'),
-              Tab(key: Key('editor-tab-arrangement'), text: 'Arrangement'),
-            ],
+    return ListenableBuilder(
+      listenable: _instrument,
+      builder: (context, _) => PopScope(
+        canPop: !_instrument.dirty,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _confirmLeave();
+        },
+        child: DefaultTabController(
+          length: 3,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Editor'),
+              bottom: const TabBar(
+                tabs: [
+                  Tab(key: Key('editor-tab-instrument'), text: 'Instrument'),
+                  Tab(key: Key('editor-tab-loop'), text: 'Loop'),
+                  Tab(key: Key('editor-tab-arrangement'), text: 'Arrangement'),
+                ],
+              ),
+            ),
+            body: TabBarView(
+              children: [
+                _KeepAlive(child: InstrumentPanel(viewModel: _instrument)),
+                const _KeepAlive(
+                  child: _PlaceholderPanel(
+                    icon: Icons.blur_circular,
+                    title: 'Loop',
+                    text: 'Layers with an instrument each. Planned.',
+                  ),
+                ),
+                const _KeepAlive(
+                  child: _PlaceholderPanel(
+                    icon: Icons.view_timeline_outlined,
+                    title: 'Arrangement',
+                    text: 'Chain loops into a backing track. Planned.',
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        body: const TabBarView(
-          children: [
-            _KeepAlive(
-              child: _PlaceholderPanel(
-                icon: Icons.graphic_eq,
-                title: 'Instrument',
-                text: 'Shape the sound: harmonics, envelope and EQ.',
-              ),
-            ),
-            _KeepAlive(
-              child: _PlaceholderPanel(
-                icon: Icons.blur_circular,
-                title: 'Loop',
-                text: 'Layers with an instrument each. Planned.',
-              ),
-            ),
-            _KeepAlive(
-              child: _PlaceholderPanel(
-                icon: Icons.view_timeline_outlined,
-                title: 'Arrangement',
-                text: 'Chain loops into a backing track. Planned.',
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 }
+
+enum _LeaveChoice { save, discard, cancel }
 
 /// Keeps a panel's state when the user switches to another panel.
 class _KeepAlive extends StatefulWidget {
