@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:synesterra_core/synesterra_core.dart';
 
 import '../data/repositories/instrument_library_repository.dart';
 import '../features/editor/editor_view.dart';
@@ -24,16 +25,31 @@ class _SynesterraAppState extends State<SynesterraApp> {
       title: 'Synesterra',
       theme: synesterraTheme(_palette),
       home: Builder(
-        builder: (context) => HomeView(
-          palette: _palette,
-          onPaletteChanged: (palette) => setState(() => _palette = palette),
-          onOpenEditor: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => const EditorView())),
-          onOpenLibrary: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => const LibraryView())),
-        ),
+        builder: (context) {
+          void openEditor([Instrument? instrument, bool existing = false]) =>
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => EditorView(
+                    instrumentLibrary: widget.instrumentLibrary,
+                    initialInstrument: instrument,
+                    editsExisting: existing,
+                  ),
+                ),
+              );
+          return HomeView(
+            palette: _palette,
+            onPaletteChanged: (palette) => setState(() => _palette = palette),
+            onOpenEditor: openEditor,
+            onOpenLibrary: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => LibraryView(
+                  instrumentLibrary: widget.instrumentLibrary,
+                  onOpenInstrument: openEditor,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
