@@ -10,6 +10,7 @@ How AI coding agents (Claude, Codex) and the Founder work in this repository. Ev
 | [change-safety.md](change-safety.md) | invariants, change boundaries, risky areas |
 | [founder-collaboration.md](founder-collaboration.md) | Founder involvement, decision gates, the decision package |
 | [model-routing.md](model-routing.md) | model class per task, models per class, escalation, cost, outcome logging |
+| [feedback-loops.md](feedback-loops.md) | feedback loops L1–L7, from local checks to the retrospective after each wave |
 
 ## Conventions
 
