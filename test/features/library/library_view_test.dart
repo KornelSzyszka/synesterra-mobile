@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/app/synesterra_app.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
+import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
 import 'package:synesterra/data/repositories/instrument_library_repository.dart';
 import 'package:synesterra/features/library/library_view.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
@@ -139,7 +140,12 @@ void main() {
     tester,
   ) async {
     final repository = InMemoryInstrumentLibraryRepository();
-    await tester.pumpWidget(SynesterraApp(instrumentLibrary: repository));
+    await tester.pumpWidget(
+      SynesterraApp(
+        instrumentLibrary: repository,
+        instrumentAudition: NoopInstrumentAuditionRepository(),
+      ),
+    );
     await tester.tap(find.byKey(const Key('home-library')));
     await tester.pumpAndSettle();
 
@@ -169,7 +175,12 @@ void main() {
     final repository = InMemoryInstrumentLibraryRepository([
       mine('a', 'Alpha'),
     ]);
-    await tester.pumpWidget(SynesterraApp(instrumentLibrary: repository));
+    await tester.pumpWidget(
+      SynesterraApp(
+        instrumentLibrary: repository,
+        instrumentAudition: NoopInstrumentAuditionRepository(),
+      ),
+    );
     await tester.tap(find.byKey(const Key('home-library')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('own-a')));

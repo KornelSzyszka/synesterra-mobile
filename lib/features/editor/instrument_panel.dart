@@ -59,7 +59,12 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _StartFrom(onPick: vm.startFrom),
+                  _StartFrom(
+                    onPick: (preset) {
+                      vm.startFrom(preset);
+                      vm.audition();
+                    },
+                  ),
                   const SizedBox(height: 12),
                   DesignPanel(
                     child: Column(
@@ -88,13 +93,40 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                             instrument: instrument,
                             size: 220,
                             interactive: true,
+                            onTap: vm.audition,
+                            pulseToken: vm.auditionCount,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          'Tap the mist to see its pulse. There is no sound '
-                          'yet; the audio backend is still being chosen.',
-                          style: TextStyle(color: tokens.muted, fontSize: 12),
+                        Center(
+                          child: FilledButton.icon(
+                            key: const Key('instrument-play'),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(120, 48),
+                            ),
+                            onPressed: vm.audition,
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text('Play'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ValueListenableBuilder<bool>(
+                          valueListenable: vm.soundAvailable,
+                          builder: (context, available, _) => Text(
+                            available
+                                ? 'Tap the mist or press Play to hear it. '
+                                      'The sound updates when you let go of a '
+                                      'control.'
+                                : 'Sound is not available right now. The '
+                                      'editor still works; try Play again.',
+                            key: const Key('instrument-sound-note'),
+                            style: TextStyle(
+                              color: available
+                                  ? tokens.muted
+                                  : Theme.of(context).colorScheme.error,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -111,6 +143,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                           valueText: pitchLabel(instrument.fundamentalHz),
                           value: _hzToSlider(instrument.fundamentalHz),
                           onChanged: (t) => vm.setPitchHz(_sliderToHz(t)),
+                          onChangeEnd: vm.auditionSoon,
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -124,7 +157,10 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                               label: 'harmonics',
                               color: tokens.text,
                               repeatOnHold: true,
-                              onChanged: vm.setHarmonicCount,
+                              onChanged: (count) {
+                                vm.setHarmonicCount(count);
+                                vm.auditionSoon();
+                              },
                             ),
                           ],
                         ),
@@ -134,6 +170,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                           valueText: '${(vm.brightness * 100).round()}%',
                           value: vm.brightness,
                           onChanged: vm.setBrightness,
+                          onChangeEnd: vm.auditionSoon,
                         ),
                       ],
                     ),
@@ -152,6 +189,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                           onChanged: (t) => vm.setAttackMs(
                             (t * Instrument.maxAttackMs).round(),
                           ),
+                          onChangeEnd: vm.auditionSoon,
                         ),
                         _ValueSlider(
                           key: const Key('instrument-decay'),
@@ -159,6 +197,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                           valueText: '${instrument.decayMs} ms',
                           value: _msToSlider(instrument.decayMs),
                           onChanged: (t) => vm.setDecayMs(_sliderToMs(t)),
+                          onChangeEnd: vm.auditionSoon,
                         ),
                       ],
                     ),
@@ -211,6 +250,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
     valueText: '${db >= 0 ? '+' : ''}${db.toStringAsFixed(1)} dB',
     value: (db + InstrumentEq.maxGainDb) / (2 * InstrumentEq.maxGainDb),
     onChanged: (t) => onChanged((t * 2 - 1) * InstrumentEq.maxGainDb),
+    onChangeEnd: widget.viewModel.auditionSoon,
   );
 }
 
@@ -263,6 +303,7 @@ class _ValueSlider extends StatelessWidget {
     required this.valueText,
     required this.value,
     required this.onChanged,
+    this.onChangeEnd,
   });
 
   final String label;
@@ -271,6 +312,9 @@ class _ValueSlider extends StatelessWidget {
   /// 0..1 position of the thumb.
   final double value;
   final ValueChanged<double> onChanged;
+
+  /// Called when the user lets go of the thumb.
+  final VoidCallback? onChangeEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +333,11 @@ class _ValueSlider extends StatelessWidget {
         ),
         Semantics(
           label: '$label, $valueText',
-          child: Slider(value: value.clamp(0.0, 1.0), onChanged: onChanged),
+          child: Slider(
+            value: value.clamp(0.0, 1.0),
+            onChanged: onChanged,
+            onChangeEnd: onChangeEnd == null ? null : (_) => onChangeEnd!(),
+          ),
         ),
       ],
     );

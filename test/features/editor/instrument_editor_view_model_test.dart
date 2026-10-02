@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
+import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
 import 'package:synesterra/data/repositories/instrument_library_repository.dart';
 import 'package:synesterra/features/editor/instrument_editor_view_model.dart';
 import 'package:synesterra_core/synesterra_core.dart';
@@ -29,6 +30,7 @@ void main() {
     bool existing = false,
   }) => InstrumentEditorViewModel(
     repository: repository,
+    audition: NoopInstrumentAuditionRepository(),
     instrument: instrument,
     existing: existing,
     newId: newId,
@@ -200,6 +202,7 @@ void main() {
       () async {
         final vm = InstrumentEditorViewModel(
           repository: FailingRepository(),
+          audition: NoopInstrumentAuditionRepository(),
           newId: newId,
         )..setName('Click');
         expect(await vm.save(), isFalse);
