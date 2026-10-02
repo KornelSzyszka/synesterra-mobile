@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
+import '../data/repositories/instrument_audition_repository.dart';
 import '../data/repositories/instrument_library_repository.dart';
 import '../features/editor/editor_view.dart';
 import '../features/home/home_view.dart';
@@ -8,9 +9,14 @@ import '../features/library/library_view.dart';
 import '../shared/theme/synesterra_theme.dart';
 
 class SynesterraApp extends StatefulWidget {
-  const SynesterraApp({super.key, required this.instrumentLibrary});
+  const SynesterraApp({
+    super.key,
+    required this.instrumentLibrary,
+    required this.instrumentAudition,
+  });
 
   final InstrumentLibraryRepository instrumentLibrary;
+  final InstrumentAuditionRepository instrumentAudition;
 
   @override
   State<SynesterraApp> createState() => _SynesterraAppState();
@@ -31,6 +37,7 @@ class _SynesterraAppState extends State<SynesterraApp> {
                 MaterialPageRoute<void>(
                   builder: (_) => EditorView(
                     instrumentLibrary: widget.instrumentLibrary,
+                    instrumentAudition: widget.instrumentAudition,
                     initialInstrument: instrument,
                     editsExisting: existing,
                   ),

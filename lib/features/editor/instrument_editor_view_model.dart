@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
+import '../../data/repositories/instrument_audition_repository.dart';
 import '../../data/repositories/instrument_library_repository.dart';
 
 /// Edits one instrument. The draft is always a valid [Instrument]; only the
@@ -14,6 +16,7 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   /// keeps its id.
   InstrumentEditorViewModel({
     required this._repository,
+    required this._audition,
     Instrument? instrument,
     bool existing = false,
     String Function()? newId,
@@ -33,7 +36,15 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   }
 
   final InstrumentLibraryRepository _repository;
+  final InstrumentAuditionRepository _audition;
   final String Function() _newId;
+
+  /// Dragging a slider fires many changes; the sound is played once, shortly
+  /// after the last one.
+  static const auditionDelay = Duration(milliseconds: 150);
+
+  Timer? _auditionTimer;
+  int _auditionCount = 0;
 
   late Instrument _draft;
   late Instrument _baseline;
@@ -66,6 +77,33 @@ class InstrumentEditorViewModel extends ChangeNotifier {
 
   /// A new instrument can be saved as it is; a saved one only after a change.
   bool get canSave => nameValid && !_saving && (dirty || !_persisted);
+
+  /// Counts audition requests; the mist pulses when it changes, so the
+  /// picture and the sound start from the same tap.
+  int get auditionCount => _auditionCount;
+
+  /// False when the engine could not start or play.
+  ValueListenable<bool> get soundAvailable => _audition.available;
+
+  /// Plays the instrument now. Only ever called from a user gesture.
+  void audition() {
+    _auditionTimer?.cancel();
+    _auditionCount++;
+    notifyListeners();
+    unawaited(_audition.play(_draft));
+  }
+
+  /// Plays the instrument once the controls have been still for a moment.
+  void auditionSoon() {
+    _auditionTimer?.cancel();
+    _auditionTimer = Timer(auditionDelay, audition);
+  }
+
+  @override
+  void dispose() {
+    _auditionTimer?.cancel();
+    super.dispose();
+  }
 
   Instrument? _tryName(String name) {
     try {

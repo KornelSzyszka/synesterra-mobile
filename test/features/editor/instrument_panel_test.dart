@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/app/synesterra_app.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
+import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 late InMemoryInstrumentLibraryRepository repository;
@@ -13,7 +14,12 @@ Future<void> openEditor(WidgetTester tester) async {
     ..physicalSize = const Size(800, 3200);
   addTearDown(tester.view.reset);
   repository = InMemoryInstrumentLibraryRepository();
-  await tester.pumpWidget(SynesterraApp(instrumentLibrary: repository));
+  await tester.pumpWidget(
+    SynesterraApp(
+      instrumentLibrary: repository,
+      instrumentAudition: NoopInstrumentAuditionRepository(),
+    ),
+  );
   await tester.tap(find.byKey(const Key('home-editor')));
   await tester.pumpAndSettle();
 }
@@ -54,7 +60,7 @@ void main() {
     expect(find.text('2 ms'), findsOneWidget);
     expect(find.text('120 ms'), findsOneWidget);
     expect(find.text('+0.0 dB'), findsNWidgets(3));
-    expect(find.textContaining('There is no sound yet'), findsOneWidget);
+    expect(find.textContaining('to hear it'), findsOneWidget);
   });
 
   testWidgets('moving a slider updates its value and the draft', (

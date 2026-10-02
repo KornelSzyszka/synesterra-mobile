@@ -14,11 +14,21 @@ class InstrumentMist extends StatefulWidget {
     required this.instrument,
     this.size = 56,
     this.interactive = false,
+    this.onTap,
+    this.pulseToken = 0,
   });
 
   final Instrument instrument;
   final double size;
   final bool interactive;
+
+  /// Called when an interactive mist is tapped. Without it the tap plays the
+  /// pulse itself; with it the caller decides what a tap does (for example
+  /// play the sound) and pulses the mist by changing [pulseToken].
+  final VoidCallback? onTap;
+
+  /// Every change plays the pulse once.
+  final int pulseToken;
 
   @override
   State<InstrumentMist> createState() => _InstrumentMistState();
@@ -35,6 +45,7 @@ class _InstrumentMistState extends State<InstrumentMist>
     if (oldWidget.instrument != widget.instrument) {
       _spec = buildMistSpec(widget.instrument);
     }
+    if (oldWidget.pulseToken != widget.pulseToken) _pulse();
   }
 
   @override
@@ -79,14 +90,17 @@ class _InstrumentMistState extends State<InstrumentMist>
       ),
     );
     if (!widget.interactive) return ExcludeSemantics(child: mist);
+    final onTap = widget.onTap ?? _pulse;
     return Semantics(
       button: true,
-      label: 'Mist of ${widget.instrument.name}. Tap to see its pulse.',
-      onTap: _pulse,
+      label: widget.onTap == null
+          ? 'Mist of ${widget.instrument.name}. Tap to see its pulse.'
+          : 'Mist of ${widget.instrument.name}. Tap to hear it.',
+      onTap: onTap,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: _pulse,
+        onTap: onTap,
         child: mist,
       ),
     );

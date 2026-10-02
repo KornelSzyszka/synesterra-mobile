@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
+import '../../data/repositories/instrument_audition_repository.dart';
 import '../../data/repositories/instrument_library_repository.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
@@ -13,11 +14,13 @@ class EditorView extends StatefulWidget {
   const EditorView({
     super.key,
     required this.instrumentLibrary,
+    required this.instrumentAudition,
     this.initialInstrument,
     this.editsExisting = false,
   });
 
   final InstrumentLibraryRepository instrumentLibrary;
+  final InstrumentAuditionRepository instrumentAudition;
 
   /// Null starts a new instrument.
   final Instrument? initialInstrument;
@@ -33,6 +36,7 @@ class EditorView extends StatefulWidget {
 class _EditorViewState extends State<EditorView> {
   late final InstrumentEditorViewModel _instrument = InstrumentEditorViewModel(
     repository: widget.instrumentLibrary,
+    audition: widget.instrumentAudition,
     instrument: widget.initialInstrument,
     existing: widget.editsExisting,
   );
