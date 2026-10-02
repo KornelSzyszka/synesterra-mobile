@@ -1,6 +1,6 @@
 # Product vision (mobile)
 
-Status: draft for Founder review, 2026-10-02. Nothing here is implemented unless stated. It supersedes the navigation model in web PLR-003 (Session with Play/Build/Improvise and a fixed transport dock), which stays a behaviour reference.
+Status: draft for Founder review, updated 2026-10-02. Nothing here is implemented unless stated. It supersedes the navigation model in web PLR-003 (Session with Play/Build/Improvise and a fixed transport dock), which stays a behaviour reference.
 
 Marked **Founder** = stated by the Founder. Marked **Proposal** = recommended by the coordinator, not yet confirmed.
 
@@ -23,8 +23,8 @@ flowchart LR
 
 - **Instrument** (Founder): a sound preset with EQ and the number and strength of harmonics.
 - **Loop** (Founder): layers built on the polyrhythmic metronome; every layer has an instrument.
-- **Arrangement** (Founder, later): several loops in sequence or a structure built from loops, used as a backing track.
-- Library (Founder): instruments, and loops, are stored in a library.
+- **Arrangement** (Founder): several loops in sequence or a structure built from loops, used as a backing track.
+- Each of the three has its own library (Founder).
 - A Loop embeds the definitions of the instruments it uses, so an exported file is self-contained (Proposal).
 
 ## Navigation
@@ -33,39 +33,47 @@ flowchart LR
 
 The start screen offers two entries and nothing else for now:
 
-1. **Editor**: choose what to edit, an Instrument or a Loop.
-2. **Library**: instruments and loops.
+1. **Editor**.
+2. **Library**.
 
-Later, not part of this scope: shorts and a learning panel.
+Not part of this scope: shorts, a learning panel, and a shortcut back to the last loop (the web "one tap Start" rule is dropped for now; Founder, 2026-10-02). A welcome screen appears only on the first launch; its content is not designed yet.
+
+### Editor and Library (Founder)
+
+Inside the Editor there are three panels: **Instrument**, **Loop** and **Arrangement**. The Library has one tab per editor, in the same order. Implementation starts with the Instrument panel and saving to the instrument tab; the Loop and Arrangement panels and tabs are placeholders until their turn.
 
 ```mermaid
 flowchart TD
     start["Start screen"]
     editor["Editor"]
     library["Library"]
-    instrumentEditor["Instrument editor"]
-    loopEditor["Loop editor + transport"]
+    instrumentPanel["Instrument panel"]
+    loopPanel["Loop panel + transport"]
+    arrangementPanel["Arrangement panel"]
+    instrumentTab["Instruments tab"]
+    loopTab["Loops tab"]
+    arrangementTab["Arrangements tab"]
     start --> editor
     start --> library
-    editor --> instrumentEditor
-    editor --> loopEditor
-    library --> instrumentEditor
-    library --> loopEditor
+    editor --> instrumentPanel
+    editor --> loopPanel
+    editor --> arrangementPanel
+    library --> instrumentTab
+    library --> loopTab
+    library --> arrangementTab
+    instrumentPanel -->|"save"| instrumentTab
+    loopPanel -->|"save"| loopTab
+    arrangementPanel -->|"save"| arrangementTab
+    instrumentTab -->|"open"| instrumentPanel
+    loopTab -->|"open"| loopPanel
+    arrangementTab -->|"open"| arrangementPanel
 ```
-
-### Open: returning to the last loop (Proposal, needs a decision)
-
-The web vision required "last session, one deliberate tap on Start". A two-entry start screen has no place for that. Options:
-
-- A: add a single "Continue: <loop name>" card above the two entries. Transport still never starts by itself. Recommended; it is the only addition and keeps the practice use case.
-- B: no continue card; the user opens Library, then the loop.
-- C: open the last loop directly and skip the start screen on later launches.
 
 ## Instrument
 
 - Recipe v1 (Proposal): pitch, N harmonics with an amplitude each, an envelope (attack, decay), 3-band EQ. Noise and a pitch drop (kick, snare) come in v2. Without an envelope every sound is a sustained tone, so one is required for percussion.
 - Library of instruments, with factory presets for the three web sounds `wood`, `sine` and `bell`. Web files map onto them.
-- Rendered once per edit or load into a PCM buffer; the engine plays buffers. This keeps real-time audio simple and is a requirement to record in ADR 0002 (#16).
+- Rendered once per edit or load into a PCM buffer; the engine plays buffers. This keeps real-time audio simple and is a requirement to record in ADR 0002 (#16). Until that ADR is decided, the Instrument panel has no audition sound; it edits, previews the mist and saves.
 - Scope in v1 is rhythm layers only. The drone keeps its current model (Proposal).
 
 ## Visualization layer
@@ -74,8 +82,8 @@ Two kinds of picture, both driven by state and by the audio clock, never by a UI
 
 | Picture | Where | Driven by | Source |
 |---|---|---|---|
-| **Instrument mist** | Instrument editor, library cards | the recipe; reacts live to parameter changes | new design |
-| **Loop view** (circle, timeline, polygons) | Loop editor | loop state and the audio clock position | as in web `src/visual/views.ts` |
+| **Instrument mist** | Instrument panel, library cards | the recipe; reacts live to parameter changes | new design |
+| **Loop view** (circle, timeline, polygons) | Loop panel | loop state and the audio clock position | as in web `src/visual/views.ts` |
 
 Instrument mist mapping (Proposal, computed deterministically from the recipe, no FFT):
 
@@ -87,25 +95,25 @@ The web mist today visualizes the harmony of the drone, one blurred radial gradi
 
 ## Editing layer
 
-- **Loop editor**: layers, one instrument per layer, pattern, accents, phase, swing, mix, tempo and the drone, with the transport dock always visible. Mix changes apply immediately; structural changes wait for the next cycle boundary, or require Stop until the planner can do that safely.
-- **Instrument editor**: the recipe above with a live mist preview and an audition control.
-- **Arrangement editor** (later): an ordered list of sections, each a loop with a repeat count; changes between sections happen on a cycle boundary. A and B scenes from the web vision are the smallest arrangement.
+- **Loop panel**: layers, one instrument per layer, pattern, accents, phase, swing, mix, tempo and the drone, with the transport dock always visible. Mix changes apply immediately; structural changes wait for the next cycle boundary, or require Stop until the planner can do that safely.
+- **Instrument panel**: the recipe above with a live mist preview.
+- **Arrangement panel** (later): an ordered list of sections, each a loop with a repeat count; changes between sections happen on a cycle boundary. A and B scenes from the web vision are the smallest arrangement.
 
 ## Phasing (Proposal)
 
-1. Data model first, while there is no user data: a layer references an `instrumentId` (three factory instruments), a new `SessionDocument` version with a migration. Loop editor, transport and loop view.
-2. Instrument editor, instrument library and mist.
-3. Arrangements and backing tracks after 1.0, with the section model already fixed in step 1.
+1. Instrument panel and instrument library: pure Dart `Instrument` model, local persistence, mist. Start screen, Editor shell with three panels, Library with three tabs (Loop and Arrangement are placeholders).
+2. Data model for the Loop: a layer references an `instrumentId` (three factory instruments), a new `SessionDocument` version with a migration; Loop panel, transport and loop view.
+3. Arrangements and backing tracks, with the section model already fixed in step 2.
 
 ## Decisions still open
 
 | # | Decision | Recommendation |
 |---|---|---|
-| 1 | Does the start screen get a "Continue" card (A, B or C above)? | A |
-| 2 | Are instruments also for the drone, or rhythm layers only in v1? | Rhythm only |
-| 3 | Do arrangements ship in 1.0 or after? | After, model fixed now |
-| 4 | Bump `SessionDocument` to v3 with `instrumentId` now? | Yes |
-| 5 | Where do Challenge tools (dropout, tempo ramp, mute) and Improvise live in the new navigation? | A panel in the Loop editor; Improvise stays a mutation controller |
-| 6 | Free/Pro boundary for the instrument editor and arrangements | Business gate, later |
+| 1 | Are instruments also for the drone, or rhythm layers only in v1? | Rhythm only |
+| 2 | Do arrangements ship in 1.0 or after? | After, model fixed in step 2 |
+| 3 | Bump `SessionDocument` to v3 with `instrumentId`? | Yes, in step 2 |
+| 4 | Where do Challenge tools (dropout, tempo ramp, mute) and Improvise live? | A panel in the Loop panel; Improvise stays a mutation controller |
+| 5 | Free/Pro boundary for the instrument editor and arrangements | Business gate, later |
+| 6 | Content of the first-launch welcome screen | Design with the first-launch scenario in #26 |
 
 This changes the 1.0 scope, so it needs the `product` gate; the start-screen structure also touches the `experience` gate deferred from web PLR-013.
