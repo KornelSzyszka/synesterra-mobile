@@ -2,7 +2,13 @@
 
 Code: `packages/synesterra_core/lib/src/sound/instrument.dart`, tests in `packages/synesterra_core/test/instrument_test.dart`. Vision and the reason for the model: [product vision](../product/vision.md).
 
-An `Instrument` is a sound recipe for one rhythm voice: pitch, harmonics, envelope and EQ. It has no rhythm, tempo or backend knowledge (core context `sound`, rule R2 of [decision 0001](../decisions/0001-architecture-style.md)). It validates in its constructor, so an existing instance is always renderable. A later audio step renders a recipe into a buffer; this module does not.
+An `Instrument` is a sound recipe for one rhythm voice: pitch, harmonics, envelope and EQ. It has no rhythm, tempo or backend knowledge (core context `sound`, rule R2 of [decision 0001](../decisions/0001-architecture-style.md)). It validates in its constructor, so an existing instance is always renderable.
+
+## PCM rendering
+
+`renderInstrument(instrument, sampleRate: 48000)` produces a deterministic, mono `Float32List` in the pure-Dart core. It sums the configured harmonics at the fundamental, skips harmonics at or above Nyquist, applies broad RBJ low-shelf (200 Hz), peaking (1 kHz, Q 1.0) and high-shelf (4 kHz) filters using `InstrumentEq`, then applies the envelope and peak-normalises only when needed. Attack is linear; `decayMs` is the exponential time to -60 dB, and the first and last samples are forced to zero. The buffer is capped at six seconds and contains no UI, plugin or I/O work, so a caller may render it in an isolate before handing it to a future audio backend.
+
+On the task host (Windows 11, Dart from Flutter 3.35.7), rendering the heaviest permitted recipe (32 harmonics, 5 s decay, 48 kHz; 240001 samples) had a median time of **67.9 ms** across five post-warm-up runs. This is a unit-level host measurement, not evidence of audio timing or sound quality on a device.
 
 ## JSON v1
 
