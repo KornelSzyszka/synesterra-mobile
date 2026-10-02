@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'biquad.dart';
 import 'instrument.dart';
 
 /// Renders an [Instrument] recipe to a deterministic mono PCM buffer.
@@ -88,129 +89,19 @@ void _normalise(Float32List samples) {
 }
 
 void _applyEq(Float32List samples, InstrumentEq eq, int sampleRate) {
-  _Biquad.lowShelf(
+  Biquad.lowShelf(
     frequencyHz: InstrumentEq.lowShelfHz,
     gainDb: eq.lowDb,
     sampleRate: sampleRate,
   ).apply(samples);
-  _Biquad.peaking(
+  Biquad.peaking(
     frequencyHz: InstrumentEq.midPeakHz,
     gainDb: eq.midDb,
     sampleRate: sampleRate,
   ).apply(samples);
-  _Biquad.highShelf(
+  Biquad.highShelf(
     frequencyHz: InstrumentEq.highShelfHz,
     gainDb: eq.highDb,
     sampleRate: sampleRate,
   ).apply(samples);
-}
-
-class _Biquad {
-  const _Biquad(this.b0, this.b1, this.b2, this.a1, this.a2);
-
-  factory _Biquad.peaking({
-    required double frequencyHz,
-    required double gainDb,
-    required int sampleRate,
-  }) {
-    final coefficients = _coefficients(frequencyHz, gainDb, sampleRate);
-    final a = coefficients.a;
-    final alpha = coefficients.alpha;
-    return _Biquad._normalised(
-      1 + alpha * a,
-      -2 * coefficients.cosine,
-      1 - alpha * a,
-      1 + alpha / a,
-      -2 * coefficients.cosine,
-      1 - alpha / a,
-    );
-  }
-
-  factory _Biquad.lowShelf({
-    required double frequencyHz,
-    required double gainDb,
-    required int sampleRate,
-  }) {
-    final c = _coefficients(frequencyHz, gainDb, sampleRate, shelf: true);
-    final rootA = sqrt(c.a);
-    return _Biquad._normalised(
-      c.a * ((c.a + 1) - (c.a - 1) * c.cosine + 2 * rootA * c.alpha),
-      2 * c.a * ((c.a - 1) - (c.a + 1) * c.cosine),
-      c.a * ((c.a + 1) - (c.a - 1) * c.cosine - 2 * rootA * c.alpha),
-      (c.a + 1) + (c.a - 1) * c.cosine + 2 * rootA * c.alpha,
-      -2 * ((c.a - 1) + (c.a + 1) * c.cosine),
-      (c.a + 1) + (c.a - 1) * c.cosine - 2 * rootA * c.alpha,
-    );
-  }
-
-  factory _Biquad.highShelf({
-    required double frequencyHz,
-    required double gainDb,
-    required int sampleRate,
-  }) {
-    final c = _coefficients(frequencyHz, gainDb, sampleRate, shelf: true);
-    final rootA = sqrt(c.a);
-    return _Biquad._normalised(
-      c.a * ((c.a + 1) + (c.a - 1) * c.cosine + 2 * rootA * c.alpha),
-      -2 * c.a * ((c.a - 1) + (c.a + 1) * c.cosine),
-      c.a * ((c.a + 1) + (c.a - 1) * c.cosine - 2 * rootA * c.alpha),
-      (c.a + 1) - (c.a - 1) * c.cosine + 2 * rootA * c.alpha,
-      2 * ((c.a - 1) - (c.a + 1) * c.cosine),
-      (c.a + 1) - (c.a - 1) * c.cosine - 2 * rootA * c.alpha,
-    );
-  }
-
-  factory _Biquad._normalised(
-    double b0,
-    double b1,
-    double b2,
-    double a0,
-    double a1,
-    double a2,
-  ) => _Biquad(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0);
-
-  final double b0;
-  final double b1;
-  final double b2;
-  final double a1;
-  final double a2;
-
-  void apply(Float32List samples) {
-    var x1 = 0.0;
-    var x2 = 0.0;
-    var y1 = 0.0;
-    var y2 = 0.0;
-    for (var index = 0; index < samples.length; index++) {
-      final x0 = samples[index];
-      final y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
-      samples[index] = y0;
-      x2 = x1;
-      x1 = x0;
-      y2 = y1;
-      y1 = y0;
-    }
-  }
-}
-
-_BiquadCoefficients _coefficients(
-  double frequencyHz,
-  double gainDb,
-  int sampleRate, {
-  bool shelf = false,
-}) {
-  final omega = 2 * pi * frequencyHz / sampleRate;
-  final a = pow(10, gainDb / 40).toDouble();
-  final sine = sin(omega);
-  final cosine = cos(omega);
-  // Shelf slope S and peaking Q are both 1.0: broad, predictable bands.
-  final alpha = shelf ? sine / sqrt(2) : sine / 2;
-  return _BiquadCoefficients(a, alpha, cosine);
-}
-
-class _BiquadCoefficients {
-  const _BiquadCoefficients(this.a, this.alpha, this.cosine);
-
-  final double a;
-  final double alpha;
-  final double cosine;
 }

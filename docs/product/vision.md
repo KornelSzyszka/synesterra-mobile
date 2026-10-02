@@ -93,6 +93,12 @@ Instrument mist mapping (Proposal, computed deterministically from the recipe, n
 
 The web mist today visualizes the harmony of the drone, one blurred radial gradient per chord note. It does not show timbre, so this mapping is new. Layer identity stays number plus colour; the mist never carries state alone (accessibility). On mobile use gradients in a `CustomPainter` and a `RepaintBoundary` instead of a Gaussian blur filter; smoothness is a device-level check.
 
+### Sound views (instrument panel)
+
+The preview of an instrument has three views of the same recipe: **Mist** (character), **Figure** and **Wave** (the sound itself, after EQ). The figure is the closed curve `z(t) = sum s_n e^(i n t)`: a pure tone is a circle, harmonic n adds n-1 lobes, a bright spectrum is spiky and a dark one smooth. It describes one sound, not a loop (Founder, 2026-10-02). The pulse (the envelope, visually) plays in all three views.
+
+Later, for harmony (the drone and chords, not a single instrument): compose the figures of the chord's notes, or draw a triad as one 3D curve (a major triad 4:5:6 is `x = sin(4t)`, `y = sin(5t)`, `z = sin(6t)`), projected by hand in a `CustomPainter` and rotated by dragging; no new dependency is expected. Idea from the Founder, 2026-10-02; not scheduled.
+
 ## Editing layer
 
 - **Loop panel**: layers, one instrument per layer, pattern, accents, phase, swing, mix, tempo and the drone, with the transport dock always visible. Mix changes apply immediately; structural changes wait for the next cycle boundary, or require Stop until the planner can do that safely.

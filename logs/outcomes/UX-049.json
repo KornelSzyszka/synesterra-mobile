@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "UX-049",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Sound views: shared Biquad, eqResponseDb and shapedHarmonics in the core; figure and period wave specs; Mist/Figure/Wave switch with a shared pulse. 161 app tests and 61 core tests green locally (app tests with flutter_soloud out of the build graph, as on this host). Looks not seen on a device; Founder review of the look is pending."
+}

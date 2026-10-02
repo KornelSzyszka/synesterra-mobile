@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../shared/formatting/note_name.dart';
-import '../../shared/instrument_mist/instrument_mist.dart';
+import '../../shared/instrument_figure/instrument_sound_view.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import 'instrument_editor_view_model.dart';
@@ -88,11 +88,10 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                         ),
                         const SizedBox(height: 16),
                         Center(
-                          child: InstrumentMist(
-                            key: const Key('instrument-mist'),
+                          child: InstrumentSoundView(
+                            key: const Key('instrument-preview'),
                             instrument: instrument,
                             size: 220,
-                            interactive: true,
                             onTap: vm.audition,
                             pulseToken: vm.auditionCount,
                           ),
