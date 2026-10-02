@@ -7,6 +7,8 @@ import '../../shared/instrument_figure/instrument_sound_view.dart';
 import '../../shared/instrument_mist/mist_spec.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
+import 'envelope_editor.dart';
+import 'eq_editor.dart';
 import 'instrument_editor_view_model.dart';
 import 'spectrum_editor.dart';
 import 'test_sound.dart';
@@ -227,6 +229,15 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SectionLabel('Envelope'),
+                        const SizedBox(height: 8),
+                        EnvelopeEditor(
+                          attackMs: instrument.attackMs,
+                          decayMs: instrument.decayMs,
+                          color: tokens
+                              .layerColors[identityColorIndex(instrument.id)],
+                          onChange: vm.setEnvelope,
+                          onChangeEnd: vm.auditionSoon,
+                        ),
                         _ValueSlider(
                           key: const Key('instrument-attack'),
                           label: 'Attack',
@@ -254,6 +265,19 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SectionLabel('EQ'),
+                        const SizedBox(height: 8),
+                        EqEditor(
+                          eq: instrument.eq,
+                          testHz: vm.testHz,
+                          color: tokens
+                              .layerColors[identityColorIndex(instrument.id)],
+                          onChange: (eq) => vm.setEq(
+                            lowDb: eq.lowDb,
+                            midDb: eq.midDb,
+                            highDb: eq.highDb,
+                          ),
+                          onChangeEnd: vm.auditionSoon,
+                        ),
                         _eqSlider(
                           'instrument-eq-low',
                           'Low · ${InstrumentEq.lowShelfHz.round()} Hz',
