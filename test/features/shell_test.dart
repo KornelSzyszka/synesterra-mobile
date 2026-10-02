@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/app/synesterra_app.dart';
+import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
 
 Future<void> _pumpApp(WidgetTester tester) async {
-  await tester.pumpWidget(const SynesterraApp());
+  await tester.pumpWidget(
+    SynesterraApp(instrumentLibrary: InMemoryInstrumentLibraryRepository()),
+  );
 }
 
 void main() {
