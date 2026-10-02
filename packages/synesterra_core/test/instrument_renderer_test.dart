@@ -214,12 +214,24 @@ void main() {
       expect(midGain, closeTo(12, 1.0));
     });
 
-    test('caps a rendered envelope at six seconds', () {
+    test('a valid envelope is at most five and a half seconds', () {
       final samples = _render(
         _instrument(attackMs: 500, decayMs: 5000),
         sampleRate: 48000,
       );
-      expect(samples.length, lessThanOrEqualTo(6 * 48000));
+      expect(samples.length, 5.5 * 48000 + 1);
+    });
+
+    test('reports an eighth harmonic at B7 as unrenderable at 48 kHz', () {
+      final instrument = _instrument(
+        fundamentalHz: 3951.066410048992,
+        harmonics: const [0, 0, 0, 0, 0, 0, 0, 1],
+      ).instrument;
+
+      expect(
+        hasRenderableHarmonic(instrument, fundamentalHz: 3951.066410048992),
+        isFalse,
+      );
     });
   });
 

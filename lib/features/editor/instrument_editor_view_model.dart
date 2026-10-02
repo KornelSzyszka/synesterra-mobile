@@ -94,6 +94,8 @@ class InstrumentEditorViewModel extends ChangeNotifier {
 
   void setTestSound(TestSound sound) {
     if (sound == _testSound) return;
+    // A pitch where no harmonic is below Nyquist would audition silence.
+    if (!hasRenderableHarmonic(_draft, fundamentalHz: sound.rootHz)) return;
     _testSound = sound;
     notifyListeners();
     auditionSoon();
@@ -212,7 +214,13 @@ class InstrumentEditorViewModel extends ChangeNotifier {
       if (entry.key < 0 || entry.key >= next.length) continue;
       next[entry.key] = _clampDouble(entry.value, 0, 1);
     }
-    if (!next.any((amplitude) => amplitude > 0)) return;
+    if (!next.any((amplitude) => amplitude > 0) ||
+        !hasRenderableHarmonic(
+          _draft.copyWith(harmonics: next),
+          fundamentalHz: testHz,
+        )) {
+      return;
+    }
     _selectedHarmonic = _clampInt(
       select ?? changes.keys.last,
       0,

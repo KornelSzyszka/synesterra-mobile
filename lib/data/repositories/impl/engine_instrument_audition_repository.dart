@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
@@ -47,9 +48,11 @@ class EngineInstrumentAuditionRepository
   final _available = ValueNotifier<bool>(true);
   // Insertion order is recency order: the first entry is the oldest.
   final _sources = <_BufferKey, Future<AuditionSource>>{};
+  final _requested = <_BufferKey, int>{};
   int _latest = 0;
   int _loaded = 0;
   List<AuditionVoice> _voices = const [];
+  Set<_BufferKey> _activeKeys = const {};
 
   @override
   ValueListenable<bool> get available => _available;
@@ -67,18 +70,20 @@ class EngineInstrumentAuditionRepository
   Future<bool> play(Instrument instrument, List<double> frequenciesHz) async {
     if (frequenciesHz.isEmpty) return false;
     final request = ++_latest;
+    final keys = {for (final hz in frequenciesHz) _key(instrument, hz)};
+    _pin(keys);
     final started = <AuditionVoice>[];
     try {
       await _engine.start();
-      final sources = await Future.wait([
-        for (final hz in frequenciesHz) _source(instrument, hz),
-      ]);
+      final sources = await Future.wait([for (final key in keys) _source(key)]);
       if (request != _latest) return false;
       final previous = _voices;
       _voices = const [];
       for (final voice in previous) {
         await _engine.stop(voice);
       }
+      _activeKeys = const {};
+      await _trimCache();
       // Another tap may have arrived while the old sound was stopping.
       if (request != _latest) return false;
       final each = volume / sources.length;
@@ -86,6 +91,7 @@ class EngineInstrumentAuditionRepository
         started.add(_engine.play(source, volume: each));
       }
       _voices = started;
+      _activeKeys = keys;
       _available.value = true;
       return true;
     } catch (_) {
@@ -98,17 +104,19 @@ class EngineInstrumentAuditionRepository
       }
       if (request == _latest) _available.value = false;
       return false;
+    } finally {
+      _unpin(keys);
+      await _trimCache();
     }
   }
 
-  Future<AuditionSource> _source(Instrument instrument, double hz) {
-    final key = _key(instrument, hz);
+  Future<AuditionSource> _source(_BufferKey key) {
     final cached = _sources.remove(key);
     if (cached != null) {
       _sources[key] = cached; // most recent again
       return cached;
     }
-    final future = _load(instrument, hz);
+    final future = _load(key.sound, key.hz);
     _sources[key] = future;
     // A failed load must not stay cached, or the next tap would fail too.
     future.then(
@@ -117,12 +125,47 @@ class EngineInstrumentAuditionRepository
         _sources.remove(key);
       },
     );
-    while (_sources.length > cacheSize) {
-      final oldest = _sources.keys.first;
-      final evicted = _sources.remove(oldest)!;
-      evicted.then(_engine.unload, onError: (_) {});
-    }
+    unawaited(_trimCache());
     return future;
+  }
+
+  void _pin(Iterable<_BufferKey> keys) {
+    for (final key in keys) {
+      _requested.update(key, (count) => count + 1, ifAbsent: () => 1);
+    }
+  }
+
+  void _unpin(Iterable<_BufferKey> keys) {
+    for (final key in keys) {
+      final count = _requested[key];
+      if (count == null || count == 1) {
+        _requested.remove(key);
+      } else {
+        _requested[key] = count - 1;
+      }
+    }
+  }
+
+  bool _isPinned(_BufferKey key) =>
+      _activeKeys.contains(key) || _requested.containsKey(key);
+
+  Future<void> _trimCache() async {
+    while (_sources.length > cacheSize) {
+      _BufferKey? oldest;
+      for (final key in _sources.keys) {
+        if (!_isPinned(key)) {
+          oldest = key;
+          break;
+        }
+      }
+      if (oldest == null) return;
+      final evicted = _sources.remove(oldest)!;
+      try {
+        await _engine.unload(await evicted);
+      } catch (_) {
+        // A failed source or release must not make audition fail.
+      }
+    }
   }
 
   Future<AuditionSource> _load(Instrument instrument, double hz) async {
@@ -136,6 +179,8 @@ class EngineInstrumentAuditionRepository
     _latest++;
     final sources = _sources.values.toList();
     _sources.clear();
+    _activeKeys = const {};
+    _requested.clear();
     final voices = _voices;
     _voices = const [];
     try {

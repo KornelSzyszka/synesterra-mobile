@@ -9,6 +9,18 @@ import 'instrument_envelope.dart';
 const minRenderFrequencyHz = 20.0;
 const maxRenderFrequencyHz = 8000.0;
 
+/// Whether [instrument] has a non-zero harmonic below Nyquist at this pitch.
+bool hasRenderableHarmonic(
+  Instrument instrument, {
+  required double fundamentalHz,
+  int sampleRate = 48000,
+}) {
+  final nyquistHz = sampleRate / 2.0;
+  return instrument.harmonics.indexed.any(
+    (entry) => entry.$2 > 0 && fundamentalHz * (entry.$1 + 1) < nyquistHz,
+  );
+}
+
 /// Renders an [Instrument] recipe at [fundamentalHz] to a deterministic mono
 /// PCM buffer. The instrument has no pitch of its own; the caller (a loop
 /// layer, or the editor's test sound) chooses it.
