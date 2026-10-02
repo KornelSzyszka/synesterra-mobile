@@ -166,6 +166,10 @@ ThemeData synesterraTheme(SynesterraPalette palette) {
   final base = ThemeData.dark(useMaterial3: true);
   final platform = base.platform;
   return base.copyWith(
+    // The default Android splash (InkSparkle) loads a shader; a plain ripple
+    // keeps taps calm and does not depend on a shader asset, which also
+    // fails to load under flutter_test on Flutter 3.47.
+    splashFactory: InkRipple.splashFactory,
     scaffoldBackgroundColor: tokens.background,
     colorScheme: ColorScheme.dark(
       primary: tokens.accent,
