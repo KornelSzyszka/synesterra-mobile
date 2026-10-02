@@ -33,6 +33,7 @@ Layout and dependency rules R1–R9 come from the accepted [decision 0001](docs/
 | Area | Path | Prefix | Role |
 |---|---|---|---|
 | Rhythm, harmony and session contexts, value objects, `SessionDocument` migration and validation (pure Dart) | `packages/synesterra_core/lib/src/{rhythm,harmony,session}/` | `DOM` | rhythm-domain |
+| Sound context: instrument model, renderer and EQ/envelope maths (pure Dart) | `packages/synesterra_core/lib/src/sound/` | `DOM` | rhythm-domain |
 | `TempoMap`, beat windows, `EventPlanner`, `RuntimePerformanceState`, ports | `packages/synesterra_core/lib/src/{playback,ports}/` | `AUD` | audio-platform |
 | Audio bridge and `PlaybackScheduler`, native engine, platform channels | `lib/data/audio/`, `android/`, `ios/` | `AUD` | audio-platform |
 | Views and view models per feature, shared widgets, visualization | `lib/features/<feature>/`, `lib/shared/` | `UX` | mobile-ui |
