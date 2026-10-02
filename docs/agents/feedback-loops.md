@@ -16,24 +16,21 @@ change ──L1 local──► PR ──L2 CI──► L3 cross-agent review ─
 
 | Loop | Trigger | Signal | Reaction | Owner | Defined in |
 |---|---|---|---|---|---|
-| L1 local check | every change | `dart format`, `flutter analyze`, the narrowest `flutter test`; for a bug, the regression test red, then green | fix before pushing | author | [AGENTS.md](../../AGENTS.md), [review-and-merge.md](review-and-merge.md) |
-| L2 CI | push, PR | model log check, format, analyze, test, `flutter build apk --debug`; iOS on demand | fix on the same branch; a repeated failure needs a new hypothesis, not an identical retry | author | [ci.yml](../../.github/workflows/ci.yml), [review-and-merge.md](review-and-merge.md) |
-| L3 cross-agent review | open PR | `Verdict` and findings `blocker`/`major`/`minor` | `blocker` and `major` go back to the author, then re-review; `minor` may become a follow-up issue | reviewer (not the author) | [review-and-merge.md](review-and-merge.md) |
-| L4 device proof | a change whose result can only be judged on a device (audio, feel, UX on a phone) | a runnable hand-off: command, device, UI steps, expected result | Founder verdict; failures go back as a new issue or a fix | Founder, `qa-release` | [docs/testing.md](../testing.md) |
+| L1 local check | every change | the local checks the author runs before pushing | fix before pushing | author | [AGENTS.md](../../AGENTS.md), [review-and-merge.md](review-and-merge.md) |
+| L2 CI | push, PR | the CI result | fix on the same branch | author | [ci.yml](../../.github/workflows/ci.yml), [review-and-merge.md](review-and-merge.md) |
+| L3 cross-agent review | open PR | the review verdict and findings by severity | blocking findings go back to the author, then re-review | reviewer (not the author) | [review-and-merge.md](review-and-merge.md) |
+| L4 device proof | a change whose result can only be judged on a device (audio, feel, UX on a phone) | evidence from a device, against criteria fixed beforehand | a fix or a new issue; the Founder is involved only when the issue has `founder-review` or a `decision-gate` | task owner, `qa-release` | [docs/testing.md](../testing.md) |
 | L5 Founder gate | `decision-gate` or `founder-review` | the decision package | decision recorded in `docs/decisions/`, dependent issues updated | Founder, coordinator | [founder-collaboration.md](founder-collaboration.md) |
 | L6 outcome log | a task reaches review or done | `logs/outcomes/<TASK-ID>.json` | none by itself: it only collects data | author | [model-routing.md](model-routing.md), [logs/README.md](../../logs/README.md) |
 | L7 retrospective | the end of every wave (one Orca Run) | inputs listed below | conclusions, then deliberate rule changes through a normal task | coordinator | this document |
 
-L1 to L3 run without the Founder. The Founder joins at L4 and L5 only.
+L1 to L3 run without the Founder. The Founder joins at L5, and at L4 only when the issue requires it ([founder-collaboration.md](founder-collaboration.md)).
 
 ## L4: the expensive quality loop
 
-L4 costs a build, an install and a listening or hands-on session, so it is used on purpose and not as a routine check.
+L4 costs a build, an install and a hands-on session, so it is used on purpose and not as a routine check. What counts as evidence, and how a device hand-off is written, is defined in [AGENTS.md](../../AGENTS.md) and [docs/testing.md](../testing.md).
 
-- Static analysis, `flutter test` and emulators are not evidence of audio quality or of behaviour on a physical phone.
-- Acceptance criteria for audio and UX are fixed in the issue before the device test, so the result is not judged after the fact.
-- Concrete thresholds belong to the spike's issue or to [docs/testing.md](../testing.md). They are not part of this document.
-- Keep what ran, what did not run, and what was heard on a device as three separate statements.
+This document adds one rule: for audio and UX, the acceptance criteria are fixed in the issue before the device test, so the result is not judged after the fact. Concrete thresholds belong to the spike's issue or to the testing docs.
 
 ## L6: collect, do not decide
 

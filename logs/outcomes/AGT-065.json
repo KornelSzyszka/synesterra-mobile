@@ -11,11 +11,11 @@
   "attempts": 1,
   "escalation": null,
   "error_type": null,
-  "review": null,
-  "ci": null,
+  "review": "changes",
+  "ci": "green",
   "evidence": "static",
   "failure_cost": null,
   "minutes": null,
   "tokens": null,
-  "notes": "docs only; cross-agent review by codex pending when the PR was opened"
+  "notes": "docs only; reviewed by codex gpt-5.6-terra (PR #66): changes-requested with two major findings (L4 Founder ownership, duplicated rules), fixed on the same branch; re-review pending"
 }
