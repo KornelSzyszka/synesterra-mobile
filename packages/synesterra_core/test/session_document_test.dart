@@ -6,7 +6,8 @@ import 'package:test/test.dart';
 Map<String, dynamic> fixture() {
   Map<String, dynamic> layer(String id) => {
     'id': id,
-    'sound': 'wood',
+    'instrumentId': 'factory-wood',
+    'pitch': 69,
     'pattern': {
       'durationBeats': {'numerator': 4, 'denominator': 1},
       'steps': [
@@ -35,7 +36,7 @@ Map<String, dynamic> fixture() {
   };
   return {
     'format': 'polyrhythmer.session',
-    'version': 2,
+    'version': 3,
     'revision': 0,
     'title': '',
     'transport': {
@@ -49,6 +50,21 @@ Map<String, dynamic> fixture() {
     'defaultSceneId': 'A',
     'presentation': {'visualMode': 'circle'},
   };
+}
+
+/// The same document as stored by v2: layers carry a `sound` id.
+Map<String, dynamic> v2Fixture([String sound = 'wood']) {
+  final doc = jsonDecode(jsonEncode(fixture())) as Map<String, dynamic>;
+  doc['version'] = 2;
+  for (final scene in doc['scenes'] as List) {
+    for (final layer in scene['layers'] as List) {
+      (layer as Map<String, dynamic>)
+        ..remove('instrumentId')
+        ..remove('pitch')
+        ..['sound'] = sound;
+    }
+  }
+  return doc;
 }
 
 Map<String, dynamic> sceneAt(Map<String, dynamic> doc, int index) =>
@@ -283,9 +299,9 @@ void main() {
     final negativeZero = jsonEncode(fixture())
         .replaceFirst('"bpm":20', '"bpm":-0');
     expect(parseSessionDocument(negativeZero).isSuccess, false);
-    invalid((d) => d['version'] = 3, 'version');
+    invalid((d) => d['version'] = 4, 'version');
     expect(
-      parse({...fixture(), 'version': 3}).errors.first.code,
+      parse({...fixture(), 'version': 4}).errors.first.code,
       'unsupported_version',
     );
     final deep = '${'[' * 17}0${']' * 17}';
@@ -375,7 +391,7 @@ void main() {
 
   test('unsupported versions take priority over unknown fields', () {
     final document = fixture()
-      ..['version'] = 3
+      ..['version'] = 4
       ..['futureField'] = true;
     final documentError = parse(document).errors.single;
     expect(documentError.code, 'unsupported_version');
@@ -398,12 +414,166 @@ void main() {
 
     final newerSession =
         jsonDecode(jsonEncode(envelope)) as Map<String, dynamic>;
-    (newerSession['session'] as Map)['version'] = 3;
+    (newerSession['session'] as Map)['version'] = 4;
     newerSession['futureField'] = true;
     final sessionError = parseSessionEnvelope(jsonEncode(newerSession))
         .errors
         .single;
     expect(sessionError.code, 'unsupported_version');
     expect(sessionError.path, r'$.session.version');
+  });
+
+  group('v3 layer instrument reference', () {
+    test('v3 document keeps instrumentId and pitch and round-trips', () {
+      final doc = parse(fixture()).value!;
+      final layer = doc.scenes[0].layers[0];
+      expect((layer.instrumentId, layer.pitch), ('factory-wood', 69));
+      final json = jsonDecode(doc.serialize()) as Map<String, dynamic>;
+      expect(json['version'], 3);
+      expect(layerAt(json, 0, 0).containsKey('sound'), false);
+      expect(layerAt(json, 0, 0)['instrumentId'], 'factory-wood');
+      expect(layerAt(json, 0, 0)['pitch'], 69);
+      expect(parseSessionDocument(doc.serialize()).value, doc);
+    });
+
+    test('an instrument id the core cannot resolve is accepted', () {
+      valid((d) => layerAt(d, 0, 0)['instrumentId'] = 'my-missing-1');
+    });
+
+    test('instrumentId follows the library id rule', () {
+      valid((d) => layerAt(d, 0, 0)['instrumentId'] = 'a' * 64);
+      for (final id in ['', 'a' * 65, 'bad_id', 'has space', 'zażółć', 7]) {
+        invalid((d) => layerAt(d, 0, 0)['instrumentId'] = id, 'instrumentId');
+      }
+      final bad = fixture();
+      layerAt(bad, 0, 1)['instrumentId'] = 'bad_id';
+      expect(
+        parse(bad).errors.single.path,
+        r'$.scenes[0].layers[1].instrumentId',
+      );
+    });
+
+    test('pitch is an integer MIDI note 24..107', () {
+      for (final n in [24, 69, 107]) {
+        valid((d) => layerAt(d, 0, 0)['pitch'] = n);
+      }
+      valid((d) => layerAt(d, 0, 0)['pitch'] = 60.0);
+      for (final n in [23, 108, -1, 0, 60.5, '60', null]) {
+        invalid((d) => layerAt(d, 0, 0)['pitch'] = n, 'pitch');
+      }
+      final bad = fixture();
+      layerAt(bad, 1, 0)['pitch'] = 108;
+      expect(parse(bad).errors.single.path, r'$.scenes[1].layers[0].pitch');
+    });
+
+    test('layers of the two scenes may differ in instrument and pitch', () {
+      valid((d) {
+        layerAt(d, 1, 0)['instrumentId'] = 'factory-bell';
+        layerAt(d, 1, 0)['pitch'] = 84;
+      });
+    });
+
+    test('v3 rejects the old sound field and missing new fields', () {
+      invalid((d) => layerAt(d, 0, 0)['sound'] = 'wood', 'sound');
+      invalid((d) => layerAt(d, 0, 0).remove('instrumentId'), 'instrumentId');
+      invalid((d) => layerAt(d, 0, 0).remove('pitch'), 'pitch');
+    });
+  });
+
+  group('v2 to v3 migration', () {
+    const expected = {
+      'wood': 'factory-wood',
+      'sine': 'factory-sine',
+      'bell': 'factory-bell',
+    };
+
+    test('every v2 sound maps to a factory instrument and default pitch', () {
+      for (final entry in expected.entries) {
+        final result = parse(v2Fixture(entry.key));
+        expect(result.isSuccess, true, reason: '${result.errors}');
+        for (final scene in result.value!.scenes) {
+          for (final layer in scene.layers) {
+            expect(layer.instrumentId, entry.value);
+            expect(layer.pitch, defaultMigratedPitch);
+          }
+        }
+      }
+      expect(defaultMigratedPitch, 69);
+    });
+
+    test('everything except the sound is unchanged in meaning', () {
+      final migrated = parse(v2Fixture()).value!;
+      final native = parse(fixture()).value!;
+      expect(migrated, native);
+      expect(migrated.serialize(), native.serialize());
+    });
+
+    test('parsing never changes the source; the next save writes v3', () {
+      final source = jsonEncode(v2Fixture());
+      final doc = parseSessionDocument(source).value!;
+      expect((jsonDecode(source) as Map)['version'], 2);
+      expect((jsonDecode(doc.serialize()) as Map)['version'], 3);
+    });
+
+    test('migration is idempotent', () {
+      final once = parse(v2Fixture()).value!;
+      final twice = parseSessionDocument(once.serialize()).value!;
+      expect(twice, once);
+      expect(twice.serialize(), once.serialize());
+      final json = migrateSessionJson(v2Fixture());
+      expect(migrateSessionJson(json), json);
+      expect(json['version'], 3);
+    });
+
+    test('migrateSessionJson does not mutate its input', () {
+      final input = v2Fixture();
+      final snapshot = jsonEncode(input);
+      migrateSessionJson(input);
+      expect(jsonEncode(input), snapshot);
+    });
+
+    test('unknown or malformed v2 sound ids are rejected with the path', () {
+      for (final sound in ['drum', '', 'Wood', 'factory-wood']) {
+        final result = parse(v2Fixture(sound));
+        expect(result.isSuccess, false, reason: sound);
+        expect(result.errors.single.path, r'$.scenes[0].layers[0].sound');
+        expect(result.errors.single.code, 'validation_error');
+      }
+      final notString = v2Fixture();
+      layerAt(notString, 0, 0)['sound'] = 3;
+      expect(parse(notString).errors.single.path, endsWith('.sound'));
+    });
+
+    test('a v2 layer may not carry v3 fields or lack a sound', () {
+      final extra = v2Fixture();
+      layerAt(extra, 0, 0)['pitch'] = 60;
+      expect(parse(extra).errors.single.path, endsWith('.pitch'));
+      final missing = v2Fixture();
+      layerAt(missing, 0, 0).remove('sound');
+      expect(parse(missing).errors.single.path, endsWith('.sound'));
+    });
+
+    test('v2 documents inside an export envelope load too', () {
+      final envelope = {
+        'format': 'polyrhythmer.session-export',
+        'envelopeVersion': 1,
+        'exportedAt': '2026-10-02T12:00:00Z',
+        'createdWith': {'app': 'Polyrhythmer', 'version': '1.0'},
+        'session': v2Fixture('bell'),
+      };
+      final result = parseSessionEnvelope(jsonEncode(envelope));
+      expect(result.isSuccess, true, reason: '${result.errors}');
+      expect(
+        result.value!.session.scenes[0].layers[0].instrumentId,
+        'factory-bell',
+      );
+      expect((result.value!.toJson()['session'] as Map)['version'], 3);
+    });
+
+    test('other v2 validation errors keep their paths', () {
+      final doc = v2Fixture();
+      (doc['transport'] as Map)['bpm'] = 500;
+      expect(parse(doc).errors.single.path, r'$.transport.bpm');
+    });
   });
 }
