@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'design_scale.dart';
+
 enum SynesterraPalette { forest, autumn, highContrast }
 
 @immutable
@@ -21,6 +23,9 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
   final Color border;
   final Color accent;
   final List<Color> layerColors;
+
+  /// A step above [surface]: dialogs, snackbars and tooltips.
+  Color get surfaceHigh => Color.lerp(surface, text, .1)!;
 
   Color get controlBackground => surface;
   Color get controlBorder => border;
@@ -161,38 +166,294 @@ class SynesterraFonts {
       : const ['Roboto Mono', 'Menlo'];
 }
 
+/// The functional error colour: the only colour outside the three-colour rule
+/// (ground, ivory, gold). Layer and identity colours are data colours and
+/// appear only inside visualizations.
+const _error = Color(0xffe8998a);
+
 ThemeData synesterraTheme(SynesterraPalette palette) {
   final tokens = SynesterraTokens.forPalette(palette);
   final base = ThemeData.dark(useMaterial3: true);
   final platform = base.platform;
+  final shape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(Radii.sm),
+  );
+  final hairline = BorderSide(color: tokens.controlBorder);
+  final selectedSide = BorderSide(color: tokens.controlSelectedBorder);
+  final accentOverlay = tokens.accent.withValues(alpha: .14);
+
+  // Every role is set from the tokens, so no Material default hue (the teal
+  // of ColorScheme.dark, a tinted surface) can appear. Secondary and tertiary
+  // are the accent: the interface has one accent colour.
+  final scheme = ColorScheme(
+    brightness: Brightness.dark,
+    primary: tokens.accent,
+    onPrimary: tokens.onAccent,
+    primaryContainer: tokens.controlSelectedBackground,
+    onPrimaryContainer: tokens.accent,
+    secondary: tokens.accent,
+    onSecondary: tokens.onAccent,
+    secondaryContainer: tokens.controlSelectedBackground,
+    onSecondaryContainer: tokens.accent,
+    tertiary: tokens.accent,
+    onTertiary: tokens.onAccent,
+    tertiaryContainer: tokens.controlSelectedBackground,
+    onTertiaryContainer: tokens.accent,
+    error: _error,
+    onError: tokens.background,
+    errorContainer: Color.lerp(tokens.surface, _error, .18)!,
+    onErrorContainer: _error,
+    surface: tokens.surface,
+    onSurface: tokens.text,
+    onSurfaceVariant: tokens.muted,
+    outline: tokens.controlBorder,
+    outlineVariant: tokens.border,
+    shadow: Colors.black,
+    scrim: Colors.black,
+    inverseSurface: tokens.text,
+    onInverseSurface: tokens.background,
+    inversePrimary: tokens.accent,
+    surfaceTint: Colors.transparent,
+    surfaceDim: tokens.background,
+    surfaceBright: tokens.surfaceHigh,
+    surfaceContainerLowest: tokens.background,
+    surfaceContainerLow: tokens.surface,
+    surfaceContainer: tokens.surface,
+    surfaceContainerHigh: tokens.surfaceHigh,
+    surfaceContainerHighest: tokens.surfaceHigh,
+  );
+
+  Color selectedOr(Set<WidgetState> states, Color selected, Color other) =>
+      states.contains(WidgetState.selected) ? selected : other;
+
+  final themedText = base.textTheme.apply(
+    bodyColor: tokens.text,
+    displayColor: tokens.text,
+    fontFamily: SynesterraFonts.ui(platform),
+    fontFamilyFallback: SynesterraFonts.uiFallback(platform),
+  );
+  final textTheme = themedText.copyWith(
+    displaySmall: themedText.displaySmall?.copyWith(
+      fontSize: TypeScale.display,
+    ),
+    headlineSmall: themedText.headlineSmall?.copyWith(
+      fontSize: TypeScale.headline,
+    ),
+    titleLarge: themedText.titleLarge?.copyWith(fontSize: TypeScale.title),
+    titleMedium: themedText.titleMedium?.copyWith(
+      fontSize: TypeScale.bodyLarge,
+    ),
+    bodyLarge: themedText.bodyLarge?.copyWith(fontSize: TypeScale.bodyLarge),
+    bodyMedium: themedText.bodyMedium?.copyWith(fontSize: TypeScale.body),
+    bodySmall: themedText.bodySmall?.copyWith(fontSize: TypeScale.caption),
+    labelLarge: themedText.labelLarge?.copyWith(fontSize: TypeScale.body),
+    labelMedium: themedText.labelMedium?.copyWith(fontSize: TypeScale.caption),
+    labelSmall: themedText.labelSmall?.copyWith(fontSize: TypeScale.overline),
+  );
+
   return base.copyWith(
     // The default Android splash (InkSparkle) loads a shader; a plain ripple
     // keeps taps calm and does not depend on a shader asset, which also
     // fails to load under flutter_test on Flutter 3.47.
     splashFactory: InkRipple.splashFactory,
     scaffoldBackgroundColor: tokens.background,
-    colorScheme: ColorScheme.dark(
-      primary: tokens.accent,
-      onPrimary: tokens.onAccent,
-      surface: tokens.surface,
-      onSurface: tokens.text,
-      outline: tokens.border,
-    ),
+    canvasColor: tokens.background,
+    colorScheme: scheme,
+    focusColor: accentOverlay,
+    hoverColor: accentOverlay,
+    highlightColor: accentOverlay,
+    splashColor: accentOverlay,
     appBarTheme: AppBarTheme(
       backgroundColor: tokens.background,
       foregroundColor: tokens.text,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
+      scrolledUnderElevation: 0,
+      titleTextStyle: TextStyle(
+        color: tokens.text,
+        fontFamily: SynesterraFonts.serif(platform),
+        fontFamilyFallback: SynesterraFonts.serifFallback(platform),
+        fontSize: TypeScale.title,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+    tabBarTheme: TabBarThemeData(
+      labelColor: tokens.accent,
+      unselectedLabelColor: tokens.muted,
+      indicatorColor: tokens.accent,
+      dividerColor: tokens.border,
+      overlayColor: WidgetStatePropertyAll(accentOverlay),
+    ),
+    dividerTheme: DividerThemeData(
+      color: tokens.border,
+      thickness: 1,
+      space: 1,
+    ),
+    iconTheme: IconThemeData(color: tokens.text),
+    chipTheme: ChipThemeData(
+      backgroundColor: tokens.controlBackground,
+      selectedColor: tokens.controlSelectedBackground,
+      disabledColor: tokens.controlBackground,
+      color: WidgetStateProperty.resolveWith(
+        (states) => selectedOr(
+          states,
+          tokens.controlSelectedBackground,
+          tokens.controlBackground,
+        ),
+      ),
+      side: WidgetStateBorderSide.resolveWith(
+        (states) =>
+            states.contains(WidgetState.selected) ? selectedSide : hairline,
+      ),
+      shape: shape,
+      labelStyle: TextStyle(color: tokens.text, fontSize: TypeScale.body),
+      secondaryLabelStyle: TextStyle(
+        color: tokens.accent,
+        fontSize: TypeScale.body,
+      ),
+      checkmarkColor: tokens.accent,
+      deleteIconColor: tokens.muted,
+      iconTheme: IconThemeData(color: tokens.text),
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      pressElevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => selectedOr(
+            states,
+            tokens.controlSelectedBackground,
+            Colors.transparent,
+          ),
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => selectedOr(states, tokens.accent, tokens.text),
+        ),
+        side: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? selectedSide : hairline,
+        ),
+        shape: WidgetStatePropertyAll(shape),
+        overlayColor: WidgetStatePropertyAll(accentOverlay),
+        textStyle: const WidgetStatePropertyAll(
+          TextStyle(fontSize: TypeScale.body, fontWeight: FontWeight.w500),
+        ),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? tokens.surfaceHigh
+              : tokens.accent,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? tokens.muted
+              : tokens.onAccent,
+        ),
+        shape: WidgetStatePropertyAll(shape),
+        minimumSize: const WidgetStatePropertyAll(Size(Space.huge, 48)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? tokens.muted
+              : tokens.accent,
+        ),
+        overlayColor: WidgetStatePropertyAll(accentOverlay),
+        shape: WidgetStatePropertyAll(shape),
+        minimumSize: const WidgetStatePropertyAll(Size(Space.huge, 48)),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStatePropertyAll(tokens.text),
+        side: WidgetStatePropertyAll(hairline),
+        shape: WidgetStatePropertyAll(shape),
+        minimumSize: const WidgetStatePropertyAll(Size(Space.huge, 48)),
+      ),
+    ),
+    sliderTheme: SliderThemeData(
+      activeTrackColor: tokens.accent,
+      inactiveTrackColor: tokens.border,
+      thumbColor: tokens.accent,
+      overlayColor: tokens.accent.withValues(alpha: .16),
+      disabledActiveTrackColor: tokens.muted,
+      disabledInactiveTrackColor: tokens.border,
+      disabledThumbColor: tokens.muted,
+      trackHeight: Space.xs,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      labelStyle: TextStyle(color: tokens.muted),
+      floatingLabelStyle: TextStyle(color: tokens.muted),
+      hintStyle: TextStyle(color: tokens.muted),
+      counterStyle: TextStyle(color: tokens.muted),
+      errorStyle: const TextStyle(color: _error),
+      enabledBorder: UnderlineInputBorder(borderSide: hairline),
+      focusedBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: tokens.accent, width: 2),
+      ),
+      errorBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: _error),
+      ),
+      focusedErrorBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: _error, width: 2),
+      ),
+    ),
+    textSelectionTheme: TextSelectionThemeData(
+      cursorColor: tokens.accent,
+      selectionColor: tokens.accent.withValues(alpha: .3),
+      selectionHandleColor: tokens.accent,
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: tokens.surfaceHigh,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.lg),
+        side: hairline,
+      ),
+      titleTextStyle: TextStyle(
+        color: tokens.text,
+        fontFamily: SynesterraFonts.serif(platform),
+        fontFamilyFallback: SynesterraFonts.serifFallback(platform),
+        fontSize: TypeScale.title,
+      ),
+      contentTextStyle: TextStyle(color: tokens.text, fontSize: TypeScale.body),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: tokens.surfaceHigh,
+      contentTextStyle: TextStyle(color: tokens.text, fontSize: TypeScale.body),
+      actionTextColor: tokens.accent,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.sm),
+        side: hairline,
+      ),
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: tokens.surfaceHigh,
+        borderRadius: BorderRadius.circular(Radii.xs),
+        border: Border.fromBorderSide(hairline),
+      ),
+      textStyle: TextStyle(color: tokens.text, fontSize: TypeScale.caption),
     ),
     popupMenuTheme: PopupMenuThemeData(
-      color: tokens.surface,
+      color: tokens.surfaceHigh,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.sm),
+        side: hairline,
+      ),
       textStyle: TextStyle(color: tokens.text),
     ),
-    textTheme: base.textTheme.apply(
-      bodyColor: tokens.text,
-      displayColor: tokens.text,
-      fontFamily: SynesterraFonts.ui(platform),
-      fontFamilyFallback: SynesterraFonts.uiFallback(platform),
-    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: tokens.accent),
+    textTheme: textTheme,
     extensions: [tokens],
   );
 }

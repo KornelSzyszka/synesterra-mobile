@@ -60,7 +60,7 @@ Offset at(WidgetTester tester, int index, double amplitude, {int bars = 8}) {
   final rect = tester.getRect(chart);
   return Offset(
     rect.left + rect.width * (index + 0.5) / bars,
-    rect.top + SpectrumEditor.chartHeight * (1 - amplitude),
+    rect.top + (rect.height - SpectrumEditor.labelHeight) * (1 - amplitude),
   );
 }
 

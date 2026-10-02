@@ -7,6 +7,7 @@ import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import 'instrument_editor_view_model.dart';
 import 'instrument_panel.dart';
+import '../../shared/theme/design_scale.dart';
 
 /// Editor with three panels. Instrument is real; Loop and Arrangement are
 /// placeholders until their turn.
@@ -174,18 +175,18 @@ class _PlaceholderPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = SynesterraTokens.of(context);
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(Space.lg),
       child: DesignPanel(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionLabel(title),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             Row(
               children: [
                 Icon(icon, color: tokens.accent),
-                const SizedBox(width: 12),
+                const SizedBox(width: Space.md),
                 Expanded(
                   child: Text(text, style: TextStyle(color: tokens.muted)),
                 ),

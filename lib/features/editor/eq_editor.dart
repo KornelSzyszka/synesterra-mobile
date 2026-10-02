@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
+import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import 'curve_geometry.dart';
 import 'immediate_pan.dart';
@@ -31,7 +34,10 @@ class EqEditor extends StatefulWidget {
   /// The finger was lifted.
   final VoidCallback onChangeEnd;
 
-  static const graphHeight = 140.0;
+  /// A golden rectangle (`width / φ`).
+  static double graphHeightFor(double width) =>
+      math.min(260.0, math.max(140.0, goldenHeight(width)));
+
   static const labelHeight = 22.0;
 
   @override
@@ -55,23 +61,23 @@ double _gain(InstrumentEq eq, _Band band) => switch (band) {
 class _EqEditorState extends State<EqEditor> {
   _Band? _active;
 
-  List<Offset> _handles(double width) => [
+  List<Offset> _handles(double width, double height) => [
     for (final band in _Band.values)
       Offset(
         hzToX(_corners[band]!, width),
-        dbToY(_gain(widget.eq, band), EqEditor.graphHeight),
+        dbToY(_gain(widget.eq, band), height),
       ),
   ];
 
-  void _down(Offset position, double width) {
-    final picked = nearestHandle(position, _handles(width));
+  void _down(Offset position, double width, double height) {
+    final picked = nearestHandle(position, _handles(width, height));
     _active = picked == null ? null : _Band.values[picked];
   }
 
-  void _move(Offset position) {
+  void _move(Offset position, double height) {
     final band = _active;
     if (band == null) return;
-    final db = yToDb(position.dy, EqEditor.graphHeight);
+    final db = yToDb(position.dy, height);
     widget.onChange(switch (band) {
       _Band.low => widget.eq.copyWith(lowDb: db),
       _Band.mid => widget.eq.copyWith(midDb: db),
@@ -99,13 +105,14 @@ class _EqEditorState extends State<EqEditor> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
+          final height = EqEditor.graphHeightFor(width);
           return ImmediatePanDetector(
-            onDown: (position) => _down(position, width),
-            onUpdate: _move,
+            onDown: (position) => _down(position, width, height),
+            onUpdate: (position) => _move(position, height),
             onEnd: _end,
             child: CustomPaint(
               key: const Key('eq-graph'),
-              size: Size(width, EqEditor.graphHeight + EqEditor.labelHeight),
+              size: Size(width, height + EqEditor.labelHeight),
               painter: _EqPainter(
                 eq: eq,
                 testHz: widget.testHz,
@@ -146,7 +153,7 @@ class _EqPainter extends CustomPainter {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: TextStyle(color: labelColor, fontSize: 10),
+        style: TextStyle(color: labelColor, fontSize: TypeScale.overline),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
@@ -155,7 +162,7 @@ class _EqPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const height = EqEditor.graphHeight;
+    final height = size.height - EqEditor.labelHeight;
     final width = size.width;
 
     // Gain grid: +12, 0 and -12 dB, with 0 dB the strongest.

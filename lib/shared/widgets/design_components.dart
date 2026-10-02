@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../theme/synesterra_theme.dart';
+import '../theme/design_scale.dart';
 
 class DesignPanel extends StatelessWidget {
   const DesignPanel({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(20),
+    this.padding = const EdgeInsets.all(Space.lg),
   });
 
   final Widget child;
@@ -22,7 +23,7 @@ class DesignPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: tokens.surface,
         border: Border.all(color: tokens.border),
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(Radii.sm),
       ),
       child: child,
     );
@@ -38,7 +39,7 @@ class SectionLabel extends StatelessWidget {
     label.toUpperCase(),
     style: TextStyle(
       color: SynesterraTokens.of(context).muted,
-      fontSize: 10,
+      fontSize: TypeScale.overline,
       fontWeight: FontWeight.w600,
       letterSpacing: 1.7,
     ),
@@ -52,11 +53,14 @@ class LayerChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+    padding: const EdgeInsets.symmetric(
+      horizontal: Space.sm,
+      vertical: Space.xs,
+    ),
     decoration: BoxDecoration(
       color: color.withValues(alpha: .12),
       border: Border.all(color: color.withValues(alpha: .32)),
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(Radii.xs),
     ),
     child: Text(
       number.toString().padLeft(2, '0'),
@@ -66,7 +70,7 @@ class LayerChip extends StatelessWidget {
         fontFamilyFallback: SynesterraFonts.monospaceFallback(
           Theme.of(context).platform,
         ),
-        fontSize: 11,
+        fontSize: TypeScale.caption,
       ),
     ),
   );
@@ -118,7 +122,7 @@ class NumberStepper extends StatelessWidget {
                   fontFamilyFallback: SynesterraFonts.serifFallback(
                     Theme.of(context).platform,
                   ),
-                  fontSize: 36,
+                  fontSize: TypeScale.display,
                   height: 1,
                 ),
               ),
@@ -133,7 +137,7 @@ class NumberStepper extends StatelessWidget {
                   fontFamilyFallback: SynesterraFonts.monospaceFallback(
                     Theme.of(context).platform,
                   ),
-                  fontSize: 9,
+                  fontSize: TypeScale.overline,
                 ),
               ),
             ],

@@ -6,6 +6,7 @@ import '../instrument_mist/mist_spec.dart';
 import '../theme/synesterra_theme.dart';
 import 'figure_spec.dart';
 import 'sound_painters.dart';
+import '../theme/design_scale.dart';
 
 /// The ways to look at the same recipe.
 enum SoundView {
@@ -111,7 +112,7 @@ class _InstrumentSoundViewState extends State<InstrumentSoundView>
           onSelectionChanged: (selection) =>
               setState(() => _view = selection.single),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: Space.md),
         Semantics(
           button: true,
           label:
