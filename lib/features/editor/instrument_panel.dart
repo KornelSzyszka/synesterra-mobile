@@ -70,13 +70,12 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                           controller: _name,
                           onChanged: vm.setName,
                           maxLength: Instrument.maxNameLength,
-                          buildCounter:
-                              (
-                                _, {
-                                required currentLength,
-                                required isFocused,
-                                maxLength,
-                              }) => null,
+                          buildCounter: (
+                            _, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) => null,
                           decoration: InputDecoration(
                             labelText: 'Name',
                             errorText: vm.nameValid ? null : 'Give it a name',

@@ -13,12 +13,11 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   /// overwritten. A library instrument is passed with [existing] true and
   /// keeps its id.
   InstrumentEditorViewModel({
-    required InstrumentLibraryRepository repository,
+    required this._repository,
     Instrument? instrument,
     bool existing = false,
     String Function()? newId,
-  }) : _repository = repository,
-       _newId = newId ?? _defaultId {
+  }) : _newId = newId ?? _defaultId {
     final source = instrument ?? factoryInstruments[1];
     final draft = existing
         ? source

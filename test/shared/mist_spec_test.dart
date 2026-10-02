@@ -89,12 +89,14 @@ void main() {
 
     test('mid EQ scales the opacity of the lobes', () {
       final flat = buildMistSpec(instrument()).lobes.first.opacity;
-      final boosted = buildMistSpec(
-        instrument(eq: InstrumentEq(midDb: 12)),
-      ).lobes.first.opacity;
-      final cut = buildMistSpec(
-        instrument(eq: InstrumentEq(midDb: -12)),
-      ).lobes.first.opacity;
+      final boosted = buildMistSpec(instrument(eq: InstrumentEq(midDb: 12)))
+          .lobes
+          .first
+          .opacity;
+      final cut = buildMistSpec(instrument(eq: InstrumentEq(midDb: -12)))
+          .lobes
+          .first
+          .opacity;
       expect(boosted, greaterThan(flat));
       expect(cut, lessThan(flat));
     });

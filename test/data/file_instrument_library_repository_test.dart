@@ -98,9 +98,8 @@ void main() {
         jsonEncode({...instrument('x', 'X').toJson(), 'decayMs': 1}),
       );
       await file('bytes.json').writeAsBytes([0xff, 0xfe, 0xfd]);
-      await file(
-        'copy.json',
-      ).writeAsString(jsonEncode(instrument('good', 'Good copy').toJson()));
+      await file('copy.json')
+          .writeAsString(jsonEncode(instrument('good', 'Good copy').toJson()));
 
       final reopened = open();
       await reopened.load();
