@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "REL-044",
+  "prefix": "REL",
+  "size": "M",
+  "risk": "risk-platform",
+  "agent": "codex",
+  "model": "gpt-6.1-sol",
+  "reasoning": "medium",
+  "success": true,
+  "attempts": 1,
+  "escalation": "business and release decision gates remain with the Founder",
+  "error_type": null,
+  "review": "blocked",
+  "ci": null,
+  "evidence": "static",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Founder decision package; no account, signing material, workflow, ios/, or secret changed"
+}
