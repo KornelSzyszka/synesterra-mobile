@@ -19,6 +19,6 @@ Report the highest level reached (it is also the `evidence` field of the model o
 - Native code (gradle, Kotlin, Swift): also `flutter build apk --debug`. iOS needs macOS — use the manual CI job (`gh workflow run CI -f ios=true --ref <branch>`).
 - Bug fix: a regression test that fails before the fix and passes after, when feasible.
 
-## Host environment (2026-10-01)
+## Host environment (2026-10-02)
 
-Windows 11, Flutter 3.35.7, Android SDK 36.1, Android Studio. No Chrome or Visual Studio (web and desktop targets are not used). iOS cannot be built locally.
+Windows 11, Flutter 3.47.6, Android SDK 36.1, Android Studio. No Chrome or Visual Studio (web and desktop targets are not used). iOS cannot be built locally. Android builds use JDK 17 or 21; JDK 25 is unsupported by the Android Gradle Plugin ([Flutter issue #187223](https://github.com/flutter/flutter/issues/187223)). Select the JDK with `flutter config --jdk-dir=<path>`.
