@@ -1,18 +1,8 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../shared/theme/synesterra_theme.dart';
+import 'immediate_pan.dart';
 import 'spectrum_geometry.dart';
-
-/// A pan recognizer that wins the gesture at once, so touching the chart
-/// draws instead of scrolling the page it sits in.
-class _ImmediatePanRecognizer extends PanGestureRecognizer {
-  @override
-  void addAllowedPointer(PointerDownEvent event) {
-    super.addAllowedPointer(event);
-    resolve(GestureDisposition.accepted);
-  }
-}
 
 /// One bar per harmonic, shaped with a finger: touch or drag across bars to
 /// set their heights. Marks show each harmonic after the EQ.
@@ -83,24 +73,10 @@ class _SpectrumEditorState extends State<SpectrumEditor> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          return RawGestureDetector(
-            behavior: HitTestBehavior.opaque,
-            gestures: {
-              _ImmediatePanRecognizer:
-                  GestureRecognizerFactoryWithHandlers<_ImmediatePanRecognizer>(
-                    _ImmediatePanRecognizer.new,
-                    (recognizer) {
-                      recognizer.onDown = (details) {
-                        _touch(details.localPosition, width, stroke: false);
-                      };
-                      recognizer.onUpdate = (details) {
-                        _touch(details.localPosition, width, stroke: true);
-                      };
-                      recognizer.onEnd = (_) => _end();
-                      recognizer.onCancel = _end;
-                    },
-                  ),
-            },
+          return ImmediatePanDetector(
+            onDown: (position) => _touch(position, width, stroke: false),
+            onUpdate: (position) => _touch(position, width, stroke: true),
+            onEnd: _end,
             child: CustomPaint(
               key: const Key('spectrum-chart'),
               size: Size(

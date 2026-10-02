@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'biquad.dart';
 import 'instrument.dart';
+import 'instrument_envelope.dart';
 
 /// Lowest and highest pitch a recipe may be rendered at.
 const minRenderFrequencyHz = 20.0;
@@ -60,7 +61,6 @@ Float32List renderInstrument(
 }
 
 const _maximumDurationSeconds = 6.0;
-const _decayFloor = 0.001; // -60 dB amplitude.
 
 int _sampleCount(Instrument instrument, int sampleRate) {
   final durationSeconds = min(
@@ -75,8 +75,6 @@ void _applyEnvelope(
   Instrument instrument,
   int sampleRate,
 ) {
-  final attackSeconds = instrument.attackMs / 1000.0;
-  final decaySeconds = instrument.decayMs / 1000.0;
   final lastIndex = samples.length - 1;
 
   for (var index = 0; index < samples.length; index++) {
@@ -86,12 +84,11 @@ void _applyEnvelope(
     }
 
     final timeSeconds = index / sampleRate;
-    final envelope = timeSeconds < attackSeconds
-        ? timeSeconds / attackSeconds
-        : pow(
-            _decayFloor,
-            ((timeSeconds - attackSeconds) / decaySeconds).clamp(0.0, 1.0),
-          ).toDouble();
+    final envelope = envelopeLevel(
+      attackMs: instrument.attackMs,
+      decayMs: instrument.decayMs,
+      seconds: timeSeconds,
+    );
     samples[index] *= envelope;
   }
 }
