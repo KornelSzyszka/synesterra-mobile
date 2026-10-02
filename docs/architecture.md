@@ -16,11 +16,11 @@ flowchart TD
     end
     subgraph core["packages/synesterra_core (pure Dart)"]
         corePublic["synesterra_core.dart + src/core_identity.dart<br/>public entry point"]
-        session["session/<br/>SessionDocument, parser and validation"]
+        session["session/<br/>SessionDocument, parser and validation, SessionProject"]
         rhythm["rhythm/"]
         sound["sound/<br/>Instrument, renderer, EQ/envelope maths"]
         harmony["harmony/"]
-        playback["playback/<br/>AudioTime, TempoMap, C0 generation"]
+        playback["playback/<br/>AudioTime, TempoMap, EventPlanner"]
         ports["ports/<br/>AudioClock, VoiceSink"]
     end
     native["android/ + ios/<br/>native audio engine"]
@@ -35,6 +35,7 @@ flowchart TD
     impl --> audio
     repos --> core
     audio --> playback
+    playback --> session
     audio -. "uses AudioClock, VoiceSink" .-> ports
     harmony --> rhythm
     session --> rhythm
