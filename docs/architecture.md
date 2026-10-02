@@ -18,6 +18,7 @@ flowchart TD
         corePublic["synesterra_core.dart + src/core_identity.dart<br/>public entry point"]
         session["session/<br/>SessionDocument, migration, SessionProject"]
         rhythm["rhythm/"]
+        sound["sound/<br/>Instrument recipe, JSON"]
         harmony["harmony/"]
         playback["playback/<br/>TempoMap, EventPlanner, runtime state"]
         ports["ports/<br/>AudioClock, VoiceSink, SessionStore"]
@@ -46,7 +47,8 @@ flowchart TD
     classDef exists fill:#dff3e4,color:#111
     class main exists
     class corePublic exists
-    class root,features,shared,repos,impl,services,audio,session,rhythm,harmony,playback,ports,native planned
+    class root,features,shared,repos,impl,session,rhythm,harmony,sound exists
+    class services,audio,playback,ports,native planned
 ```
 
 Dependency rules R1–R9 and the real-time hand-off (who owns audio time, runtime state and stale-event cancellation) are in decision 0001; [architecture tests](modules/architecture-tests.md) enforce the import boundaries. In short:
