@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-03",
+  "task": "AGT-071",
+  "prefix": "AGT",
+  "size": "S",
+  "risk": "risk-audio",
+  "agent": "codex",
+  "model": "gpt-6.1-sol",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "static",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "ADR 0002 revision 5 addresses issue #71; documentation review and CI pending."
+}
