@@ -74,6 +74,14 @@ class CapturingEngine extends FakeEngine {
   }
 }
 
+class SecondPlayFailsEngine extends FakeEngine {
+  @override
+  AuditionVoice play(AuditionSource source, {double volume = 1}) {
+    if (voices.isNotEmpty) throw StateError('second note failed');
+    return super.play(source, volume: volume);
+  }
+}
+
 Instrument recipe({
   String id = 'a',
   String name = 'A',
@@ -173,6 +181,20 @@ void main() {
       await repository.play(recipe(), [440, 554.37]);
       expect(renderedAt, [440, 554.37]);
     });
+
+    test(
+      'stops voices already started when a later chord note fails',
+      () async {
+        engine = SecondPlayFailsEngine();
+        final repository = create();
+
+        expect(await repository.play(recipe(), [261.63, 329.63]), isFalse);
+        expect(
+          engine.events,
+          containsAllInOrder(['play audition-0', 'stop audition-0']),
+        );
+      },
+    );
   });
 
   group('cache', () {

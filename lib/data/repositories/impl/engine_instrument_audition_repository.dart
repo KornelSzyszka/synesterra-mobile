@@ -67,6 +67,7 @@ class EngineInstrumentAuditionRepository
   Future<bool> play(Instrument instrument, List<double> frequenciesHz) async {
     if (frequenciesHz.isEmpty) return false;
     final request = ++_latest;
+    final started = <AuditionVoice>[];
     try {
       await _engine.start();
       final sources = await Future.wait([
@@ -81,12 +82,20 @@ class EngineInstrumentAuditionRepository
       // Another tap may have arrived while the old sound was stopping.
       if (request != _latest) return false;
       final each = volume / sources.length;
-      _voices = [
-        for (final source in sources) _engine.play(source, volume: each),
-      ];
+      for (final source in sources) {
+        started.add(_engine.play(source, volume: each));
+      }
+      _voices = started;
       _available.value = true;
       return true;
     } catch (_) {
+      for (final voice in started) {
+        try {
+          await _engine.stop(voice);
+        } catch (_) {
+          // Preserve the original play failure and try to stop every voice.
+        }
+      }
       if (request == _latest) _available.value = false;
       return false;
     }

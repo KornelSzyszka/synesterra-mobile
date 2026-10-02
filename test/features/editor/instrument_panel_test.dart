@@ -126,6 +126,43 @@ void main() {
     );
   });
 
+  testWidgets(
+    'a dirty draft is kept until Start from replacement is confirmed',
+    (tester) async {
+      await openEditor(tester);
+      await tester.enterText(find.byKey(const Key('instrument-name')), 'Draft');
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('start-from-factory-bell')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard unsaved changes?'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('instrument-name')))
+            .controller!
+            .text,
+        'Draft',
+      );
+
+      await tester.tap(find.byKey(const Key('start-from-cancel')));
+      await tester.pumpAndSettle();
+      expect(find.text('Discard unsaved changes?'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('start-from-factory-bell')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('start-from-discard')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('instrument-name')))
+            .controller!
+            .text,
+        'Bell',
+      );
+    },
+  );
+
   testWidgets('a blank name disables Save and shows why', (tester) async {
     await openEditor(tester);
     expect(saveButton(tester).onPressed, isNotNull);
