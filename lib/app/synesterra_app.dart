@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../data/repositories/impl/in_memory_rhythm_settings_repository.dart';
-import '../features/rhythm/rhythm_view.dart';
-import '../features/rhythm/rhythm_view_model.dart';
+import '../features/editor/editor_view.dart';
+import '../features/home/home_view.dart';
+import '../features/library/library_view.dart';
 import '../shared/theme/synesterra_theme.dart';
 
 class SynesterraApp extends StatefulWidget {
@@ -14,25 +14,23 @@ class SynesterraApp extends StatefulWidget {
 
 class _SynesterraAppState extends State<SynesterraApp> {
   SynesterraPalette _palette = SynesterraPalette.forest;
-  late final RhythmViewModel _viewModel = RhythmViewModel(
-    repository: InMemoryRhythmSettingsRepository(),
-  );
-
-  @override
-  void dispose() {
-    _viewModel.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Synesterra',
       theme: synesterraTheme(_palette),
-      home: RhythmView(
-        viewModel: _viewModel,
-        palette: _palette,
-        onPaletteChanged: (palette) => setState(() => _palette = palette),
+      home: Builder(
+        builder: (context) => HomeView(
+          palette: _palette,
+          onPaletteChanged: (palette) => setState(() => _palette = palette),
+          onOpenEditor: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const EditorView())),
+          onOpenLibrary: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const LibraryView())),
+        ),
       ),
     );
   }
