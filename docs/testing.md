@@ -38,7 +38,7 @@ Start with:
 
 Check if the emulator is ready:
 ```powershell
-adb -s emulator-5560 shell getprop sys.boot_completed
+& "$env:LOCALAPPDATA/Android/Sdk/platform-tools/adb.exe" -s emulator-5560 shell getprop sys.boot_completed
 ```
 Wait until it returns `1`.
 
