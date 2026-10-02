@@ -86,14 +86,11 @@ abstract interface class BeatEventSource {
 /// Wakes on a timer, but measures and schedules solely against [clock].
 final class PlaybackScheduler {
   PlaybackScheduler({
-    required AudioClock clock,
-    required VoiceSink sink,
-    required PlaybackStateSource state,
-    required BeatEventSource events,
-  }) : _clock = clock,
-       _sink = sink,
-       _state = state,
-       _events = events {
+    required this._clock,
+    required this._sink,
+    required this._state,
+    required this._events,
+  }) {
     _timer = Timer.periodic(const Duration(milliseconds: 25), (_) => replan());
   }
 
