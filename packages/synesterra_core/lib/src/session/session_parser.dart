@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:unorm_dart/unorm_dart.dart' as unorm;
+
 import '../harmony/drone.dart';
 import '../rhythm/rhythm_values.dart';
 import 'session_document.dart';
@@ -400,7 +402,7 @@ SessionDocument _document(Object? raw, String path) {
     _fail('$path.scenes', 'validation_error', 'Expected exactly two scenes');
   }
   final title = _string(map['title'], '$path.title');
-  if (title.runes.length > 80 ||
+  if (unorm.nfc(title).runes.length > 80 ||
       title.runes.any((rune) => rune <= 0x1f || rune >= 0x7f && rune <= 0x9f)) {
     _fail(
       '$path.title',

@@ -8,5 +8,8 @@ environment:
 
 resolution: workspace
 
+dependencies:
+  unorm_dart: ^0.3.2
+
 dev_dependencies:
   test: ^1.25.15

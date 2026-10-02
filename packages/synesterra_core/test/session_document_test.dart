@@ -294,9 +294,23 @@ void main() {
       parseSessionDocument(' ' * (128 * 1024 + 1)).errors.first.message,
       contains('128 KiB'),
     );
-    // Raw code-point counting can reject a decomposed title accepted after NFC.
-    invalid((d) => d['title'] = 'e\u0301' * 41, 'title');
+    final decomposedTitle = 'e\u0301' * 41;
+    valid((d) => d['title'] = decomposedTitle);
     valid((d) => d['title'] = 'é' * 80);
+    final document = parse({...fixture(), 'title': decomposedTitle}).value!;
+    expect(document.title, decomposedTitle);
+    expect(
+      () => SessionDocument(
+        title: decomposedTitle,
+        transport: document.transport,
+        referenceClick: document.referenceClick,
+        randomSeed: document.randomSeed,
+        scenes: document.scenes,
+        defaultSceneId: document.defaultSceneId,
+        presentation: document.presentation,
+      ),
+      returnsNormally,
+    );
   });
 
   test('envelope requires exact fields and supported versions', () {

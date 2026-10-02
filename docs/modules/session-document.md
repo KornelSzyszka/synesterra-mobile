@@ -36,7 +36,7 @@ The parser rejects the whole input; it never trims, partially imports, or silent
 
 | Field | Allowed values |
 |---|---|
-| `title` | 0–80 Unicode code points; no control characters |
+| `title` | 0–80 Unicode code points after NFC normalization; no control characters |
 | `scenes` | exactly A and B in order |
 | `layers` | 2–4 per scene; unique ID, same ordered IDs across scenes |
 | `layer.id` | 1–64 ASCII characters, `^[A-Za-z0-9-]{1,64}$` |
@@ -51,7 +51,7 @@ The parser rejects the whole input; it never trims, partially imports, or silent
 | reference subdivision | integer 0–6; 0 disables click |
 | drone root, octave, filter | integer root 0–11; integer octave 1–5; filter 100–8000 Hz |
 
-**Known deviation, tracked in #18:** PLR-010 measures title length after NFC normalization. The current pure Dart parser counts code points in the raw title and does not normalize it. This is conservative: NFC does not lengthen the title, so an over-limit title is never accepted, but a decomposed title that would fit after NFC may be rejected. No other field in this implemented shape has an NFC length limit.
+Title limits use NFC normalization before counting Unicode code points, while preserving the supplied title value. This uses `unorm_dart` 0.3.2: a pure-Dart MIT-licensed package, maintained with Unicode 17 data and no platform dependency. A local normalization table would be larger to maintain and more likely to be incomplete. No other field in this implemented shape has an NFC length limit.
 
 ## Export envelope
 

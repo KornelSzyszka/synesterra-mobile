@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:unorm_dart/unorm_dart.dart' as unorm;
+
 import '../harmony/drone.dart';
 import '../rhythm/rhythm_values.dart';
 
@@ -102,7 +104,7 @@ class SessionDocument {
     required this.defaultSceneId,
     required this.presentation,
   }) : scenes = List.unmodifiable(scenes) {
-    if (title.runes.length > 80 ||
+    if (unorm.nfc(title).runes.length > 80 ||
         title.runes.any(
           (rune) => rune <= 0x1f || rune >= 0x7f && rune <= 0x9f,
         )) {
