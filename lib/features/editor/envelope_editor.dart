@@ -149,7 +149,6 @@ class _EnvelopePainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    canvas.drawLine(Offset.zero, Offset.zero, Paint());
     painter.paint(
       canvas,
       Offset(centred ? at.dx - painter.width / 2 : at.dx, at.dy),
@@ -176,7 +175,7 @@ class _EnvelopePainter extends CustomPainter {
           ..color = gridColor.withValues(alpha: 0.6)
           ..strokeWidth = 1,
       );
-      _text(canvas, label, Offset(x.clamp(14.0, width - 14), height + 5));
+      _text(canvas, label, Offset(_clamp(x, 14, width - 14), height + 5));
     }
     canvas.drawLine(
       Offset(0, height - 0.5),
@@ -221,8 +220,14 @@ class _EnvelopePainter extends CustomPainter {
     final attack = attackMs / 1000;
     final end = attack + decayMs / 1000;
     final peak = Offset(envelopeTimeToX(attack, width), 0);
-    final tail = Offset(envelopeTimeToX(end, width), height * (1 - envelopeFloor));
-    for (final (handle, centre) in [(_Handle.peak, peak), (_Handle.end, tail)]) {
+    final tail = Offset(
+      envelopeTimeToX(end, width),
+      height * (1 - envelopeFloor),
+    );
+    for (final (handle, centre) in [
+      (_Handle.peak, peak),
+      (_Handle.end, tail),
+    ]) {
       final isActive = active == handle;
       canvas.drawCircle(centre, isActive ? 12 : 9, Paint()..color = handleFill);
       canvas.drawCircle(
@@ -237,13 +242,13 @@ class _EnvelopePainter extends CustomPainter {
     _text(
       canvas,
       '$attackMs ms',
-      Offset((peak.dx + 14).clamp(0.0, width - 44), 6),
+      Offset(_clamp(peak.dx + 14, 0, width - 44), 6),
       centred: false,
     );
     _text(
       canvas,
       '$decayMs ms',
-      Offset((tail.dx - 50).clamp(0.0, width - 44), height - 26),
+      Offset(_clamp(tail.dx - 50, 0, width - 44), height - 26),
       centred: false,
     );
   }
@@ -255,3 +260,6 @@ class _EnvelopePainter extends CustomPainter {
       old.color != color ||
       old.active != active;
 }
+
+double _clamp(double value, double min, double max) =>
+    value < min ? min : (value > max ? max : value);

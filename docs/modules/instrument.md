@@ -52,6 +52,14 @@ The test sound is **Note** (any note C1..B7, default A4) or **Chord** (root plus
 
 The Spectrum section is a bar chart with one bar per harmonic (the stepper sets how many). Touch or drag across the bars to set their heights; a fast stroke is interpolated so no bar is skipped, a touch in the bottom 3 % sets 0, and the last touched bar is selected and shown with a 48 dp slider for fine tuning (the accessible way to set one harmonic). White marks show each harmonic after the EQ at the test note. Shapes (Sine, Saw 1/n, Square odd 1/n, Soft 1/n²) and the Brightness slider redraw every bar; changing the count keeps the bars already drawn and continues the brightness curve for new ones. The chart wins the gesture at once, so touching it draws instead of scrolling the page. Every change goes through `setHarmonics`, which ignores a change that would silence the instrument and never plays sound itself; the sound plays after the finger is lifted. Pure helpers (`barIndexAt`, `amplitudeAt`, `strokeBetween`) are in `lib/features/editor/spectrum_geometry.dart`.
 
+## Envelope and EQ graphs
+
+The envelope graph draws the real envelope (`envelopeLevel`, shared with the renderer): a linear attack to full level, then an exponential decay to -60 dB. The time axis is square-root scaled (a 2 ms click and a 5 s tail both readable). Two handles: the **peak** sets the attack (0..500 ms), the **end** sets the decay (20..5000 ms), and the values are written next to them.
+
+The EQ graph draws the combined response (`eqResponseDb`) on a log frequency axis (20 Hz..20 kHz) and a ±12 dB gain axis. Three handles sit at the fixed corners (200 Hz, 1 kHz, 4 kHz); dragging one up or down sets that band's gain in half-decibel steps. Faint vertical ticks mark the harmonics of the test note, so it is visible which harmonics each band touches. The corner frequencies are fixed in the model, so a handle moves only vertically.
+
+Both graphs take the gesture at once (`ImmediatePanDetector`, shared with the spectrum), so touching them never scrolls the page. A touch picks the nearest handle within 28 dp; farther away does nothing. The sound plays after the finger is lifted. The sliders under the graphs stay as the precise and accessible way to set the same values. Pure axis and hit-testing helpers are in `lib/features/editor/curve_geometry.dart`.
+
 ## Not here yet
 
 A layer referencing an instrument by id (and choosing its pitch), embedding instruments in a session file and a `SessionDocument` version bump are a separate task that needs a version and migration decision. So is a progression as a test sound (it needs timing).

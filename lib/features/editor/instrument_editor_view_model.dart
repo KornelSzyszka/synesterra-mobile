@@ -232,6 +232,14 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     _edit((i) => i.copyWith(harmonics: next));
   }
 
+  /// Sets attack and decay in one change, for the envelope graph.
+  void setEnvelope(int attackMs, int decayMs) => _edit(
+    (i) => i.copyWith(
+      attackMs: _clampInt(attackMs, 0, Instrument.maxAttackMs),
+      decayMs: _clampInt(decayMs, Instrument.minDecayMs, Instrument.maxDecayMs),
+    ),
+  );
+
   void setAttackMs(int ms) => _edit(
     (i) => i.copyWith(attackMs: _clampInt(ms, 0, Instrument.maxAttackMs)),
   );
