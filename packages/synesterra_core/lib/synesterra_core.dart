@@ -6,5 +6,6 @@ export 'src/rhythm/rhythm_values.dart'
     show Rational, PatternStep, Pattern, Swing, LayerMix, RhythmLayer;
 export 'src/harmony/drone.dart';
 export 'src/sound/instrument.dart';
+export 'src/sound/instrument_renderer.dart';
 export 'src/session/session_document.dart';
 export 'src/session/session_parser.dart';
