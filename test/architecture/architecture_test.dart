@@ -27,6 +27,17 @@ void main() {
     expect(violations.map((v) => v.file), contains('lib/shared/helper.dart'));
   });
 
+  test('R2 keeps the sound context free of other contexts', () {
+    final violations = scanArchitecture(
+      Directory('test/architecture/fixtures/r2'),
+    ).where((violation) => violation.rule == 'R2');
+    expect(
+      violations.any((v) => v.file.contains('/sound/bad.dart')),
+      isTrue,
+      reason: 'sound must not import rhythm',
+    );
+  });
+
   for (var number = 1; number <= 9; number++) {
     final rule = 'R$number';
     test('$rule fixture reports its file and rule', () {

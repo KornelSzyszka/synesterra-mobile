@@ -15,6 +15,29 @@ A role is responsibility for an outcome, not a model. Each task has exactly one 
 
 The Founder (Technical Product Owner & Musical Director) joins as described in [founder-collaboration.md](founder-collaboration.md).
 
+## Mercury roles
+
+Two layers. A **domain role** (above) owns the outcome of a task and has a prefix. A **Mercury role** runs a recurring process across domains: it carries messages and routine work between the coordinator, workers, GitHub and Orca. A Mercury role has no task prefix, makes no decisions and follows a checklist. It is a role, not a separate agent: Codex or Claude performs it at the class in [model-routing.md](model-routing.md).
+
+| Mercury role | Does | Min. class | Never |
+|---|---|---|---|
+| `mercury-dispatch` | From the issue and its Agent brief: creates the worktree and branch `<prefix>-<nnn>-slug`, starts the worker with `--model` and `--effort` for the brief's class, waits for `worker_done`, checks that the PR exists | `S` | judge the quality of a diff; start two writers on the same files |
+| `mercury-review` | Cross-agent review of a PR by an agent that did not write it ([review-and-merge.md](review-and-merge.md)) | `M`; `L` for `risk-audio` | fix the code under review; approve its own work |
+| `mercury-steward` | Housekeeping: lists worktrees and branches of merged or closed PRs, workers to release, PR and CI status, and what waits for a Founder gate | `S` | delete anything without a list the coordinator or Founder approved |
+
+Optional, not active until they save real time: `mercury-ci` (triage of a red CI: environment or code, smallest fix or a report) and `mercury-scribe` (`logs/outcomes/`, hand-off notes, recording an accepted decision).
+
+Hard limits for every Mercury role:
+
+- Never merges, never pushes to `main`, never passes a decision gate. Those stay with the coordinator and the Founder.
+- Pushes only the task branch it was started for.
+- Reports like any worker, in at most five points ([model-routing.md](model-routing.md#worker-reply)); the full result goes into the PR or a comment.
+- Anything outside its checklist goes back to the coordinator, not to a guess.
+
+### GitHub identity
+
+Start with one GitHub App, `synesterra-mercury[bot]`. The role, agent and model go into the first line of the comment, for example `Mercury Review · Codex / gpt-5.6-luna`, followed by the review format from [review-and-merge.md](review-and-merge.md). If separate faces turn out to help, split it into `mercury-review[bot]`, `mercury-dispatch[bot]` and so on; the comment convention stays the same. The App's private key stays outside the repository. Registering the App is a Founder action in GitHub settings. An approval from the App is a signal for the coordinator, not a GitHub branch rule: the repository has no branch protection on the Free plan.
+
 ## Claude or Codex
 
 This is the default split. The coordinator may override it and records the reason in the issue's Agent brief.

@@ -74,4 +74,10 @@ void main() {
       expect(SynesterraFonts.monospaceFallback(platform), isNotEmpty);
     }
   });
+
+  test('taps use a plain ripple, not the shader-based sparkle', () {
+    for (final palette in SynesterraPalette.values) {
+      expect(synesterraTheme(palette).splashFactory, InkRipple.splashFactory);
+    }
+  });
 }

@@ -1,0 +1,57 @@
+import 'dart:convert';
+import 'dart:io';
+
+/// One stored file. [text] is null when the file could not be read.
+class StoredInstrumentFile {
+  const StoredInstrumentFile({required this.name, required this.text});
+
+  final String name;
+  final String? text;
+}
+
+/// Reads and writes one JSON file per instrument in [directory]. Stateless:
+/// it knows nothing about what the files contain.
+class InstrumentFileStore {
+  const InstrumentFileStore(this.directory);
+
+  final Directory directory;
+
+  String _path(String id, [String suffix = '.json']) =>
+      '${directory.path}${Platform.pathSeparator}$id$suffix';
+
+  Future<List<StoredInstrumentFile>> readAll() async {
+    if (!await directory.exists()) return const [];
+    final stored = <StoredInstrumentFile>[];
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity is! File || !entity.path.endsWith('.json')) continue;
+      final name = entity.uri.pathSegments.last;
+      try {
+        stored.add(
+          StoredInstrumentFile(
+            name: name,
+            text: utf8.decode(await entity.readAsBytes()),
+          ),
+        );
+      } on FileSystemException {
+        stored.add(StoredInstrumentFile(name: name, text: null));
+      } on FormatException {
+        stored.add(StoredInstrumentFile(name: name, text: null));
+      }
+    }
+    return stored;
+  }
+
+  /// Writes to a temporary file first, then renames it over the target, so a
+  /// crash never leaves a half-written instrument behind.
+  Future<void> write(String id, String text) async {
+    await directory.create(recursive: true);
+    final temporary = File(_path(id, '.json.tmp'));
+    await temporary.writeAsString(text, flush: true);
+    await temporary.rename(_path(id));
+  }
+
+  Future<void> remove(String id) async {
+    final file = File(_path(id));
+    if (await file.exists()) await file.delete();
+  }
+}

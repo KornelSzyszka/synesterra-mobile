@@ -101,10 +101,11 @@ class RhythmView extends StatelessWidget {
                           index: index,
                           enabled: state.layers[index].enabled,
                           beats: state.layers[index].beatsPerCycle,
-                          onEnabled: (value) =>
-                              viewModel.setLayerEnabled(index, value),
-                          onBeats: (value) =>
-                              viewModel.setLayerBeats(index, value),
+                          onEnabled: (value) => viewModel.setLayerEnabled
+                              .execute(RhythmLayerEnabledCommand(index, value)),
+                          onBeats: (value) => viewModel.setLayerBeats.execute(
+                            RhythmLayerBeatsCommand(index, value),
+                          ),
                         ),
                     ],
                   ),
@@ -121,7 +122,7 @@ class RhythmView extends StatelessWidget {
                         max: 300,
                         label: 'BPM',
                         color: tokens.text,
-                        onChanged: viewModel.setTempo,
+                        onChanged: (value) => viewModel.setTempo.execute(value),
                         repeatOnHold: true,
                       ),
                     ],

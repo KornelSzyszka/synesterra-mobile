@@ -103,10 +103,11 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
       final to = _coreContext(target!);
       const allowed = {
         'rhythm': <String>{},
+        'sound': <String>{},
         'harmony': {'rhythm'},
-        'session': {'rhythm', 'harmony'},
-        'playback': {'rhythm', 'harmony', 'session'},
-        'ports': {'rhythm', 'harmony', 'session', 'playback'},
+        'session': {'rhythm', 'harmony', 'sound'},
+        'playback': {'rhythm', 'harmony', 'sound', 'session'},
+        'ports': {'rhythm', 'harmony', 'sound', 'session', 'playback'},
       };
       if (from != null &&
           to != null &&
@@ -286,13 +287,11 @@ String _relative(String root, String path) =>
 String? _resolve(String root, File source, String uri) {
   Uri? resolved;
   if (uri.startsWith('package:synesterra_core/')) {
-    resolved = Uri.file(
-      '$root/packages/synesterra_core/lib/',
-    ).resolve(uri.substring('package:synesterra_core/'.length));
+    resolved = Uri.file('$root/packages/synesterra_core/lib/')
+        .resolve(uri.substring('package:synesterra_core/'.length));
   } else if (uri.startsWith('package:synesterra/')) {
-    resolved = Uri.file(
-      '$root/lib/',
-    ).resolve(uri.substring('package:synesterra/'.length));
+    resolved = Uri.file('$root/lib/')
+        .resolve(uri.substring('package:synesterra/'.length));
   } else if (!uri.contains(':')) {
     resolved = source.absolute.uri.resolve(uri);
   }
@@ -302,9 +301,8 @@ String? _resolve(String root, File source, String uri) {
 }
 
 String? _coreContext(String path) {
-  final match = RegExp(
-    r'^packages/synesterra_core/lib/src/([^/]+)/',
-  ).firstMatch(path);
+  final match = RegExp(r'^packages/synesterra_core/lib/src/([^/]+)/')
+      .firstMatch(path);
   return match?.group(1);
 }
 

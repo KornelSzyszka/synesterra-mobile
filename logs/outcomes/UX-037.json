@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "UX-037",
+  "prefix": "UX",
+  "size": "L",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Instrument panel, mist, save, Library Instruments tab. 91 tests, format and analyze green. Mist brightness tuned from a rendered image after the first version was too dim. No emulator run (Android Studio being reinstalled); Founder review of the look pending. Stacked on PRs 32, 35, 39."
+}
