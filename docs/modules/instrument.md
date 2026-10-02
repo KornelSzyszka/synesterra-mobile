@@ -48,6 +48,10 @@ Instrument { version: 2, id: string, name: string, tags: string[],
 
 The test sound is **Note** (any note C1..B7, default A4) or **Chord** (root plus Major, Minor, Dom 7, Maj 7, Min 7, Sus 4 or Power). It lives in the view model, not in the draft: choosing it does not mark the instrument changed and is never saved. Playing the instrument renders and plays one buffer per note. The colour of an instrument (mist, figure, wave, thumbnails) comes from a stable hash of its id, so it does not change with the test note. Tags are edited in the panel and filter the library.
 
+## Drawing the spectrum
+
+The Spectrum section is a bar chart with one bar per harmonic (the stepper sets how many). Touch or drag across the bars to set their heights; a fast stroke is interpolated so no bar is skipped, a touch in the bottom 3 % sets 0, and the last touched bar is selected and shown with a 48 dp slider for fine tuning (the accessible way to set one harmonic). White marks show each harmonic after the EQ at the test note. Shapes (Sine, Saw 1/n, Square odd 1/n, Soft 1/n²) and the Brightness slider redraw every bar; changing the count keeps the bars already drawn and continues the brightness curve for new ones. The chart wins the gesture at once, so touching it draws instead of scrolling the page. Every change goes through `setHarmonics`, which ignores a change that would silence the instrument and never plays sound itself; the sound plays after the finger is lifted. Pure helpers (`barIndexAt`, `amplitudeAt`, `strokeBetween`) are in `lib/features/editor/spectrum_geometry.dart`.
+
 ## Not here yet
 
 A layer referencing an instrument by id (and choosing its pitch), embedding instruments in a session file and a `SessionDocument` version bump are a separate task that needs a version and migration decision. So is a progression as a test sound (it needs timing).
