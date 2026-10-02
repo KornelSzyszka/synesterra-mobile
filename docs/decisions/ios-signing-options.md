@@ -71,4 +71,4 @@ Use **C** only if a one-off, supervised device proof is needed before committing
 
 No account, certificate, provisioning profile, signing workflow, `ios/` configuration, or secret is created by this proposal. The iOS device stages **C3** and **S3** named by issue #44 remain blocked until a signed development IPA installs on the Founder’s registered iPhone and the Founder shows device evidence.
 
-`docs/decisions/0002-audio-backend.md`, cited by the issue as the source for those stages, is not present in this checkout (only decision 0001 is tracked). Therefore this package does not infer additional ADR 0002 stage semantics beyond C3 and S3; that record must be restored or supplied before declaring either stage complete.
+[ADR 0002](0002-audio-backend.md) records the same condition: C3 and S3 are `not run` because there is no Mac and no Apple Developer account, and iOS device work waits for this REL signed-install path. It also says that, until then, there is no iOS device evidence or iOS distribution; this package does not change that status.
