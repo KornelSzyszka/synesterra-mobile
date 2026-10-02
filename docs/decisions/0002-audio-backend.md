@@ -1,10 +1,11 @@
 # 0002 — Native audio backend and scheduling hand-off
 
-- **Status:** accepted by the Founder on 2026-10-02 (`architecture` gate, issue #16): option C. Revision 4 answers the Codex re-review of revision 3; a final Codex check is needed before this PR is merged.
+- **Status:** accepted by the Founder on 2026-10-02 (`architecture` gate, issue #16): option C. PR #24 is merged; revision 5 addresses the review in issue #71.
 - **Date:** 2026-10-02
 - **Revision 2 (2026-10-02):** fixes the Codex review on PR #24 (cancel before the transport guard, render cutoff vs. audible tail, OpenSL ES output time, G3/G5 definitions, signed iOS path). Answers the Founder's C++ question and adds option C.
 - **Revision 3 (2026-10-02):** records the Founder decision and answers (see [Founder decision](#founder-decision-2026-10-02)), adds requirement B10 (audio rendered from instrument recipes at run time) and gate G10, makes the iOS device stages blocked (no Mac, no Apple Developer account) and the Android test device the Founder's spare phone.
 - **Revision 4 (2026-10-02):** fixes the Codex re-review of revision 3: the `flutter_soloud` clock adapter rebases engine time across stopped and restarted streams and does not claim a presentation time; instrument buffers load as WAV through `loadMem`, with source rollover that never disposes a source that can still sound, and a voice limit sized for all concurrent voices; a pass of option B on Android selects B only provisionally, the iOS and app-wide decision waiting for C3 or an explicit Founder decision; the `AVAudioSession` route-change handler runs on a secondary thread and must be thread-safe; stale text updated to the accepted decision (foreground-only, `minSdk` 27 unless the phone is older, G1-G10) and the old Founder question labelled as a historical snapshot.
+- **Revision 5 (2026-10-03):** defines the inverse SoLoud time conversion and late drop, tests simultaneous voice capacity and source rollover, limits the Android follow-up decision, and refreshes live repository state and `outputTime` capability.
 - **Builds on:** [0001](0001-architecture-style.md) (real-time hand-off, ports `AudioClock` and `VoiceSink`, generation rule).
 - **Evidence level:** `static`. Nothing in this record was measured on a device. Every platform behaviour comes from the official documentation listed under [Sources](#sources). Every number marked *hypothesis* waits for the spike.
 
@@ -17,7 +18,7 @@ Inputs:
 - Web PLR-004 §4–5 (behaviour reference): a platform adapter owns the monotonic audio time source, lookahead and scheduler wake-up, a `VoiceSink` that executes `RhythmTrigger`s, audio focus and interruptions, background policy, route changes and Bluetooth, and the measurement of real latency. The web lab wakes every 25 ms and plans 100 ms ahead.
 - Web PLR-005: Android lists synthesizers, drum machines and music-learning apps as high-performance audio and recommends Oboe/AAudio with low-latency mode and a callback. It recommends a conditional decision, because no physical device was measured. It also proposes a jitter gate (a hypothesis).
 - Web PLR-012 and its deliverable `docs/quality/MOBILE_AUDIO_QA.md` in `synesterra-web`: a physical-device QA protocol with a device matrix, scenarios A–E, metrics, threshold hypotheses and a `pass` / `conditional pass` / `fail` form. The spike below reuses it.
-- This repository: Flutter 3.35.7 (Dart 3.9), Android `minSdk` 24 (the Flutter default, `flutter.minSdkVersion`; see the Founder decision below), iOS deployment target 13.0. The host is Windows, so iOS builds only in the on-demand macOS CI job ([docs/testing.md](../testing.md)).
+- This repository: PR #38 merged the Flutter 3.47.6 upgrade; the Dart SDK constraint is `^3.13.5`, and `flutter_soloud: ^5.1.6` is already in `pubspec.yaml`. Android `minSdk` remains the Flutter default (`flutter.minSdkVersion`) until the accepted 27-or-older-test-phone decision is implemented; the iOS deployment target is 13.0. The host is Windows, so iOS builds only in the on-demand macOS CI job ([docs/testing.md](../testing.md)).
 
 ### Requirements for the backend
 
@@ -49,7 +50,7 @@ This record decides two things separately:
 | Android engine (*A*) | **Oboe** (C++), output stream with `PerformanceMode::LowLatency`, a data callback, `Usage::Game`, the device's native sample rate, exclusive sharing requested (shared accepted) |
 | iOS engine (*A*) | **AVAudioEngine with one `AVAudioSourceNode`** whose render block calls the shared C++ core. `AVAudioSession` category `.playback` |
 | Shared code (*A*) | One **C++ audio core** used by both platforms: command ring, event queue, generation filter, voice mixer, engine timeline. No platform headers. |
-| Packaging (*A*) | A local Flutter FFI plugin package `packages/synesterra_audio_engine/` (legacy `plugin_ffi` template, which works on Flutter 3.35 and gives access to the Flutter plugin API) |
+| Packaging (*A*) | A local Flutter FFI plugin package `packages/synesterra_audio_engine/` (legacy `plugin_ffi` template, which gives access to the Flutter plugin API) |
 | Hot path (clock, schedule, cancel) | **`dart:ffi`**, synchronous calls into the engine (our C++ core in A; `flutter_soloud`'s FFI API in B and C) |
 | Lifecycle (session, focus, interruptions, routes, engine start/stop) | **Platform channels** (a method channel and an event channel), handled in Kotlin and Swift |
 | `AudioClock` time | `AudioTime` in microseconds on an **engine timeline** that is monotonic for the life of the process |
@@ -107,7 +108,7 @@ Facts that shape the iOS design:
 |---|---|---|---|
 | `just_audio` | Gapless file/stream playlists; background through `just_audio_background` [P1] | No documented API for starting at an audio-clock time (B1) or reading the clock (B2) | rejected |
 | `audioplayers` | Several simultaneous players; a low-latency mode [P2] | No documented scheduled start or clock (B1, B2) | rejected |
-| `flutter_soloud` 5.1.x (SoLoud + miniaudio over FFI, MIT) | `playScheduled` at an absolute engine time "with sample accuracy", `getEngineTime`, `getPlayheadTime` [P3] [P4]. `init(lowLatency: true)` is the default; on Android it uses AAudio's MMAP path. The mix buffer defaults to 2048 frames, and a render-ahead ring is optional [P6]. The iOS backend leaves `AVAudioSession` to the app: it sets no category and does not activate or deactivate the session [P7]. | Meets B1/B2. Can satisfy B6 and B7 if we configure it (latency still to measure). A cancelled generation means tracking voice handles in Dart and stopping them (B3). By default only 16 voices play at once; above that the oldest instance of the same sound is stopped or the new one is not played, so the limit must be raised to cover every voice scheduled within the horizon [P8]. Native-first silencing is harder, because our Kotlin/Swift code would have to reach the plugin's engine. A large third-party engine sits on the riskiest path (B8, B9). | **target engine B**; measured first in the discovery spike (option C, [Founder decisions](#founder-decision-2026-10-02)) |
+| `flutter_soloud` 5.1.x (SoLoud + miniaudio over FFI, MIT) | `playScheduled` at an absolute engine time "with sample accuracy", `getEngineTime`, `getPlayheadTime` [P3] [P4]. `init(lowLatency: true)` is the default; on Android it uses AAudio's MMAP path. The mix buffer defaults to 2048 frames, and a render-ahead ring is optional [P6]. The iOS backend leaves `AVAudioSession` to the app: it sets no category and does not activate or deactivate the session [P7]. | Meets B1/B2. Can satisfy B6 and B7 if we configure it (latency still to measure). A cancelled generation means tracking voice handles in Dart and stopping them (B3). By default only 16 voices are active at once; above the cap SoLoud selects the loudest voices, so quieter voices may disappear without a rejected handle. Raise the cap to cover the maximum simultaneous voices, including still-ringing older sources, a chord, drone and audition; verify that the requested cap took effect, because values at or above 1023 are ignored [P8] [P11]. Native-first silencing is harder, because our Kotlin/Swift code would have to reach the plugin's engine. A large third-party engine sits on the riskiest path (B8, B9). | **target engine B**; measured first in the discovery spike (option C, [Founder decisions](#founder-decision-2026-10-02)) |
 | `audio_session` | Configures `AVAudioSession` and Android audio attributes and focus; streams for interruption and becoming-noisy events; no playback [P5] | Reactions would go through Dart, but B7 needs native-first silencing. Kotlin/Swift code to own this is small. | rejected for A; acceptable in the option C discovery spike, where it shortens setup |
 
 ### Dart ↔ native transport
@@ -124,7 +125,7 @@ Two Flutter facts set the threading model:
 - Since Flutter 3.29, on Android and iOS, "the UI and platform threads are merged … the Dart code runs on the native platform thread" [F2]. The root isolate, its timers and the platform-channel handlers therefore share the main thread with UI work, so a long frame delays the scheduler's wake-up. The horizon absorbs this (see [PlaybackScheduler](#playbackscheduler-wake-up-and-lookahead)), and the background-isolate fallback exists for when it does not.
 - Background isolates can call FFI and, through `BackgroundIsolateBinaryMessenger`, send platform-channel messages. They cannot receive unsolicited messages from the platform [F5] [F1]. A background scheduler isolate would therefore get lifecycle events relayed from the root isolate.
 
-Packaging: on Android, FFI binds only to dynamic `.so` libraries. On iOS, static linking is loaded with `DynamicLibrary.process()` [F3] [F4]. Since Flutter 3.38 the docs recommend `package_ffi` with build hooks. The legacy `plugin_ffi` template remains the option that gives access to the Flutter plugin API and static linking on iOS [F3] [F4]. We need both, for the Kotlin/Swift lifecycle code, and we are on 3.35. A local plugin package also avoids hand-editing `Runner.xcodeproj` on a host without Xcode: a podspec with source globs is plain text.
+Packaging: on Android, FFI binds only to dynamic `.so` libraries. On iOS, static linking is loaded with `DynamicLibrary.process()` [F3] [F4]. Since Flutter 3.38 the docs recommend `package_ffi` with build hooks. The legacy `plugin_ffi` template remains the option that gives access to the Flutter plugin API and static linking on iOS [F3] [F4]. We need both for the Kotlin/Swift lifecycle code; the repository now targets Flutter 3.47.6. A local plugin package also avoids hand-editing `Runner.xcodeproj` on a host without Xcode: a podspec with source globs is plain text.
 
 ## Why native code, and why C++
 
@@ -265,8 +266,9 @@ final class AudioClockReading {
 
   /// Estimated timeline time of the frame leaving the output now, from the
   /// platform's presentation timestamp. For position display and visuals
-  /// only. Null when the platform provides no presentation timestamp (Oboe on
-  /// OpenSL ES, Android 24–26); callers then use renderTime minus
+  /// only. Null when the selected adapter cannot provide a presentation
+  /// measurement (including SoLoud, or Oboe on OpenSL ES); callers then use
+  /// renderTime minus
   /// [fallbackOutputLatency] and show the position as approximate.
   final AudioTime? outputTime;
 
@@ -363,7 +365,7 @@ replan(reason):        // on every tick and immediately on every state change
 - **Horizon:** 200 ms ahead of `renderTime` (*hypothesis*, tuned in the spike). A larger horizon does not delay user changes, because a generation change re-plans from `renderTime + minLead` at once. It costs only discarded planning work and queue capacity. In exchange it hides a Dart stall of up to about `horizon − minLead` without any audible effect.
 - **Window continuity:** the next window starts exactly at the previous `toBeat`, kept in beats rather than recomputed from time, so rounding can never double or drop a hit at a boundary. The only forward jump is the skip-late `max(...)`. After a stall, the beats between `plannedToBeat` and `beatAt(earliest)` are skipped on purpose.
 - **Start:** `PlaybackRepository` asks `AudioEngineBridge` to start (focus or session activation, then stream start). When the engine reports `running`, the transport anchors its start beat at `renderTime + minLead + startPad` (default 30 ms, *hypothesis*) and calls `replan`.
-- **Position for the UI:** `TempoMap.beatAt(outputTime)`, read-only. It is what the listener hears, apart from the display's own latency, which is measured separately. When `outputTime` is null (OpenSL ES), the UI uses `renderTime − fallbackOutputLatency` and treats the position as approximate.
+- **Position for the UI:** `TempoMap.beatAt(outputTime)`, read-only. It is what the listener hears, apart from the display's own latency, which is measured separately. When `outputTime` is null because the selected adapter lacks a presentation measurement (including SoLoud on any route and Oboe on OpenSL ES), the UI uses `renderTime − fallbackOutputLatency` and treats the position as approximate.
 - **Fallback:** if the spike's wake-up gate fails on the root isolate, `PlaybackScheduler` moves into a long-lived background isolate [F5]. That isolate receives immutable `SessionProject`/`RuntimePerformanceState` snapshots over a `SendPort` and calls FFI itself. The ports and the single-producer rule do not change. The extra state copy is the cost, which is why this is not the first choice.
 
 ```mermaid
@@ -432,7 +434,7 @@ Independent sources, never mixed:
 | Layer | What | How | Proves |
 |---|---|---|---|
 | Engine-internal (A only, diagnostic builds) | For each `eventId`: planned frame, rendered frame, or `late`/`stale`/`overflow`; xruns (`getXRunCount` [A2]; on iOS, discontinuities in the render timestamp's sample time); callback duration against the buffer period | A ring buffer of fixed records in the core, exported to a file after the run | That the software is exact: rendered frame = planned frame, no losses, real-time headroom |
-| Adapter (B and C) | For each `eventId`: planned `AudioTime`, the SoLoud handle, `getEngineTime` at enqueue, cancels per generation, voices rejected by the voice limit | A Dart-side log; SoLoud's internal render position is not observable | That every planned event reached the engine and every cancel was issued |
+| Adapter (B and C) | For each `eventId`: planned `AudioTime`, the SoLoud handle, `getEngineTime` at enqueue, cancels per generation; requested/accepted voice cap and SoLoud active/total voice counts | A Dart-side log; SoLoud's internal render position is not observable | That every planned event reached the engine, every cancel was issued and the voice cap did not silently hide sounds |
 | Scheduler | Wake-up lateness (actual minus intended wake-up); planning time; **planned coverage** = `audioTimeOf(plannedToBeat) − renderTime`, sampled at each wake-up before planning, which is how much audio is already queued | Counters in `PlaybackScheduler`, exported with the engine log | That the Dart side stays ahead of the audio thread under UI load |
 | Physical | Output latency; jitter; drift; lost and double onsets; **stop tail**; listening (PLR-012 §5) | Electrical loopback or a measurement microphone, onset detection, two listeners (PLR-012 §5) | What a musician hears. Only this is `device` evidence. |
 | Platform estimates | `getTimestamp` / `outputLatency` / `getPlayheadTime` compared with the physical output latency | Both recorded in the same run | Whether `outputTime` can drive visuals |
@@ -450,19 +452,19 @@ Context for the hypotheses: Android's `android.hardware.audio.low_latency` featu
 
 One `AUD` task per phase (with the `QA` protocol), after this decision is accepted. Both phases share one harness: the `PlaybackScheduler`, the 3:2 and 5:4 fixtures, diagnostics export, and a minimal screen with Start/Pause/Stop/tempo/scene and a stress toggle that animates a heavy widget. If the `DOM` planner is not ready, the fixture is a precomputed event list in JSON. Its order is compared with the planner later (PLR-012 §8).
 
-**Phase 1, option C (discovery).** Prerequisite: a `MOB` task upgrades Flutter, because every `flutter_soloud` release with `playScheduled` (4.1.0 and later) requires Flutter ≥ 3.41 and Dart ≥ 3.11 [P10] [P9], and the repository is on Flutter 3.35.7 / Dart 3.9. The phase adds `flutter_soloud` as a dependency, justified in its PR. `SoloudAudioClock` is an adapter that keeps the port's semantics, which the plugin's clocks do not give on their own: `getEngineTime` advances only while the device is mixing, whereas `AudioTime` must be monotonic for the life of the process and advance on the host monotonic clock while no stream runs (see Engine timeline). The adapter therefore keeps a rebase offset, `renderTime = engineTime + offset`, re-anchored on every stream start or restart so that `renderTime` never goes backwards or repeats a value; the gap while stopped comes from the host clock. `getPlayheadTime` subtracts only the optional render-ahead ring (it equals engine time by default) [P3] [P4], so it is **not** a presentation time and does not include route latency (Bluetooth, AirPlay): `outputTime` is reported as unavailable (null) unless a platform presentation measurement supports it, and route latency stays a separately measured quantity (G6). Stage C0 has a unit test of the rebase across stop, start and restart with a fake engine clock; C1 compares the clock with the physical measurement. `SoloudVoiceSink` calls `playScheduled` per event, keeps the handles by generation, and stops the older handles on `cancelFrom`. Instrument buffers are loaded with `loadMem` from a generated **WAV**: the plugin accepts the bytes of a supported audio file, which includes a generated WAV, but not raw PCM; a preserved buffer stream can hold raw PCM, whereas a released one permits only one instance, so streams are not used for one-shots [P3]. `disposeSource` stops every handle of its source, so a source is never disposed while it can still sound: when a recipe or a pitch changes, the old source is **retired** (kept loaded until its last handle has finished, and no longer used for new events) and only then disposed. The voice limit is sized for all **concurrent** voices, not only those scheduled within the horizon: voices of earlier windows that are still ringing (a decay can last 5 s), the drone, an audition and the events already queued. The adapter computes the bound from the session (layers times ringing hits per layer, plus drone and audition) and sets it [P8]; stage C-I tests that maximum, including a source rollover while its voices still sound. Lifecycle code is minimal Kotlin/Swift or `audio_session` [P5].
+**Phase 1, option C (discovery).** The Flutter upgrade is merged in PR #38 (Flutter 3.47.6; Dart SDK constraint `^3.13.5`), satisfying the `playScheduled` requirement of Flutter ≥ 3.41 and Dart ≥ 3.11 [P10] [P9]. `flutter_soloud: ^5.1.6` is already a dependency. `SoloudAudioClock` is an adapter that keeps the port's semantics, which the plugin's clocks do not give on their own: `getEngineTime` advances only while the device is mixing, whereas `AudioTime` must be monotonic for the life of the process and advance on the host monotonic clock while no stream runs (see Engine timeline). The adapter therefore keeps a rebase offset, `renderTime = engineTime + offset`, re-anchored on every stream start or restart so that `renderTime` never goes backwards or repeats a value; the gap while stopped comes from the host clock. `getPlayheadTime` subtracts only the optional render-ahead ring (it equals engine time by default) [P3] [P4], so it is **not** a presentation time and does not include route latency (Bluetooth, AirPlay): `outputTime` is reported as unavailable (null) unless a platform presentation measurement supports it, and route latency stays a separately measured quantity (G6). Stage C0 tests the rebase across stop, start and route restart with a fake engine clock; C1 compares the clock with the physical measurement. `SoloudVoiceSink` uses the same rebase snapshot as `AudioClock.now()` for each batch and converts each timeline timestamp back to SoLoud's absolute engine time with `engineAt = event.at - offset`. It drops events already late against that snapshot before calling `playScheduled` (a past engine time would play immediately), keeps the handles by generation, and stops the older handles on `cancelFrom` [P4]. Instrument buffers are loaded with `loadMem` from a generated **WAV**: the plugin accepts the bytes of a supported audio file, which includes a generated WAV, but not raw PCM; a preserved buffer stream can hold raw PCM, whereas a released one permits only one instance, so streams are not used for one-shots [P3]. `disposeSource` stops every handle of its source, so a source is never disposed while it can still sound: when a recipe or a pitch changes, the old source is **retired** (kept loaded until its last handle has finished, and no longer used for new events) and only then disposed. The voice limit is sized for all **concurrent** voices, not only those scheduled within the horizon: voices of earlier windows that are still ringing (a decay can last 5 s), the drone, an audition and the events already queued. The adapter computes the bound from the session (layers times ringing hits per layer, plus drone and audition), requests a cap below 1023 and verifies the accepted value [P11]; stage C-I tests the maximum simultaneous voices, including a chord and source rollover while old voices still sound, against the recording and SoLoud active/total counts. Lifecycle code is minimal Kotlin/Swift or `audio_session` [P5].
 
 | Stage | Where | Content | Evidence |
 |---|---|---|---|
-| C0 | Linux CI | `PlaybackScheduler` tests with fake `AudioClock`/`VoiceSink` (PLR-004 §9 adapter list: large time jump, generation cancel, start with a future anchor, pause/resume/stop, **pause and stop with pending hits and a drone**); adapter unit tests for handle tracking | `unit` |
+| C0 | Linux CI | `PlaybackScheduler` tests with fake `AudioClock`/`VoiceSink` (PLR-004 §9 adapter list: large time jump, generation cancel, start with a future anchor, pause/resume/stop, **pause and stop with pending hits and a drone**); adapter unit tests for handle tracking and scheduling across Stop → Start and route restart with a nonzero rebase offset, including the inverse engine-time conversion and late drop before `playScheduled` | `unit` |
 | C1 | Android test device (the Founder's spare phone; identify its model and Android version first; API 27+ expected) | PLR-012 scenario A (3:2, 5:4; 20/90/300 BPM; 2 and 4 layers; maximum density; drone; Pause → Start, Stop → Start; tempo change while playing), plus E (30 min). Speaker, wired, Bluetooth. With and without the UI stress toggle. | `device` |
 | C2 | same | PLR-012 B (background/lock, foreground-only expected), C (interruption ×2), D (route changes and Bluetooth); stop tail per route | `device` |
-| C-I | Android test device | Instruments (B10): render a recipe to PCM in an isolate, load it into the engine from memory, play overlapping one-shots at scheduled times, replace a buffer while its older voices still sound, keep 8 distinct buffers at the horizon's maximum voice count; measure the time from a parameter change to an audible audition (hypothesis: at most 200 ms) | `device` |
+| C-I | Android test device | Instruments (B10): render a recipe to PCM in an isolate, load it into the engine from memory, play overlapping one-shots at scheduled times, and replace a buffer while its older voices still sound. Test the maximum **simultaneous** voices across old and new sources, including a chord and eight distinct instrument-plus-frequency pitch buffers; a four-note chord uses four buffers. Verify the requested active-voice cap is accepted (requests at or above 1023 are ignored), and compare the planned simultaneous voice count with the recording and SoLoud active/total voice counts. Measure the time from a parameter change to an audible audition (hypothesis: at most 200 ms) | `device` |
 | C3 | Current iPhone, through the signed install path (below) | **Blocked**: the Founder has an iPhone but no Mac and no Apple Developer account, so this stage is reported as `not run` until the `REL` path exists. When unblocked: C1 + C2 on iOS, plus media-services reset (Developer settings [I15]) | `device` |
 
 Decision after phase 1:
 
-- **B passes** every applicable gate (G2–G10) on the Android device → engine B **provisionally for Android**. G8 and the instrument path have no iOS evidence while C3 is blocked, so the iOS decision and any app-wide choice of B wait for C3, or for an explicit Founder decision that records the missing iOS evidence. A follow-up amends this record: the engine is `flutter_soloud`, and the A sections become the documented fallback. No C++ of our own is written.
+- **B passes** every applicable gate (G2–G10) on the Android device → engine B **provisionally for Android**. G8 and the instrument path have no iOS evidence while C3 is blocked, so the iOS decision and any app-wide choice of B wait for C3, or for an explicit Founder decision that records the missing iOS evidence. A follow-up amends only the Android engine selection to `flutter_soloud`, with A as its documented fallback; the iOS and app-wide engine decisions remain open. No C++ of our own is written for the Android selection.
 - **B fails for engine reasons** that configuration cannot fix (latency, voice limit, cancel semantics, lifecycle control, maturity) → engine A, phase 2. The harness, fixtures, scheduler, adapters' lifecycle code and results are reused, and the C results become A's baseline.
 - **Only G3 fails** → move the scheduler to the background isolate. That applies to any engine, and phase 1 re-runs C1.
 
@@ -526,7 +528,7 @@ The result uses the PLR-012 classes: `pass`, `conditional pass` (for example for
 | AVAudioEngine stops on configuration changes [I6] | Restart on an internal queue outside the notification handler, with a timeline that continues (late events are dropped) |
 | No signed iOS build exists (CI uses `--no-codesign`) | A separate `REL` task for the signed install path; iOS stages blocked and reported as not run until then |
 | C++ real-time bugs (data races, allocation in the callback) are invisible to `flutter test` | See [Risks of our own C++ core](#risks-of-our-own-c-core) |
-| Option C needs a Flutter upgrade (≥ 3.41) [P10] | A `MOB` task before the spike; the upgrade also brings build hooks for A ([Not now](#not-now-and-when-to-revisit)) |
+| Option C requires Flutter ≥ 3.41 [P10] | Prerequisite met by merged PR #38; confirm the local SDK before running the spike |
 | `playScheduled` is recent (added in 4.1.0; a fix for starting a voice one buffer early landed in 5.1.x) [P9] | That is exactly what phase 1 measures; pin the version |
 | Interruption APIs are changing on iOS 27 [I13] | Observe the life-cycle notifications on 27+ and `interruptionNotification` below |
 | Native dependencies: Oboe (Maven prefab [A7]) and the C++ toolchain (A); `flutter_soloud` (B/C) | Justified in the PR that adds them (`change-safety`) |
@@ -544,7 +546,7 @@ The result uses the PLR-012 classes: `pass`, `conditional pass` (for example for
 | Frame counters as `AudioTime` | They restart with every stream; route changes would invalidate planned events |
 | Host clock (`CLOCK_MONOTONIC`) as `AudioTime` during playback | Drifts against the device clock over a 30-minute session; the music should follow the output |
 | Background playback in 1.0 | A foreground service with a notification, a background mode and review implications [A10] [I16] for a promise the product has not made. Kept as a Founder decision. |
-| `package_ffi` with build hooks for A on Flutter 3.35 | Recommended from Flutter 3.38 [F3], but it has no Flutter plugin API for the Kotlin/Swift lifecycle code. Revisit after the Flutter upgrade. |
+| `package_ffi` with build hooks for A | Recommended from Flutter 3.38 [F3], but it has no Flutter plugin API for the Kotlin/Swift lifecycle code. Revisit if A is chosen. |
 
 ## Consequences
 
@@ -554,7 +556,7 @@ The result uses the PLR-012 classes: `pass`, `conditional pass` (for example for
   - In A, one C++ core carries every real-time rule, is tested on Linux CI and is shared by both platforms. Lifecycle safety does not depend on Dart: the native side silences first.
   - Measurement separates software exactness, the route's latency and tail, and what is heard.
 - Negative:
-  - Phase 1 needs a Flutter upgrade and a third-party dependency first.
+  - Phase 1 uses the already-upgraded Flutter SDK and existing `flutter_soloud` dependency; device validation remains.
   - If phase 1 fails, A costs C++, Kotlin and Swift code and a C++ CI job on top.
   - iOS device work is blocked until a signed install path exists.
   - Foreground-only means no playback with a locked screen in 1.0, unless the Founder decides otherwise.
@@ -569,13 +571,13 @@ The result uses the PLR-012 classes: `pass`, `conditional pass` (for example for
 |---|---|
 | Background/locked-screen playback | The Founder makes it a 1.0 promise |
 | Mixing with other apps (practising along with a music app: `.mixWithOthers`, no exclusive focus) | Product asks for play-along; a settings option |
-| Build hooks (`package_ffi`) for A | After the Flutter upgrade, if A is chosen |
+| Build hooks (`package_ffi`) for A | If A is chosen |
 | `NativeCallable.listener` for engine faults | Polling diagnostics on each tick turns out to be too slow to report faults |
 | Android `minSdk` 27 (decided 2026-10-02, unless the test phone is older) | Lowering it to 24 if a supported device class needs it; raising it above 27 only with evidence |
 
 ## Founder decision (2026-10-02)
 
-**Accepted: option C**, with the answers below. No native audio code is written before this record is merged.
+**Accepted: option C**, with the answers below. This record was merged in PR #24 before native audio work began.
 
 | # | Question | Answer (Founder) | Consequence |
 |---|---|---|---|
@@ -584,7 +586,7 @@ The result uses the PLR-012 classes: `pass`, `conditional pass` (for example for
 | 3 | Android `minSdk` | "idk", delegated to the coordinator | 27 for 1.0, unless the Founder's phone is older, then that phone's API (not below 24). Reversible. |
 | 4 | Background playback in 1.0 | Foreground-only, screen kept awake | As recommended. |
 | 5 | Gate thresholds G1-G10 | Not discussed | They stay hypotheses; the first device run reports numbers and the Founder may change them. |
-| 6 | Flutter upgrade (>= 3.41) | Done in PR #38 (Flutter 3.47.6), not merged yet | The prerequisite of C is met once #38 is merged and the Founder upgrades the global SDK. |
+| 6 | Flutter upgrade (>= 3.41) | Done in merged PR #38 (Flutter 3.47.6; Dart SDK constraint `^3.13.5`) | The repository meets C's Flutter prerequisite and already declares `flutter_soloud: ^5.1.6`; the local SDK used to run the spike must match. |
 
 ### Options as presented (historical snapshot, before the decision)
 
@@ -737,6 +739,7 @@ Flutter plugins (pub.dev and the plugin's repository, read 2026-10-02):
 [P8]: https://pub.dev/documentation/flutter_soloud/latest/flutter_soloud/SoLoud/play.html
 [P9]: https://pub.dev/packages/flutter_soloud/changelog
 [P10]: https://pub.dev/packages/flutter_soloud/versions
+[P11]: https://pub.dev/documentation/flutter_soloud/5.1.5/flutter_soloud/SoLoud/setMaxActiveVoiceCount.html
 
 - [P1] [just_audio](https://pub.dev/packages/just_audio) · [P2] [audioplayers](https://pub.dev/packages/audioplayers) · [P3] [flutter_soloud](https://pub.dev/packages/flutter_soloud) · [P4] [SoLoud.playScheduled](https://pub.dev/documentation/flutter_soloud/latest/flutter_soloud/SoLoud/playScheduled.html) · [P5] [audio_session](https://pub.dev/packages/audio_session)
 - [P6] [SoLoud.init](https://pub.dev/documentation/flutter_soloud/latest/flutter_soloud/SoLoud/init.html): `lowLatency` (AAudio MMAP on Android), `bufferSize` default 2048, render-ahead ring.
@@ -744,5 +747,6 @@ Flutter plugins (pub.dev and the plugin's repository, read 2026-10-02):
 - [P8] [SoLoud.play](https://pub.dev/documentation/flutter_soloud/latest/flutter_soloud/SoLoud/play.html): the 16-voice default and what happens at the limit.
 - [P9] [flutter_soloud changelog](https://pub.dev/packages/flutter_soloud/changelog): `playScheduled` added in 4.1.0; breaking changes in 5.0; a scheduling fix in 5.1.x.
 - [P10] [flutter_soloud versions](https://pub.dev/packages/flutter_soloud/versions): SDK constraints (Flutter ≥ 3.41, Dart ≥ 3.11 from 4.0.0).
+- [P11] [SoLoud.setMaxActiveVoiceCount](https://pub.dev/documentation/flutter_soloud/5.1.5/flutter_soloud/SoLoud/setMaxActiveVoiceCount.html): active-voice cap and its upper bound.
 
 Web laboratory (read-only, `synesterra-web`, not part of this repository): PLR-004 §4–5, PLR-005, PLR-012 and its deliverable `docs/quality/MOBILE_AUDIO_QA.md`.
