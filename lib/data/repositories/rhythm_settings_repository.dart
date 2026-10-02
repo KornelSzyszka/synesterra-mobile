@@ -19,6 +19,16 @@ class RhythmLayerSettings {
       beatsPerCycle: beatsPerCycle ?? this.beatsPerCycle,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is RhythmLayerSettings &&
+        other.enabled == enabled &&
+        other.beatsPerCycle == beatsPerCycle;
+  }
+
+  @override
+  int get hashCode => Object.hash(enabled, beatsPerCycle);
 }
 
 class RhythmSettings {
@@ -53,6 +63,22 @@ class RhythmSettings {
       layers: layers ?? this.layers,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! RhythmSettings ||
+        other.tempoBpm != tempoBpm ||
+        other.layers.length != layers.length) {
+      return false;
+    }
+    for (var index = 0; index < layers.length; index++) {
+      if (other.layers[index] != layers[index]) return false;
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode => Object.hash(tempoBpm, Object.hashAll(layers));
 }
 
 abstract class RhythmSettingsRepository {

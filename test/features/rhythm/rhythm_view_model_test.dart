@@ -23,6 +23,31 @@ class FakeRhythmSettingsRepository implements RhythmSettingsRepository {
 }
 
 void main() {
+  test('settings use value equality', () {
+    final layer = RhythmLayerSettings(enabled: true, beatsPerCycle: 4);
+    expect(layer, equals(RhythmLayerSettings(enabled: true, beatsPerCycle: 4)));
+    expect(
+      layer.hashCode,
+      equals(RhythmLayerSettings(enabled: true, beatsPerCycle: 4).hashCode),
+    );
+    final settings = RhythmSettings(
+      tempoBpm: 120,
+      layers: List.generate(4, (_) => layer),
+    );
+    expect(
+      settings,
+      equals(
+        RhythmSettings(
+          tempoBpm: 120,
+          layers: List.generate(
+            4,
+            (_) => RhythmLayerSettings(enabled: true, beatsPerCycle: 4),
+          ),
+        ),
+      ),
+    );
+  });
+
   test('settings reject values outside the screen contract', () {
     expect(
       () => RhythmLayerSettings(enabled: true, beatsPerCycle: 0),
@@ -35,16 +60,18 @@ void main() {
     );
   });
 
-  test('commands persist immutable state and notify listeners', () {
+  test('commands persist immutable state and notify listeners', () async {
     final repository = FakeRhythmSettingsRepository();
     final viewModel = RhythmViewModel(repository: repository);
     final oldState = viewModel.state;
     var notifications = 0;
     viewModel.addListener(() => notifications++);
 
-    viewModel.setTempo(300);
-    viewModel.setLayerEnabled(1, true);
-    viewModel.setLayerBeats(1, 16);
+    await viewModel.setTempo.execute(300);
+    await viewModel.setLayerEnabled.execute(
+      const RhythmLayerEnabledCommand(1, true),
+    );
+    await viewModel.setLayerBeats.execute(const RhythmLayerBeatsCommand(1, 16));
 
     expect(viewModel.state.tempoBpm, 300);
     expect(viewModel.state.layers[1].enabled, isTrue);
@@ -61,22 +88,28 @@ void main() {
     viewModel.dispose();
   });
 
-  test('invalid and unchanged commands do not save or notify', () {
+  test('invalid and unchanged commands do not save or notify', () async {
     final repository = FakeRhythmSettingsRepository();
     final viewModel = RhythmViewModel(repository: repository);
     var notifications = 0;
     viewModel.addListener(() => notifications++);
 
-    viewModel.setTempo(19);
-    viewModel.setTempo(301);
-    viewModel.setTempo(120);
-    viewModel.setLayerEnabled(-1, true);
-    viewModel.setLayerEnabled(4, true);
-    viewModel.setLayerEnabled(0, false);
-    viewModel.setLayerBeats(0, 0);
-    viewModel.setLayerBeats(0, 17);
-    viewModel.setLayerBeats(4, 3);
-    viewModel.setLayerBeats(0, 4);
+    await viewModel.setTempo.execute(19);
+    await viewModel.setTempo.execute(301);
+    await viewModel.setTempo.execute(120);
+    await viewModel.setLayerEnabled.execute(
+      const RhythmLayerEnabledCommand(-1, true),
+    );
+    await viewModel.setLayerEnabled.execute(
+      const RhythmLayerEnabledCommand(4, true),
+    );
+    await viewModel.setLayerEnabled.execute(
+      const RhythmLayerEnabledCommand(0, false),
+    );
+    await viewModel.setLayerBeats.execute(const RhythmLayerBeatsCommand(0, 0));
+    await viewModel.setLayerBeats.execute(const RhythmLayerBeatsCommand(0, 17));
+    await viewModel.setLayerBeats.execute(const RhythmLayerBeatsCommand(4, 3));
+    await viewModel.setLayerBeats.execute(const RhythmLayerBeatsCommand(0, 4));
 
     expect(repository.saveCount, 0);
     expect(notifications, 0);
