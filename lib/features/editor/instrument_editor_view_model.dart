@@ -56,6 +56,7 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   late bool _persisted;
   late String _name;
   late double _brightness;
+  int _selectedHarmonic = 0;
   bool _saving = false;
   String? _saveError;
 
@@ -167,14 +168,68 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     _changed();
   }
 
+  /// Changes how many harmonics there are. The bars already drawn are kept;
+  /// new bars continue the brightness curve, removed bars are cut off.
   void setHarmonicCount(int count) {
     final clamped = _clampInt(count, 1, Instrument.maxHarmonics);
-    _edit((i) => i.copyWith(harmonics: spectrum(clamped, _brightness)));
+    final old = _draft.harmonics;
+    final slope = 3 * (1 - _brightness);
+    final next = [
+      for (var n = 0; n < clamped; n++)
+        n < old.length ? old[n] : math.pow(n + 1, -slope).toDouble(),
+    ];
+    // Cutting off every bar that had sound would leave silence.
+    if (!next.any((amplitude) => amplitude > 0)) next[0] = 1;
+    _selectedHarmonic = _clampInt(_selectedHarmonic, 0, clamped - 1);
+    _edit((i) => i.copyWith(harmonics: next));
   }
 
   void setBrightness(double value) {
     _brightness = _clampDouble(value, 0, 1);
     _edit((i) => i.copyWith(harmonics: spectrum(harmonicCount, _brightness)));
+  }
+
+  /// The harmonic (0-based) the user touched last; the editor shows it for
+  /// fine tuning.
+  int get selectedHarmonic =>
+      _clampInt(_selectedHarmonic, 0, harmonicCount - 1);
+
+  void selectHarmonic(int index) {
+    final clamped = _clampInt(index, 0, harmonicCount - 1);
+    if (clamped == _selectedHarmonic) return;
+    _selectedHarmonic = clamped;
+    notifyListeners();
+  }
+
+  /// Sets harmonics by index to amplitudes 0..1, in one change, and selects
+  /// [select] (default: the last index given). A change that would make every
+  /// harmonic 0 is ignored, so the instrument can never go silent. Never
+  /// plays sound by itself.
+  void setHarmonics(Map<int, double> changes, {int? select}) {
+    if (changes.isEmpty) return;
+    final next = [..._draft.harmonics];
+    for (final entry in changes.entries) {
+      if (entry.key < 0 || entry.key >= next.length) continue;
+      next[entry.key] = _clampDouble(entry.value, 0, 1);
+    }
+    if (!next.any((amplitude) => amplitude > 0)) return;
+    _selectedHarmonic = _clampInt(
+      select ?? changes.keys.last,
+      0,
+      next.length - 1,
+    );
+    _brightness = fitBrightness(next);
+    _edit((i) => i.copyWith(harmonics: next));
+  }
+
+  void setHarmonic(int index, double amplitude) =>
+      setHarmonics({index: amplitude});
+
+  /// Redraws every bar with one of the quick shapes, for the current count.
+  void applySpectrumShape(SpectrumShape shape) {
+    final next = shape.amplitudes(harmonicCount);
+    _brightness = fitBrightness(next);
+    _edit((i) => i.copyWith(harmonics: next));
   }
 
   void setAttackMs(int ms) => _edit(
@@ -269,3 +324,27 @@ double _clampDouble(double value, double min, double max) =>
 
 int _clampInt(int value, int min, int max) =>
     value < min ? min : (value > max ? max : value);
+
+/// Quick shapes for the spectrum. Amplitudes are 1/n^k, the classic
+/// waveforms of additive synthesis.
+enum SpectrumShape {
+  sine('Sine'),
+  saw('Saw'),
+  square('Square'),
+  soft('Soft');
+
+  const SpectrumShape(this.label);
+
+  final String label;
+
+  /// The amplitude of each of [count] harmonics for this shape.
+  List<double> amplitudes(int count) => [
+    for (var n = 1; n <= count; n++)
+      switch (this) {
+        SpectrumShape.sine => n == 1 ? 1.0 : 0.0,
+        SpectrumShape.saw => 1 / n,
+        SpectrumShape.square => n.isOdd ? 1 / n : 0.0,
+        SpectrumShape.soft => 1 / (n * n),
+      },
+  ];
+}

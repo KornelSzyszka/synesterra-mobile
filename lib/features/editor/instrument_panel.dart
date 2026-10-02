@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../shared/instrument_figure/instrument_sound_view.dart';
+import '../../shared/instrument_mist/mist_spec.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import 'instrument_editor_view_model.dart';
+import 'spectrum_editor.dart';
 import 'test_sound.dart';
 
 /// Shape the sound of one instrument and see its mist react.
@@ -138,7 +140,58 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SectionLabel('Sound'),
+                        const SectionLabel('Spectrum'),
+                        const SizedBox(height: 8),
+                        SpectrumEditor(
+                          amplitudes: instrument.harmonics,
+                          shaped: shapedHarmonics(
+                            instrument,
+                            fundamentalHz: vm.testHz,
+                          ),
+                          selected: vm.selectedHarmonic,
+                          color: tokens
+                              .layerColors[identityColorIndex(instrument.id)],
+                          onChange: (changes, select) =>
+                              vm.setHarmonics(changes, select: select),
+                          onChangeEnd: vm.auditionSoon,
+                        ),
+                        const SizedBox(height: 4),
+                        _ValueSlider(
+                          key: const Key('spectrum-selected'),
+                          label: 'Harmonic ${vm.selectedHarmonic + 1}',
+                          valueText:
+                              '${(instrument.harmonics[vm.selectedHarmonic] * 100).round()}%',
+                          value: instrument.harmonics[vm.selectedHarmonic],
+                          onChanged: (value) =>
+                              vm.setHarmonic(vm.selectedHarmonic, value),
+                          onChangeEnd: vm.auditionSoon,
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text('Shape'),
+                            for (final shape in SpectrumShape.values)
+                              ActionChip(
+                                key: Key('spectrum-shape-${shape.name}'),
+                                label: Text(shape.label),
+                                onPressed: () {
+                                  vm.applySpectrumShape(shape);
+                                  vm.auditionSoon();
+                                },
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Drag across the bars to draw them. White marks show '
+                          'each harmonic after the EQ. Shapes and Brightness '
+                          'redraw every bar.',
+                          style: TextStyle(color: tokens.muted, fontSize: 12),
+                        ),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             const Expanded(child: Text('Harmonics')),
