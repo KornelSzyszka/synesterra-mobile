@@ -43,7 +43,7 @@ void main() {
 
     for (final key in const [
       'instrument-name',
-      'instrument-mist',
+      'instrument-preview',
       'instrument-pitch',
       'instrument-harmonics',
       'instrument-brightness',
@@ -104,7 +104,7 @@ void main() {
   ) async {
     await openEditor(tester);
 
-    await tester.tap(find.byKey(const Key('instrument-mist')));
+    await tester.tap(find.byKey(const Key('instrument-preview-mist')));
     await tester.pump(const Duration(milliseconds: 30));
     await tester.pump(const Duration(milliseconds: 60));
     await tester.pumpAndSettle();

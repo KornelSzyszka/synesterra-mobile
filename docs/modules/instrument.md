@@ -37,3 +37,7 @@ Instrument { version: 1, id: string, name: string, fundamentalHz: number,
 ## Not here yet
 
 A layer referencing an instrument by id, embedding instruments in a session file and a `SessionDocument` version bump are a separate task that needs a version and migration decision. So are persistence, the library and the UI.
+
+## EQ response and shaped harmonics
+
+`eqResponseDb(eq, hz)` is the combined gain of the three EQ bands at a frequency, in dB, and `shapedHarmonics(instrument)` is each harmonic's amplitude after that gain (0 at or above Nyquist). Both use the same internal `Biquad` as `renderInstrument`, so a picture drawn from them describes what the renderer does (a test compares the predicted gain of a tone with the rendered one). They feed the Figure and Wave views and, later, the EQ curve editor.

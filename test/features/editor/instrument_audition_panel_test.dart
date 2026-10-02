@@ -63,7 +63,7 @@ void main() {
   testWidgets('tapping the mist plays the sound', (tester) async {
     await openEditor(tester);
 
-    await tester.tap(find.byKey(const Key('instrument-mist')));
+    await tester.tap(find.byKey(const Key('instrument-preview-mist')));
     await tester.pumpAndSettle();
 
     expect(audition.played, hasLength(1));

@@ -6,37 +6,19 @@ import 'package:synesterra_core/synesterra_core.dart';
 import '../theme/synesterra_theme.dart';
 import 'mist_spec.dart';
 
-/// The mist of an instrument: soft glowing blobs that follow the recipe.
-/// Interactive mists play their pulse (visual only) when tapped.
+/// A small, static mist of an instrument, for lists and cards. The editor's
+/// interactive preview with its pulse is `InstrumentSoundView`.
 class InstrumentMist extends StatefulWidget {
-  const InstrumentMist({
-    super.key,
-    required this.instrument,
-    this.size = 56,
-    this.interactive = false,
-    this.onTap,
-    this.pulseToken = 0,
-  });
+  const InstrumentMist({super.key, required this.instrument, this.size = 56});
 
   final Instrument instrument;
   final double size;
-  final bool interactive;
-
-  /// Called when an interactive mist is tapped. Without it the tap plays the
-  /// pulse itself; with it the caller decides what a tap does (for example
-  /// play the sound) and pulses the mist by changing [pulseToken].
-  final VoidCallback? onTap;
-
-  /// Every change plays the pulse once.
-  final int pulseToken;
 
   @override
   State<InstrumentMist> createState() => _InstrumentMistState();
 }
 
-class _InstrumentMistState extends State<InstrumentMist>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(vsync: this);
+class _InstrumentMistState extends State<InstrumentMist> {
   late MistSpec _spec = buildMistSpec(widget.instrument);
 
   @override
@@ -45,63 +27,17 @@ class _InstrumentMistState extends State<InstrumentMist>
     if (oldWidget.instrument != widget.instrument) {
       _spec = buildMistSpec(widget.instrument);
     }
-    if (oldWidget.pulseToken != widget.pulseToken) _pulse();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  /// The envelope as a 0..1 level: it rises over the attack, then fades over
-  /// the decay.
-  double _level(double progress) {
-    final attack = _spec.attack.inMicroseconds.toDouble();
-    final total = attack + _spec.decay.inMicroseconds;
-    final elapsed = progress * total;
-    return elapsed < attack
-        ? elapsed / attack
-        : 1 - (elapsed - attack) / (total - attack);
-  }
-
-  void _pulse() {
-    if (MediaQuery.of(context).disableAnimations) return;
-    _controller
-      ..duration = _spec.attack + _spec.decay
-      ..forward(from: 0);
   }
 
   @override
   Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
-    final color = tokens.layerColors[_spec.pitchClass];
-    final mist = RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) => CustomPaint(
+    final color = SynesterraTokens.of(context).layerColors[_spec.pitchClass];
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: CustomPaint(
           size: Size.square(widget.size),
-          painter: MistPainter(
-            spec: _spec,
-            color: color,
-            pulse: _controller.isAnimating ? _level(_controller.value) : 0,
-          ),
+          painter: MistPainter(spec: _spec, color: color),
         ),
-      ),
-    );
-    if (!widget.interactive) return ExcludeSemantics(child: mist);
-    final onTap = widget.onTap ?? _pulse;
-    return Semantics(
-      button: true,
-      label: widget.onTap == null
-          ? 'Mist of ${widget.instrument.name}. Tap to see its pulse.'
-          : 'Mist of ${widget.instrument.name}. Tap to hear it.',
-      onTap: onTap,
-      excludeSemantics: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: mist,
       ),
     );
   }
