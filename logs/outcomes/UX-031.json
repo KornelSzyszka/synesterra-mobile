@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "UX-031",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Navigation shell only. Format, analyze and 26 tests green. Emulator run not reached: the agent AVD crashed (surfaceflinger gralloc assertion, then the host process exited) while the Founder was reinstalling Android Studio. Founder review of the look is pending."
+}

@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "UX-017",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "codex",
+  "model": "gpt-6.1-sol",
+  "reasoning": "low",
+  "success": true,
+  "attempts": 2,
+  "escalation": null,
+  "error_type": "misread-task",
+  "review": null,
+  "ci": null,
+  "evidence": "emulator",
+  "failure_cost": null,
+  "minutes": 15,
+  "tokens": null,
+  "notes": "Initial widget test assumed ListView eagerly built all four slots; replaced it with a scrollable column. Format, analyze, full Flutter tests, Android emulator launch and UI interaction passed. Cross-agent review and CI pending."
+}
