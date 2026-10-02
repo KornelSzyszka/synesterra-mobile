@@ -295,7 +295,6 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     try {
       final saved = _draft.copyWith(name: _name);
       await _repository.save(saved);
-      _draft = saved;
       _baseline = saved;
       _persisted = true;
       return true;
