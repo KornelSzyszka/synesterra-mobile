@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "MOB-036",
+  "prefix": "MOB",
+  "size": "M",
+  "risk": "risk-platform",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "unit",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Instrument library repository, file store service, file and in-memory implementations, bootstrap with path_provider. 15 new tests, format, analyze and full suite green. Stacked on PRs 32 and 35. Not run on a device or emulator. Cross-agent review pending."
+}

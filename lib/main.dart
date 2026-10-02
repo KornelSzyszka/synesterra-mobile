@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:synesterra/app/synesterra_app.dart';
+import 'package:synesterra/app/bootstrap.dart';
 
-void main() {
-  runApp(const SynesterraApp());
+Future<void> main() async {
+  runApp(await createApp());
 }
