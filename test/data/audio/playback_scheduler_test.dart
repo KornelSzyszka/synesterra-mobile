@@ -337,13 +337,9 @@ final class FixedEvents implements BeatEventSource {
 
 final class FixtureEvents implements BeatEventSource {
   FixtureEvents() {
-    final raw =
-        jsonDecode(
-              File(
-                'test/data/audio/fixtures/polyrhythms.json',
-              ).readAsStringSync(),
-            )
-            as Map<String, dynamic>;
+    final raw = jsonDecode(
+      File('test/data/audio/fixtures/polyrhythms.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
     _fixtures = {
       for (final entry in raw.entries)
         entry.key: [
