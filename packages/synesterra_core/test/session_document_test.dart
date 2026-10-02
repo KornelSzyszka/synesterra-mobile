@@ -280,9 +280,8 @@ void main() {
     invalid((d) => stepAt(d)['constructor'] = 1, 'constructor');
     invalid((d) => d['title'] = 'a' * 81, 'title');
     invalid((d) => d['title'] = 'bad\nname', 'title');
-    final negativeZero = jsonEncode(
-      fixture(),
-    ).replaceFirst('"bpm":20', '"bpm":-0');
+    final negativeZero = jsonEncode(fixture())
+        .replaceFirst('"bpm":20', '"bpm":-0');
     expect(parseSessionDocument(negativeZero).isSuccess, false);
     invalid((d) => d['version'] = 3, 'version');
     expect(
@@ -391,9 +390,9 @@ void main() {
         jsonDecode(jsonEncode(envelope)) as Map<String, dynamic>;
     newerEnvelope['envelopeVersion'] = 2;
     newerEnvelope['futureField'] = true;
-    final envelopeError = parseSessionEnvelope(
-      jsonEncode(newerEnvelope),
-    ).errors.single;
+    final envelopeError = parseSessionEnvelope(jsonEncode(newerEnvelope))
+        .errors
+        .single;
     expect(envelopeError.code, 'unsupported_version');
     expect(envelopeError.path, r'$.envelopeVersion');
 
@@ -401,9 +400,9 @@ void main() {
         jsonDecode(jsonEncode(envelope)) as Map<String, dynamic>;
     (newerSession['session'] as Map)['version'] = 3;
     newerSession['futureField'] = true;
-    final sessionError = parseSessionEnvelope(
-      jsonEncode(newerSession),
-    ).errors.single;
+    final sessionError = parseSessionEnvelope(jsonEncode(newerSession))
+        .errors
+        .single;
     expect(sessionError.code, 'unsupported_version');
     expect(sessionError.path, r'$.session.version');
   });
