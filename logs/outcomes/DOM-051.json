@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "DOM-051",
+  "prefix": "DOM",
+  "size": "L",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Instrument without pitch (JSON v2, v1 still loads), tags, test note and chord, library tag filter, audition per frequency. 75 core tests and 215 app tests green locally (app tests with flutter_soloud out of the build graph on this host). A test caught a stale-state bug in the test sound controls, fixed in the code. Looks and sound not seen on a device."
+}

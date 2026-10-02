@@ -11,7 +11,8 @@ class NoopInstrumentAuditionRepository implements InstrumentAuditionRepository {
   ValueListenable<bool> get available => _available;
 
   @override
-  Future<bool> play(Instrument instrument) async => true;
+  Future<bool> play(Instrument instrument, List<double> frequenciesHz) async =>
+      true;
 
   @override
   Future<void> dispose() async {}

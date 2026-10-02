@@ -3,11 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
-import '../../shared/formatting/note_name.dart';
 import '../../shared/instrument_figure/instrument_sound_view.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import 'instrument_editor_view_model.dart';
+import 'test_sound.dart';
 
 /// Shape the sound of one instrument and see its mist react.
 class InstrumentPanel extends StatefulWidget {
@@ -91,6 +91,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                           child: InstrumentSoundView(
                             key: const Key('instrument-preview'),
                             instrument: instrument,
+                            testHz: vm.testHz,
                             size: 220,
                             onTap: vm.audition,
                             pulseToken: vm.auditionCount,
@@ -131,20 +132,13 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  _TestSoundPanel(viewModel: vm),
+                  const SizedBox(height: 16),
                   DesignPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SectionLabel('Sound'),
-                        _ValueSlider(
-                          key: const Key('instrument-pitch'),
-                          label: 'Pitch',
-                          valueText: pitchLabel(instrument.fundamentalHz),
-                          value: _hzToSlider(instrument.fundamentalHz),
-                          onChanged: (t) => vm.setPitchHz(_sliderToHz(t)),
-                          onChangeEnd: vm.auditionSoon,
-                        ),
-                        const SizedBox(height: 8),
                         Row(
                           children: [
                             const Expanded(child: Text('Harmonics')),
@@ -228,6 +222,8 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  _TagsPanel(viewModel: vm),
                 ],
               ),
             ),
@@ -253,15 +249,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
   );
 }
 
-// Pitch and decay feel even on a logarithmic scale.
-double _hzToSlider(double hz) =>
-    math.log(hz / Instrument.minFundamentalHz) /
-    math.log(Instrument.maxFundamentalHz / Instrument.minFundamentalHz);
-
-double _sliderToHz(double t) =>
-    Instrument.minFundamentalHz *
-    math.pow(Instrument.maxFundamentalHz / Instrument.minFundamentalHz, t);
-
+// Decay feels even on a logarithmic scale.
 double _msToSlider(int ms) =>
     math.log(ms / Instrument.minDecayMs) /
     math.log(Instrument.maxDecayMs / Instrument.minDecayMs);
@@ -390,6 +378,264 @@ class _SaveBar extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Picks what is played to test the instrument. It is not part of the
+/// instrument: it is not saved and never marks the instrument as changed.
+class _TestSoundPanel extends StatelessWidget {
+  const _TestSoundPanel({required this.viewModel});
+
+  final InstrumentEditorViewModel viewModel;
+
+  static const _names = [
+    'C',
+    'C#',
+    'D',
+    'D#',
+    'E',
+    'F',
+    'F#',
+    'G',
+    'G#',
+    'A',
+    'A#',
+    'B',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = SynesterraTokens.of(context);
+    final sound = viewModel.testSound;
+    final isChord = sound is TestChord;
+    final pitchClass = sound.rootMidi % 12;
+    final octave = sound.rootMidi ~/ 12 - 1;
+    final quality = sound is TestChord ? sound.quality : ChordQuality.major;
+
+    // Reads the current test sound when a control is used, not the one the
+    // widget was built with, so quick successive changes build on each other.
+    void choose({
+      bool? chord,
+      int? pitchClass,
+      int? octave,
+      ChordQuality? quality,
+    }) {
+      final current = viewModel.testSound;
+      final midi =
+          ((octave ?? current.rootMidi ~/ 12 - 1) + 1) * 12 +
+          (pitchClass ?? current.rootMidi % 12);
+      final newQuality =
+          quality ??
+          (current is TestChord ? current.quality : ChordQuality.major);
+      viewModel.setTestSound(
+        (chord ?? current is TestChord)
+            ? TestChord(midi, newQuality)
+            : TestNote(midi),
+      );
+    }
+
+    return DesignPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionLabel('Test sound'),
+          const SizedBox(height: 4),
+          Text(
+            'Only for hearing the instrument. It is not saved with it.',
+            style: TextStyle(color: tokens.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          SegmentedButton<bool>(
+            key: const Key('test-mode'),
+            showSelectedIcon: false,
+            style: const ButtonStyle(
+              minimumSize: WidgetStatePropertyAll(Size(0, 48)),
+            ),
+            segments: const [
+              ButtonSegment(value: false, label: Text('Note')),
+              ButtonSegment(value: true, label: Text('Chord')),
+            ],
+            selected: {isChord},
+            onSelectionChanged: (selection) => choose(chord: selection.single),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (var i = 0; i < _names.length; i++)
+                ChoiceChip(
+                  key: Key('test-root-$i'),
+                  label: Text(_names[i]),
+                  selected: i == pitchClass,
+                  onSelected: (_) => choose(pitchClass: i),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Expanded(child: Text('Octave')),
+              NumberStepper(
+                key: const Key('test-octave'),
+                value: octave,
+                min: 1,
+                max: 7,
+                label: 'octave',
+                color: tokens.text,
+                onChanged: (value) => choose(octave: value),
+              ),
+            ],
+          ),
+          if (isChord) ...[
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final option in ChordQuality.values)
+                  ChoiceChip(
+                    key: Key('test-quality-${option.name}'),
+                    label: Text(option.label),
+                    selected: option == quality,
+                    onSelected: (_) => choose(quality: option),
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'Plays ${sound.label}',
+            key: const Key('test-label'),
+            style: TextStyle(color: tokens.muted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tags are saved with the instrument and help find it in the library.
+class _TagsPanel extends StatefulWidget {
+  const _TagsPanel({required this.viewModel});
+
+  final InstrumentEditorViewModel viewModel;
+
+  @override
+  State<_TagsPanel> createState() => _TagsPanelState();
+}
+
+class _TagsPanelState extends State<_TagsPanel> {
+  final _input = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _input.dispose();
+    super.dispose();
+  }
+
+  void _add(String raw) {
+    if (raw.trim().isEmpty) return;
+    final vm = widget.viewModel;
+    final normalized = Instrument.normalizeTag(raw);
+    if (vm.addTag(raw)) {
+      _input.clear();
+      setState(() => _error = null);
+    } else if (!vm.canAddTag) {
+      setState(
+        () =>
+            _error = 'An instrument can have up to ${Instrument.maxTags} tags.',
+      );
+    } else if (normalized != null && vm.tags.contains(normalized)) {
+      setState(() => _error = 'That tag is already there.');
+    } else {
+      setState(
+        () => _error =
+            'Use letters, digits, spaces or dashes, up to 24 characters.',
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = SynesterraTokens.of(context);
+    final vm = widget.viewModel;
+    final suggestions = [
+      for (final tag in suggestedInstrumentTags)
+        if (!vm.tags.contains(tag)) tag,
+    ];
+    return DesignPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionLabel('Tags'),
+          const SizedBox(height: 4),
+          Text(
+            'Labels to find this instrument again in the library.',
+            style: TextStyle(color: tokens.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          if (vm.tags.isEmpty)
+            Text('No tags yet.', style: TextStyle(color: tokens.muted))
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final tag in vm.tags)
+                  InputChip(
+                    key: Key('tag-$tag'),
+                    label: Text(tag),
+                    deleteButtonTooltipMessage: 'Remove tag $tag',
+                    onDeleted: () => vm.removeTag(tag),
+                  ),
+              ],
+            ),
+          if (vm.canAddTag) ...[
+            const SizedBox(height: 8),
+            TextField(
+              key: const Key('instrument-tag-input'),
+              controller: _input,
+              textInputAction: TextInputAction.done,
+              onSubmitted: _add,
+              decoration: InputDecoration(
+                labelText: 'Add a tag',
+                errorText: _error,
+                suffixIcon: IconButton(
+                  key: const Key('instrument-tag-add'),
+                  tooltip: 'Add tag',
+                  icon: const Icon(Icons.add),
+                  onPressed: () => _add(_input.text),
+                ),
+              ),
+            ),
+            if (suggestions.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final tag in suggestions)
+                    ActionChip(
+                      key: Key('suggest-$tag'),
+                      label: Text(tag),
+                      onPressed: () => vm.addTag(tag),
+                    ),
+                ],
+              ),
+            ],
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'That is the most tags an instrument can have.',
+                style: TextStyle(color: tokens.muted, fontSize: 12),
+              ),
+            ),
+        ],
       ),
     );
   }

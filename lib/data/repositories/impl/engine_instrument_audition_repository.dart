@@ -7,22 +7,31 @@ import '../../audio/audition_engine.dart';
 import '../../audio/wav_encoder.dart';
 import '../instrument_audition_repository.dart';
 
-typedef InstrumentRender = Future<Float32List> Function(Instrument instrument);
+/// Renders [instrument] at [fundamentalHz] to mono samples.
+typedef InstrumentRender = Future<Float32List> Function(
+  Instrument instrument,
+  double fundamentalHz,
+);
 
 /// Renders in a background isolate so a heavy recipe never blocks the UI.
-Future<Float32List> renderInIsolate(Instrument instrument) =>
-    Isolate.run(() => renderInstrument(instrument));
+Future<Float32List> renderInIsolate(Instrument instrument, double hz) =>
+    Isolate.run(() => renderInstrument(instrument, fundamentalHz: hz));
 
-/// Audition on top of any [AuditionEngine]: renders the recipe to PCM, loads
-/// it as a WAV, keeps recent sounds so an unchanged recipe is not rendered
-/// again, and lets the newest request win.
+/// What makes one buffer: the sound-defining part of the recipe at one pitch.
+/// Name, id and tags do not change the sound, so they are not in the key.
+typedef _BufferKey = ({Instrument sound, double hz});
+
+/// Audition on top of any [AuditionEngine]: renders the recipe at each
+/// requested pitch to PCM, loads each as a WAV, keeps recent buffers so an
+/// unchanged recipe at an unchanged pitch is not rendered again, plays all
+/// the notes of a chord together, and lets the newest request win.
 class EngineInstrumentAuditionRepository
     implements InstrumentAuditionRepository {
   EngineInstrumentAuditionRepository(
     this._engine, {
     this._render = renderInIsolate,
     this.sampleRate = 48000,
-    this.cacheSize = 16,
+    this.cacheSize = 24,
     this.volume = 0.8,
   });
 
@@ -31,36 +40,50 @@ class EngineInstrumentAuditionRepository
   final int sampleRate;
   final int cacheSize;
 
-  /// Leaves headroom so a full-scale recipe does not clip.
+  /// Volume of a single note. A chord is scaled down by its note count so
+  /// that several notes together do not clip.
   final double volume;
 
   final _available = ValueNotifier<bool>(true);
   // Insertion order is recency order: the first entry is the oldest.
-  final _sources = <Instrument, Future<AuditionSource>>{};
+  final _sources = <_BufferKey, Future<AuditionSource>>{};
   int _latest = 0;
   int _loaded = 0;
-  AuditionVoice? _voice;
+  List<AuditionVoice> _voices = const [];
 
   @override
   ValueListenable<bool> get available => _available;
 
-  /// Name and id do not change the sound, so they must not change the key.
-  Instrument _key(Instrument instrument) =>
-      instrument.copyWith(id: 'audition', name: 'audition');
+  _BufferKey _key(Instrument instrument, double hz) => (
+    sound: instrument.copyWith(
+      id: 'audition',
+      name: 'audition',
+      tags: const [],
+    ),
+    hz: hz,
+  );
 
   @override
-  Future<bool> play(Instrument instrument) async {
+  Future<bool> play(Instrument instrument, List<double> frequenciesHz) async {
+    if (frequenciesHz.isEmpty) return false;
     final request = ++_latest;
     try {
       await _engine.start();
-      final source = await _source(instrument);
+      final sources = await Future.wait([
+        for (final hz in frequenciesHz) _source(instrument, hz),
+      ]);
       if (request != _latest) return false;
-      final previous = _voice;
-      _voice = null;
-      if (previous != null) await _engine.stop(previous);
+      final previous = _voices;
+      _voices = const [];
+      for (final voice in previous) {
+        await _engine.stop(voice);
+      }
       // Another tap may have arrived while the old sound was stopping.
       if (request != _latest) return false;
-      _voice = _engine.play(source, volume: volume);
+      final each = volume / sources.length;
+      _voices = [
+        for (final source in sources) _engine.play(source, volume: each),
+      ];
       _available.value = true;
       return true;
     } catch (_) {
@@ -69,14 +92,14 @@ class EngineInstrumentAuditionRepository
     }
   }
 
-  Future<AuditionSource> _source(Instrument instrument) {
-    final key = _key(instrument);
+  Future<AuditionSource> _source(Instrument instrument, double hz) {
+    final key = _key(instrument, hz);
     final cached = _sources.remove(key);
     if (cached != null) {
       _sources[key] = cached; // most recent again
       return cached;
     }
-    final future = _load(instrument);
+    final future = _load(instrument, hz);
     _sources[key] = future;
     // A failed load must not stay cached, or the next tap would fail too.
     future.then(
@@ -93,8 +116,8 @@ class EngineInstrumentAuditionRepository
     return future;
   }
 
-  Future<AuditionSource> _load(Instrument instrument) async {
-    final samples = await _render(instrument);
+  Future<AuditionSource> _load(Instrument instrument, double hz) async {
+    final samples = await _render(instrument, hz);
     final wav = encodeWav16(samples, sampleRate: sampleRate);
     return _engine.load('audition-${_loaded++}', wav);
   }
@@ -104,10 +127,12 @@ class EngineInstrumentAuditionRepository
     _latest++;
     final sources = _sources.values.toList();
     _sources.clear();
-    final voice = _voice;
-    _voice = null;
+    final voices = _voices;
+    _voices = const [];
     try {
-      if (voice != null) await _engine.stop(voice);
+      for (final voice in voices) {
+        await _engine.stop(voice);
+      }
       for (final source in sources) {
         await _engine.unload(await source);
       }

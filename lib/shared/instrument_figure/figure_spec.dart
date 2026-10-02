@@ -3,15 +3,20 @@ import 'dart:ui' show Offset;
 
 import 'package:synesterra_core/synesterra_core.dart';
 
-/// The figure of a sound: a closed curve `z(t) = sum s_n * e^(i * n * t)` for
+/// The figure of the instrument played at [fundamentalHz] (the EQ acts on
+/// frequencies, so the figure depends on the note it is tested with): a closed curve `z(t) = sum s_n * e^(i * n * t)` for
 /// `t` in 0..2π, where `s_n` is the amplitude of harmonic n after EQ.
 ///
 /// A pure tone is a circle. Harmonic n adds n-1 lobes around the fundamental's
 /// circle (the fourth gives three), so a bright spectrum is spiky and a dark
 /// one smooth. The curve is scaled so its farthest point is
 /// at distance 1 from the centre, and its last point equals its first.
-List<Offset> buildFigure(Instrument instrument, {int points = 720}) {
-  final shaped = shapedHarmonics(instrument);
+List<Offset> buildFigure(
+  Instrument instrument, {
+  required double fundamentalHz,
+  int points = 720,
+}) {
+  final shaped = shapedHarmonics(instrument, fundamentalHz: fundamentalHz);
   final curve = <Offset>[];
   var farthest = 0.0;
   for (var i = 0; i <= points; i++) {
@@ -30,10 +35,15 @@ List<Offset> buildFigure(Instrument instrument, {int points = 720}) {
   return [for (final point in curve) point / farthest];
 }
 
-/// One period of the waveform `sum s_n * sin(n * t)`, scaled to -1..1. Its
+/// One period of the waveform `sum s_n * sin(n * t)` of the instrument played
+/// at [fundamentalHz], scaled to -1..1. Its
 /// last value equals its first.
-List<double> buildPeriodWave(Instrument instrument, {int points = 256}) {
-  final shaped = shapedHarmonics(instrument);
+List<double> buildPeriodWave(
+  Instrument instrument, {
+  required double fundamentalHz,
+  int points = 256,
+}) {
+  final shaped = shapedHarmonics(instrument, fundamentalHz: fundamentalHz);
   final wave = <double>[];
   var largest = 0.0;
   for (var i = 0; i <= points; i++) {

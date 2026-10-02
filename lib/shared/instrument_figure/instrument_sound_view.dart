@@ -24,12 +24,17 @@ class InstrumentSoundView extends StatefulWidget {
   const InstrumentSoundView({
     super.key,
     required this.instrument,
+    required this.testHz,
     this.size = 220,
     this.onTap,
     this.pulseToken = 0,
   });
 
   final Instrument instrument;
+
+  /// The root frequency of the test sound: the Figure and Wave views show
+  /// the instrument as it sounds at this pitch.
+  final double testHz;
   final double size;
   final VoidCallback? onTap;
   final int pulseToken;
@@ -51,7 +56,8 @@ class _InstrumentSoundViewState extends State<InstrumentSoundView>
   @override
   void didUpdateWidget(covariant InstrumentSoundView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.instrument != widget.instrument) {
+    if (oldWidget.instrument != widget.instrument ||
+        oldWidget.testHz != widget.testHz) {
       _mist = buildMistSpec(widget.instrument);
       _figure = null;
       _wave = null;
@@ -86,7 +92,7 @@ class _InstrumentSoundViewState extends State<InstrumentSoundView>
   @override
   Widget build(BuildContext context) {
     final tokens = SynesterraTokens.of(context);
-    final color = tokens.layerColors[_mist.pitchClass];
+    final color = tokens.layerColors[_mist.colorIndex];
     final onTap = widget.onTap ?? _pulse;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -132,12 +138,18 @@ class _InstrumentSoundViewState extends State<InstrumentSoundView>
                         pulse: pulse,
                       ),
                       SoundView.figure => FigurePainter(
-                        curve: _figure ??= buildFigure(widget.instrument),
+                        curve: _figure ??= buildFigure(
+                          widget.instrument,
+                          fundamentalHz: widget.testHz,
+                        ),
                         color: color,
                         pulse: pulse,
                       ),
                       SoundView.wave => WavePainter(
-                        wave: _wave ??= buildPeriodWave(widget.instrument),
+                        wave: _wave ??= buildPeriodWave(
+                          widget.instrument,
+                          fundamentalHz: widget.testHz,
+                        ),
                         color: color,
                         axisColor: tokens.border,
                         pulse: pulse,

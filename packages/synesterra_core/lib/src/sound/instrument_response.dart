@@ -22,14 +22,19 @@ double eqResponseDb(InstrumentEq eq, double hz, {int sampleRate = 48000}) =>
       sampleRate: sampleRate,
     ).magnitudeDb(hz, sampleRate);
 
-/// The amplitude of each harmonic as it sounds: the recipe's amplitude times
-/// the EQ gain at that harmonic's frequency. A harmonic at or above Nyquist
-/// is 0, as in the renderer.
-List<double> shapedHarmonics(Instrument instrument, {int sampleRate = 48000}) {
+/// The amplitude of each harmonic as it sounds when the instrument plays at
+/// [fundamentalHz]: the recipe's amplitude times the EQ gain at that
+/// harmonic's frequency. A harmonic at or above Nyquist is 0, as in the
+/// renderer. The EQ acts on frequencies, so the result depends on the pitch.
+List<double> shapedHarmonics(
+  Instrument instrument, {
+  required double fundamentalHz,
+  int sampleRate = 48000,
+}) {
   final nyquist = sampleRate / 2;
   return [
     for (var n = 0; n < instrument.harmonics.length; n++)
-      if (instrument.fundamentalHz * (n + 1) >= nyquist)
+      if (fundamentalHz * (n + 1) >= nyquist)
         0.0
       else
         instrument.harmonics[n] *
@@ -37,7 +42,7 @@ List<double> shapedHarmonics(Instrument instrument, {int sampleRate = 48000}) {
               10,
               eqResponseDb(
                     instrument.eq,
-                    instrument.fundamentalHz * (n + 1),
+                    fundamentalHz * (n + 1),
                     sampleRate: sampleRate,
                   ) /
                   20,

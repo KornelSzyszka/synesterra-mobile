@@ -11,7 +11,6 @@ Instrument instrument(String id, String name, {int decayMs = 200}) =>
     Instrument(
       id: id,
       name: name,
-      fundamentalHz: 440,
       harmonics: const [1, 0.5],
       attackMs: 2,
       decayMs: decayMs,
@@ -145,5 +144,73 @@ void main() {
         expect(memory.snapshot.value.instruments, hasLength(1));
       },
     );
+  });
+
+  group('files written before tags and without a pitch', () {
+    test(
+      'a version 1 file (with a pitch) still loads, without the pitch',
+      () async {
+        await directory.create(recursive: true);
+        await file('old.json').writeAsString(
+          jsonEncode({
+            'version': 1,
+            'id': 'old',
+            'name': 'Old click',
+            'fundamentalHz': 800.0,
+            'harmonics': [1.0, 0.5],
+            'envelope': {'attackMs': 1, 'decayMs': 70},
+            'eq': {'lowDb': 0.0, 'midDb': 0.0, 'highDb': 0.0},
+          }),
+        );
+
+        final reopened = open();
+        await reopened.load();
+        expect(reopened.snapshot.value.instruments.single.name, 'Old click');
+        expect(reopened.snapshot.value.instruments.single.tags, isEmpty);
+        expect(reopened.snapshot.value.unreadableCount, 0);
+      },
+    );
+
+    test(
+      'loading does not rewrite the old file; saving writes version 2',
+      () async {
+        await directory.create(recursive: true);
+        final old = jsonEncode({
+          'version': 1,
+          'id': 'old',
+          'name': 'Old click',
+          'fundamentalHz': 800.0,
+          'harmonics': [1.0, 0.5],
+          'envelope': {'attackMs': 1, 'decayMs': 70},
+          'eq': {'lowDb': 0.0, 'midDb': 0.0, 'highDb': 0.0},
+        });
+        await file('old.json').writeAsString(old);
+
+        final reopened = open();
+        await reopened.load();
+        expect(await file('old.json').readAsString(), old);
+
+        await reopened.save(
+          reopened.snapshot.value.instruments.single.copyWith(tags: ['click']),
+        );
+        final written =
+            jsonDecode(await file('old.json').readAsString()) as Map;
+        expect(written['version'], 2);
+        expect(written['tags'], ['click']);
+        expect(written.containsKey('fundamentalHz'), isFalse);
+      },
+    );
+
+    test('tags survive a save and load', () async {
+      await repository.save(
+        instrument('a', 'A').copyWith(tags: ['bell', 'metal']),
+      );
+      final reopened = open();
+      await reopened.load();
+      expect(reopened.snapshot.value.instruments.single.tags, [
+        'bell',
+        'metal',
+      ]);
+    });
   });
 }

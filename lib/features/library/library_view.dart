@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../data/repositories/instrument_library_repository.dart';
-import '../../shared/formatting/note_name.dart';
 import '../../shared/instrument_mist/instrument_mist.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
@@ -52,65 +51,113 @@ class LibraryView extends StatelessWidget {
   }
 }
 
-class _InstrumentsTab extends StatelessWidget {
+class _InstrumentsTab extends StatefulWidget {
   const _InstrumentsTab({required this.library, required this.onOpen});
 
   final InstrumentLibraryRepository library;
   final OpenInstrument onOpen;
 
   @override
+  State<_InstrumentsTab> createState() => _InstrumentsTabState();
+}
+
+class _InstrumentsTabState extends State<_InstrumentsTab> {
+  /// The tag the list is filtered by; null shows everything.
+  String? _tag;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = SynesterraTokens.of(context);
     return ValueListenableBuilder<InstrumentLibrarySnapshot>(
-      valueListenable: library.snapshot,
-      builder: (context, snapshot, _) => ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (snapshot.unreadableCount > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                key: const Key('unreadable-note'),
-                '${snapshot.unreadableCount} stored '
-                '${snapshot.unreadableCount == 1 ? 'file' : 'files'} could '
-                'not be read. They were left untouched.',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+      valueListenable: widget.library.snapshot,
+      builder: (context, snapshot, _) {
+        final tags = {
+          for (final i in [...snapshot.instruments, ...factoryInstruments])
+            ...i.tags,
+        }.toList()..sort();
+        // A filter nobody has any more (the last such instrument was deleted
+        // or retagged) falls back to showing everything.
+        final tag = tags.contains(_tag) ? _tag : null;
+        bool matches(Instrument i) => tag == null || i.tags.contains(tag);
+        final mine = snapshot.instruments.where(matches).toList();
+        final presets = factoryInstruments.where(matches).toList();
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (snapshot.unreadableCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  key: const Key('unreadable-note'),
+                  '${snapshot.unreadableCount} stored '
+                  '${snapshot.unreadableCount == 1 ? 'file' : 'files'} could '
+                  'not be read. They were left untouched.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
-            ),
-          const SectionLabel('My instruments'),
-          const SizedBox(height: 8),
-          if (snapshot.instruments.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                'No instruments yet. Save one from the Editor.',
-                style: TextStyle(color: tokens.muted),
+            if (tags.isNotEmpty) ...[
+              const SectionLabel('Filter by tag'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  FilterChip(
+                    key: const Key('filter-all'),
+                    label: const Text('All'),
+                    selected: tag == null,
+                    onSelected: (_) => setState(() => _tag = null),
+                  ),
+                  for (final option in tags)
+                    FilterChip(
+                      key: Key('filter-$option'),
+                      label: Text(option),
+                      selected: option == tag,
+                      onSelected: (_) => setState(() => _tag = option),
+                    ),
+                ],
               ),
-            ),
-          for (final instrument in snapshot.instruments)
-            _InstrumentTile(
-              key: Key('own-${instrument.id}'),
-              instrument: instrument,
-              onTap: () => onOpen(instrument, true),
-              onDelete: () => _delete(context, instrument),
-            ),
-          const SizedBox(height: 16),
-          const SectionLabel('Factory'),
-          const SizedBox(height: 8),
-          for (final preset in factoryInstruments)
-            _InstrumentTile(
-              key: Key('factory-tile-${preset.id}'),
-              instrument: preset,
-              onTap: () => onOpen(preset, false),
-            ),
-        ],
-      ),
+              const SizedBox(height: 16),
+            ],
+            const SectionLabel('My instruments'),
+            const SizedBox(height: 8),
+            if (mine.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  tag == null
+                      ? 'No instruments yet. Save one from the Editor.'
+                      : 'None of your instruments has the tag "$tag".',
+                  style: TextStyle(color: tokens.muted),
+                ),
+              ),
+            for (final instrument in mine)
+              _InstrumentTile(
+                key: Key('own-${instrument.id}'),
+                instrument: instrument,
+                onTap: () => widget.onOpen(instrument, true),
+                onDelete: () => _delete(context, instrument),
+              ),
+            if (presets.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const SectionLabel('Factory'),
+              const SizedBox(height: 8),
+              for (final preset in presets)
+                _InstrumentTile(
+                  key: Key('factory-tile-${preset.id}'),
+                  instrument: preset,
+                  onTap: () => widget.onOpen(preset, false),
+                ),
+            ],
+          ],
+        );
+      },
     );
   }
 
   Future<void> _delete(BuildContext context, Instrument instrument) async {
     final messenger = ScaffoldMessenger.of(context);
-    await library.delete(instrument.id);
+    await widget.library.delete(instrument.id);
     messenger
       ..clearSnackBars()
       ..showSnackBar(
@@ -118,7 +165,7 @@ class _InstrumentsTab extends StatelessWidget {
           content: Text('Deleted "${instrument.name}"'),
           action: SnackBarAction(
             label: 'Undo',
-            onPressed: () => library.save(instrument),
+            onPressed: () => widget.library.save(instrument),
           ),
         ),
       );
@@ -167,11 +214,19 @@ class _InstrumentTile extends StatelessWidget {
                       children: [
                         Text(instrument.name),
                         Text(
-                          '${pitchLabel(instrument.fundamentalHz)} · '
                           '${instrument.harmonics.length} harmonics · '
                           '${instrument.decayMs} ms',
                           style: TextStyle(color: tokens.muted, fontSize: 12),
                         ),
+                        if (instrument.tags.isNotEmpty)
+                          Text(
+                            key: Key('tags-${instrument.id}'),
+                            instrument.tags.join(' · '),
+                            style: TextStyle(
+                              color: tokens.accent,
+                              fontSize: 12,
+                            ),
+                          ),
                       ],
                     ),
                   ),

@@ -31,7 +31,7 @@ class _InstrumentMistState extends State<InstrumentMist> {
 
   @override
   Widget build(BuildContext context) {
-    final color = SynesterraTokens.of(context).layerColors[_spec.pitchClass];
+    final color = SynesterraTokens.of(context).layerColors[_spec.colorIndex];
     return ExcludeSemantics(
       child: RepaintBoundary(
         child: CustomPaint(
