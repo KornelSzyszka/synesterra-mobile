@@ -478,9 +478,8 @@ void _scan(String source) {
       depth--;
     }
     if (char == '-' && i + 1 < source.length && source[i + 1] == '0') {
-      final match = RegExp(
-        r'^-0(?:\.\d+)?(?:[eE][+-]?\d+)?',
-      ).firstMatch(source.substring(i));
+      final match = RegExp(r'^-0(?:\.\d+)?(?:[eE][+-]?\d+)?')
+          .firstMatch(source.substring(i));
       if (match != null) {
         final number = match.group(0)!;
         if (num.tryParse(number) == 0) {

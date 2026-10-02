@@ -5,14 +5,13 @@ import 'package:synesterra_core/synesterra_core.dart';
 
 Instrument instrument({
   List<double> harmonics = const [1, 0.5, 0.25, 0.12],
-  double hz = 440,
+  String id = 'mist-test',
   InstrumentEq? eq,
   int attackMs = 2,
   int decayMs = 200,
 }) => Instrument(
-  id: 'mist-test',
+  id: id,
   name: 'Mist test',
-  fundamentalHz: hz,
   harmonics: harmonics,
   attackMs: attackMs,
   decayMs: decayMs,
@@ -89,12 +88,14 @@ void main() {
 
     test('mid EQ scales the opacity of the lobes', () {
       final flat = buildMistSpec(instrument()).lobes.first.opacity;
-      final boosted = buildMistSpec(
-        instrument(eq: InstrumentEq(midDb: 12)),
-      ).lobes.first.opacity;
-      final cut = buildMistSpec(
-        instrument(eq: InstrumentEq(midDb: -12)),
-      ).lobes.first.opacity;
+      final boosted = buildMistSpec(instrument(eq: InstrumentEq(midDb: 12)))
+          .lobes
+          .first
+          .opacity;
+      final cut = buildMistSpec(instrument(eq: InstrumentEq(midDb: -12)))
+          .lobes
+          .first
+          .opacity;
       expect(boosted, greaterThan(flat));
       expect(cut, lessThan(flat));
     });
@@ -139,11 +140,38 @@ void main() {
       );
     });
 
-    test('the colour index is the pitch class of the fundamental', () {
-      expect(buildMistSpec(instrument(hz: 440)).pitchClass, 9);
-      expect(buildMistSpec(instrument(hz: 880)).pitchClass, 9);
-      expect(buildMistSpec(instrument(hz: 261.63)).pitchClass, 0);
+    test('the colour comes from the id, never from a pitch', () {
+      expect(buildMistSpec(instrument()).colorIndex, 3);
+      expect(buildMistSpec(instrument(id: 'factory-wood')).colorIndex, 9);
+      expect(buildMistSpec(instrument(id: 'factory-sine')).colorIndex, 5);
+      expect(buildMistSpec(instrument(id: 'factory-bell')).colorIndex, 1);
     });
+
+    test('the colour does not change when the recipe changes', () {
+      final base = buildMistSpec(instrument(id: 'keep-me')).colorIndex;
+      expect(
+        buildMistSpec(instrument(id: 'keep-me', decayMs: 900)).colorIndex,
+        base,
+      );
+      expect(
+        buildMistSpec(instrument(id: 'keep-me', eq: InstrumentEq(highDb: 12)))
+            .colorIndex,
+        base,
+      );
+    });
+
+    test(
+      'identityColorIndex is stable, in range and spreads over the palette',
+      () {
+        expect(identityColorIndex(''), 1);
+        final colours = {
+          for (var i = 0; i < 100; i++) identityColorIndex('inst-$i'),
+        };
+        expect(colours.every((c) => c >= 0 && c < 12), isTrue);
+        expect(colours.length, 12, reason: '100 ids should use every colour');
+        expect(identityColorIndex('x'), identityColorIndex('x'));
+      },
+    );
   });
 
   group('note names', () {

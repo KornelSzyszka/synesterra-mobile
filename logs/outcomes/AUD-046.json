@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "AUD-046",
+  "prefix": "AUD",
+  "size": "M",
+  "risk": "risk-platform",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Instrument audition: WAV encoder, engine port with a flutter_soloud adapter, cached repository with newest-wins, Play control and release-triggered audition. 128 tests green locally only with flutter_soloud removed from the build graph: on this Windows host flutter test needs a Visual Studio C++ toolchain once the plugin is a dependency (native build hook). CI on Linux is the check for the plugin build. Not heard on a device; sound quality is a Founder listening check."
+}

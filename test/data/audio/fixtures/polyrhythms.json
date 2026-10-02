@@ -1,0 +1,20 @@
+{
+  "3:2": [
+    {"beat": 0, "eventId": 1, "sound": "three"},
+    {"beat": 0, "eventId": 2, "sound": "two"},
+    {"beat": 1280, "eventId": 3, "sound": "three"},
+    {"beat": 1920, "eventId": 4, "sound": "two"},
+    {"beat": 2560, "eventId": 5, "sound": "three"}
+  ],
+  "5:4": [
+    {"beat": 0, "eventId": 11, "sound": "five"},
+    {"beat": 0, "eventId": 12, "sound": "four"},
+    {"beat": 768, "eventId": 13, "sound": "five"},
+    {"beat": 960, "eventId": 14, "sound": "four"},
+    {"beat": 1536, "eventId": 15, "sound": "five"},
+    {"beat": 1920, "eventId": 16, "sound": "four"},
+    {"beat": 2304, "eventId": 17, "sound": "five"},
+    {"beat": 2880, "eventId": 18, "sound": "four"},
+    {"beat": 3072, "eventId": 19, "sound": "five"}
+  ]
+}

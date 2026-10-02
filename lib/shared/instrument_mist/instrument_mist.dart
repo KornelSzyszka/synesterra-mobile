@@ -6,27 +6,19 @@ import 'package:synesterra_core/synesterra_core.dart';
 import '../theme/synesterra_theme.dart';
 import 'mist_spec.dart';
 
-/// The mist of an instrument: soft glowing blobs that follow the recipe.
-/// Interactive mists play their pulse (visual only) when tapped.
+/// A small, static mist of an instrument, for lists and cards. The editor's
+/// interactive preview with its pulse is `InstrumentSoundView`.
 class InstrumentMist extends StatefulWidget {
-  const InstrumentMist({
-    super.key,
-    required this.instrument,
-    this.size = 56,
-    this.interactive = false,
-  });
+  const InstrumentMist({super.key, required this.instrument, this.size = 56});
 
   final Instrument instrument;
   final double size;
-  final bool interactive;
 
   @override
   State<InstrumentMist> createState() => _InstrumentMistState();
 }
 
-class _InstrumentMistState extends State<InstrumentMist>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(vsync: this);
+class _InstrumentMistState extends State<InstrumentMist> {
   late MistSpec _spec = buildMistSpec(widget.instrument);
 
   @override
@@ -38,56 +30,14 @@ class _InstrumentMistState extends State<InstrumentMist>
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  /// The envelope as a 0..1 level: it rises over the attack, then fades over
-  /// the decay.
-  double _level(double progress) {
-    final attack = _spec.attack.inMicroseconds.toDouble();
-    final total = attack + _spec.decay.inMicroseconds;
-    final elapsed = progress * total;
-    return elapsed < attack
-        ? elapsed / attack
-        : 1 - (elapsed - attack) / (total - attack);
-  }
-
-  void _pulse() {
-    if (MediaQuery.of(context).disableAnimations) return;
-    _controller
-      ..duration = _spec.attack + _spec.decay
-      ..forward(from: 0);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
-    final color = tokens.layerColors[_spec.pitchClass];
-    final mist = RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) => CustomPaint(
+    final color = SynesterraTokens.of(context).layerColors[_spec.colorIndex];
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: CustomPaint(
           size: Size.square(widget.size),
-          painter: MistPainter(
-            spec: _spec,
-            color: color,
-            pulse: _controller.isAnimating ? _level(_controller.value) : 0,
-          ),
+          painter: MistPainter(spec: _spec, color: color),
         ),
-      ),
-    );
-    if (!widget.interactive) return ExcludeSemantics(child: mist);
-    return Semantics(
-      button: true,
-      label: 'Mist of ${widget.instrument.name}. Tap to see its pulse.',
-      onTap: _pulse,
-      excludeSemantics: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _pulse,
-        child: mist,
       ),
     );
   }

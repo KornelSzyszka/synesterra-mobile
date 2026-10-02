@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-02",
+  "task": "DOM-041",
+  "prefix": "DOM",
+  "size": "M",
+  "risk": "none",
+  "agent": "codex",
+  "model": "gpt-6.1-sol",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "unit",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Pure Dart Instrument PCM renderer with additive harmonics, RBJ EQ, envelope, Nyquist handling and peak normalisation. Core unit tests, architecture tests, analyze and format pass locally; CI and cross-agent review are pending."
+}
