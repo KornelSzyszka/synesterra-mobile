@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/shared/theme/design_scale.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
