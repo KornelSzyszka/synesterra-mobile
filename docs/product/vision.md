@@ -21,7 +21,7 @@ flowchart LR
     loop -->|"repeated in"| arrangement
 ```
 
-- **Instrument** (Founder): a sound preset with EQ and the number and strength of harmonics.
+- **Instrument** (Founder): a reusable timbre preset with EQ, the number and strength of harmonics, an envelope and tags. It has **no pitch**: it is the preset for the clicks of a loop layer, and the layer chooses the pitch. In the editor a note, a chord or later a progression is picked only to test how it sounds; that is not stored in the instrument (Founder, 2026-10-02).
 - **Loop** (Founder): layers built on the polyrhythmic metronome; every layer has an instrument.
 - **Arrangement** (Founder): several loops in sequence or a structure built from loops, used as a backing track.
 - Each of the three has its own library (Founder).
@@ -71,7 +71,7 @@ flowchart TD
 
 ## Instrument
 
-- Recipe v1 (Proposal): pitch, N harmonics with an amplitude each, an envelope (attack, decay), 3-band EQ. Noise and a pitch drop (kick, snare) come in v2. Without an envelope every sound is a sustained tone, so one is required for percussion.
+- Recipe v1 (Proposal): N harmonics with an amplitude each, an envelope (attack, decay), 3-band EQ, tags (no pitch). Noise and a pitch drop (kick, snare) come in v2. Without an envelope every sound is a sustained tone, so one is required for percussion.
 - Library of instruments, with factory presets for the three web sounds `wood`, `sine` and `bell`. Web files map onto them.
 - Rendered once per edit or load into a PCM buffer; the engine plays buffers. This keeps real-time audio simple and is a requirement to record in ADR 0002 (#16). Until that ADR is decided, the Instrument panel has no audition sound; it edits, previews the mist and saves.
 - Scope in v1 is rhythm layers only. The drone keeps its current model (Proposal).

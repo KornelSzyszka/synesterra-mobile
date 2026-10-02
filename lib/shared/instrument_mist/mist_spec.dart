@@ -46,7 +46,7 @@ class MistLobe {
 @immutable
 class MistSpec {
   const MistSpec({
-    required this.pitchClass,
+    required this.colorIndex,
     required this.lobes,
     required this.coreRadius,
     required this.coreOpacity,
@@ -56,8 +56,8 @@ class MistSpec {
     required this.decay,
   });
 
-  /// 0..11, C is 0. Picks the colour from the theme's 12-colour palette.
-  final int pitchClass;
+  /// 0..11: which of the theme's 12 colours this instrument has, from its id.
+  final int colorIndex;
   final List<MistLobe> lobes;
 
   /// Low EQ and the fundamental make the centre bigger and denser.
@@ -75,7 +75,7 @@ class MistSpec {
   @override
   bool operator ==(Object other) =>
       other is MistSpec &&
-      pitchClass == other.pitchClass &&
+      colorIndex == other.colorIndex &&
       listEquals(lobes, other.lobes) &&
       coreRadius == other.coreRadius &&
       coreOpacity == other.coreOpacity &&
@@ -86,7 +86,7 @@ class MistSpec {
 
   @override
   int get hashCode => Object.hash(
-    pitchClass,
+    colorIndex,
     Object.hashAll(lobes),
     coreRadius,
     coreOpacity,
@@ -104,6 +104,16 @@ const _goldenAngle = 2.399963229728653;
 
 double _clamp(double value, double min, double max) =>
     value < min ? min : (value > max ? max : value);
+
+/// A stable colour for an instrument, so it does not change with the note it
+/// is tested with: 32-bit FNV-1a of the id, modulo the 12 palette colours.
+int identityColorIndex(String id) {
+  var hash = 0x811c9dc5;
+  for (final unit in id.codeUnits) {
+    hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
+  }
+  return hash % 12;
+}
 
 MistSpec buildMistSpec(Instrument instrument) {
   final harmonics = instrument.harmonics;
@@ -130,12 +140,8 @@ MistSpec buildMistSpec(Instrument instrument) {
   }
   final brightness = total == 0 ? 0.0 : upper / total;
 
-  final pitchClass =
-      (12 * math.log(instrument.fundamentalHz / 440) / math.ln2 + 69).round() %
-      12;
-
   return MistSpec(
-    pitchClass: pitchClass,
+    colorIndex: identityColorIndex(instrument.id),
     lobes: lobes,
     coreRadius: _clamp(
       0.22 + 0.12 * harmonics[0] + eq.lowDb / 12 * 0.08,

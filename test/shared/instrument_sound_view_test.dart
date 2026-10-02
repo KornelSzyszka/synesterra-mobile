@@ -20,6 +20,7 @@ Future<void> pump(
         body: Center(
           child: InstrumentSoundView(
             instrument: instrument ?? factoryInstruments.last,
+            testHz: 440,
             onTap: onTap,
             pulseToken: token,
           ),

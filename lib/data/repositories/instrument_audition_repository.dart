@@ -7,10 +7,12 @@ abstract class InstrumentAuditionRepository {
   /// successful sound. Starts as true because nothing has failed yet.
   ValueListenable<bool> get available;
 
-  /// Plays [instrument], replacing a sound that is still playing. Returns
-  /// true when this call started a sound, false when it failed or a newer
-  /// call took over before it could start.
-  Future<bool> play(Instrument instrument);
+  /// Plays [instrument] at every frequency in [frequenciesHz] together (one
+  /// for a note, several for a chord), replacing a sound that is still
+  /// playing. The instrument has no pitch of its own; the caller chooses it.
+  /// Returns true when this call started the sound, false when it failed, was
+  /// empty, or a newer call took over before it could start.
+  Future<bool> play(Instrument instrument, List<double> frequenciesHz);
 
   Future<void> dispose();
 }

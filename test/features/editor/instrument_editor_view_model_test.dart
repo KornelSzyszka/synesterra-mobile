@@ -3,6 +3,7 @@ import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_r
 import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
 import 'package:synesterra/data/repositories/instrument_library_repository.dart';
 import 'package:synesterra/features/editor/instrument_editor_view_model.dart';
+import 'package:synesterra/features/editor/test_sound.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 class FailingRepository extends InMemoryInstrumentLibraryRepository {
@@ -14,7 +15,6 @@ class FailingRepository extends InMemoryInstrumentLibraryRepository {
 Instrument stored({String id = 'mine-1', String name = 'Mine'}) => Instrument(
   id: id,
   name: name,
-  fundamentalHz: 440,
   harmonics: InstrumentEditorViewModel.spectrum(4, 0.5),
   attackMs: 2,
   decayMs: 200,
@@ -70,11 +70,9 @@ void main() {
   group('editing', () {
     test('each setter changes the draft and clamps to the valid range', () {
       final vm = create()
-        ..setPitchHz(5000)
         ..setAttackMs(9999)
         ..setDecayMs(1)
         ..setEq(lowDb: -50, midDb: 3.5, highDb: 50);
-      expect(vm.instrument.fundamentalHz, Instrument.maxFundamentalHz);
       expect(vm.instrument.attackMs, Instrument.maxAttackMs);
       expect(vm.instrument.decayMs, Instrument.minDecayMs);
       expect(vm.instrument.eq.lowDb, -InstrumentEq.maxGainDb);
@@ -122,9 +120,109 @@ void main() {
       var calls = 0;
       vm.addListener(() => calls++);
       vm
-        ..setPitchHz(300)
+        ..setDecayMs(300)
         ..setName('Other');
       expect(calls, 2);
+    });
+  });
+
+  group('tags', () {
+    test('a new instrument starts untagged and tags are part of the draft', () {
+      final vm = create();
+      expect(vm.tags, isEmpty);
+      expect(vm.addTag('Click'), isTrue);
+      expect(vm.tags, ['click']);
+      expect(vm.instrument.tags, ['click']);
+      expect(vm.dirty, isTrue);
+    });
+
+    test('a tag is normalized, and bad or repeated tags are refused', () {
+      final vm = create();
+      expect(vm.addTag('  Big   Bell '), isTrue);
+      expect(vm.tags, ['big bell']);
+      expect(vm.addTag('BIG BELL'), isFalse, reason: 'already there');
+      expect(vm.addTag(''), isFalse);
+      expect(vm.addTag('a_b'), isFalse);
+      expect(vm.addTag('x' * 25), isFalse);
+      expect(vm.tags, ['big bell']);
+    });
+
+    test('there is a limit, and removing a tag frees a place', () {
+      final vm = create();
+      for (final tag in ['a', 'b', 'c', 'd', 'e', 'f']) {
+        expect(vm.addTag(tag), isTrue);
+      }
+      expect(vm.canAddTag, isFalse);
+      expect(vm.addTag('g'), isFalse);
+      vm.removeTag('c');
+      expect(vm.canAddTag, isTrue);
+      expect(vm.tags, ['a', 'b', 'd', 'e', 'f']);
+      expect(vm.addTag('g'), isTrue);
+    });
+
+    test('removing a tag that is not there changes nothing', () {
+      final vm = create();
+      var calls = 0;
+      vm.addListener(() => calls++);
+      vm.removeTag('nope');
+      expect(calls, 0);
+    });
+
+    test('tags are saved with the instrument', () async {
+      final vm = create()..addTag('wood');
+      await vm.save();
+      expect(repository.snapshot.value.instruments.single.tags, ['wood']);
+    });
+
+    test('a preset keeps its tags when it is copied', () {
+      final vm = create(instrument: factoryInstruments.first);
+      expect(vm.tags, factoryInstruments.first.tags);
+    });
+
+    test(
+      'removing the only difference from the saved tags is not a change',
+      () {
+        final vm = create(
+          instrument: stored().copyWith(tags: ['a']),
+          existing: true,
+        );
+        vm.removeTag('a');
+        expect(vm.dirty, isTrue);
+        vm.addTag('a');
+        expect(vm.dirty, isFalse);
+      },
+    );
+  });
+
+  group('test sound', () {
+    test('it starts as the note A4', () {
+      final vm = create();
+      expect(vm.testSound, TestSound.defaultNote);
+      expect(vm.testHz, closeTo(440, 1e-9));
+    });
+
+    test('choosing a note or a chord is not a change to the instrument', () {
+      final vm = create(instrument: stored(), existing: true);
+      vm
+        ..setTestSound(const TestNote(60))
+        ..setTestSound(const TestChord(48, ChordQuality.minor7));
+      expect(vm.dirty, isFalse);
+      expect(vm.canSave, isFalse);
+      expect(vm.instrument, stored());
+    });
+
+    test('choosing the same sound again does nothing', () {
+      final vm = create();
+      var calls = 0;
+      vm.addListener(() => calls++);
+      vm.setTestSound(TestSound.defaultNote);
+      expect(calls, 0);
+    });
+
+    test('a different instrument keeps the chosen test sound', () {
+      final vm = create()..setTestSound(const TestNote(48));
+      vm.startFrom(factoryInstruments.last);
+      expect(vm.testSound, const TestNote(48));
     });
   });
 
@@ -209,7 +307,7 @@ void main() {
         expect(vm.saveError, isNotNull);
         expect(vm.saving, isFalse);
         expect(vm.canSave, isTrue, reason: 'the user can try again');
-        vm.setPitchHz(300);
+        vm.setDecayMs(300);
         expect(vm.saveError, isNull, reason: 'an edit clears the old error');
       },
     );

@@ -4,14 +4,33 @@ import 'dart:typed_data';
 import 'biquad.dart';
 import 'instrument.dart';
 
-/// Renders an [Instrument] recipe to a deterministic mono PCM buffer.
+/// Lowest and highest pitch a recipe may be rendered at.
+const minRenderFrequencyHz = 20.0;
+const maxRenderFrequencyHz = 8000.0;
+
+/// Renders an [Instrument] recipe at [fundamentalHz] to a deterministic mono
+/// PCM buffer. The instrument has no pitch of its own; the caller (a loop
+/// layer, or the editor's test sound) chooses it.
 ///
 /// The decay value is the time for the exponential envelope to reach -60 dB.
 /// The returned buffer is peak-normalised and its first and last samples are
 /// zero, so it can be placed in a voice buffer without an edge discontinuity.
-Float32List renderInstrument(Instrument instrument, {int sampleRate = 48000}) {
+Float32List renderInstrument(
+  Instrument instrument, {
+  required double fundamentalHz,
+  int sampleRate = 48000,
+}) {
   if (sampleRate < 2) {
     throw ArgumentError.value(sampleRate, 'sampleRate', 'must be at least 2');
+  }
+  if (!fundamentalHz.isFinite ||
+      fundamentalHz < minRenderFrequencyHz ||
+      fundamentalHz > maxRenderFrequencyHz) {
+    throw ArgumentError.value(
+      fundamentalHz,
+      'fundamentalHz',
+      'must be in $minRenderFrequencyHz..$maxRenderFrequencyHz',
+    );
   }
 
   final sampleCount = _sampleCount(instrument, sampleRate);
@@ -23,7 +42,7 @@ Float32List renderInstrument(Instrument instrument, {int sampleRate = 48000}) {
     harmonicIndex < instrument.harmonics.length;
     harmonicIndex++
   ) {
-    final frequencyHz = instrument.fundamentalHz * (harmonicIndex + 1);
+    final frequencyHz = fundamentalHz * (harmonicIndex + 1);
     if (frequencyHz >= nyquistHz) continue;
 
     final amplitude = instrument.harmonics[harmonicIndex];

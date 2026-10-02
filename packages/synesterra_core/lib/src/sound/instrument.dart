@@ -1,9 +1,12 @@
-/// Sound recipes: what one rhythm voice sounds like.
+/// Sound recipes: what a voice sounds like, independent of pitch.
 ///
-/// An [Instrument] describes timbre only (pitch, harmonics, envelope, EQ). It
-/// knows nothing about rhythm, tempo or the audio backend. A recipe is later
-/// rendered into a buffer by the audio layer.
+/// An [Instrument] is a reusable timbre preset: harmonics, envelope and EQ,
+/// plus tags to find it again. It has no pitch; whoever plays it (a loop
+/// layer, or the editor's test sound) chooses the frequency. It knows nothing
+/// about rhythm, tempo or the audio backend. A recipe is rendered into a
+/// buffer for one frequency by the audio layer.
 final _idPattern = RegExp(r'^[A-Za-z0-9-]{1,64}$');
+final _tagPattern = RegExp(r'^[a-z0-9][a-z0-9 -]{0,23}$');
 final _controlCharacters = RegExp(r'[\x00-\x1F\x7F]');
 
 void _range(num value, num min, num max, String name) {
@@ -13,6 +16,14 @@ void _range(num value, num min, num max, String name) {
 }
 
 bool _sameDoubles(List<double> a, List<double> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+bool _sameStrings(List<String> a, List<String> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
     if (a[i] != b[i]) return false;
@@ -67,12 +78,13 @@ class Instrument {
   Instrument({
     required this.id,
     required this.name,
-    required this.fundamentalHz,
     required List<double> harmonics,
     required this.attackMs,
     required this.decayMs,
+    List<String> tags = const [],
     InstrumentEq? eq,
   }) : harmonics = List.unmodifiable(harmonics),
+       tags = List.unmodifiable(tags),
        eq = eq ?? InstrumentEq() {
     if (!_idPattern.hasMatch(id)) throw ArgumentError.value(id, 'id');
     if (name.trim().isEmpty ||
@@ -80,7 +92,6 @@ class Instrument {
         _controlCharacters.hasMatch(name)) {
       throw ArgumentError.value(name, 'name');
     }
-    _range(fundamentalHz, minFundamentalHz, maxFundamentalHz, 'fundamentalHz');
     if (this.harmonics.isEmpty || this.harmonics.length > maxHarmonics) {
       throw ArgumentError.value(
         this.harmonics.length,
@@ -96,25 +107,57 @@ class Instrument {
     }
     _range(attackMs, 0, maxAttackMs, 'attackMs');
     _range(decayMs, minDecayMs, maxDecayMs, 'decayMs');
+    if (this.tags.length > maxTags) {
+      throw ArgumentError.value(
+        this.tags.length,
+        'tags',
+        'must have at most $maxTags entries',
+      );
+    }
+    for (final tag in this.tags) {
+      if (!_tagPattern.hasMatch(tag)) throw ArgumentError.value(tag, 'tags');
+    }
+    if (this.tags.toSet().length != this.tags.length) {
+      throw ArgumentError.value(tags, 'tags', 'must not repeat');
+    }
   }
 
-  /// Parses and validates a recipe. Throws only [FormatException].
+  /// Parses and validates a recipe. Version 1 files (which stored a pitch)
+  /// load too: the pitch is dropped and the tags are empty. Throws only
+  /// [FormatException].
   factory Instrument.fromJson(Object? json) {
     try {
-      final map = _object(json, r'$', _keys);
-      if (map['version'] != schemaVersion) {
+      if (json is! Map<String, dynamic>) {
+        throw FormatException(r'$: expected an object');
+      }
+      if (!json.containsKey('version')) {
+        throw FormatException(r'$.version: missing field');
+      }
+      final version = json['version'];
+      if (version != 1 && version != schemaVersion) {
         throw FormatException(r'$.version: unsupported version');
       }
+      final map = _object(json, r'$', version == 1 ? _keysV1 : _keys);
       final envelope = _object(map['envelope'], r'$.envelope', _envelopeKeys);
       final eq = _object(map['eq'], r'$.eq', _eqKeys);
       final harmonics = map['harmonics'];
       if (harmonics is! List<dynamic>) {
         throw FormatException(r'$.harmonics: expected a list');
       }
+      if (version == 1) {
+        // Still checked, so a damaged file is not accepted, but not kept.
+        _number(map['fundamentalHz'], r'$.fundamentalHz');
+      }
+      final tags = version == 1 ? const <Object?>[] : map['tags'];
+      if (tags is! List<dynamic>) {
+        throw FormatException(r'$.tags: expected a list');
+      }
       return Instrument(
         id: _string(map['id'], r'$.id'),
         name: _string(map['name'], r'$.name'),
-        fundamentalHz: _number(map['fundamentalHz'], r'$.fundamentalHz'),
+        tags: [
+          for (var i = 0; i < tags.length; i++) _string(tags[i], '\$.tags[$i]'),
+        ],
         harmonics: [
           for (var i = 0; i < harmonics.length; i++)
             _number(harmonics[i], '\$.harmonics[$i]'),
@@ -134,16 +177,31 @@ class Instrument {
     }
   }
 
-  static const schemaVersion = 1;
+  /// Lowercases, trims and collapses spaces. Returns null when the result is
+  /// not a valid tag (empty, too long, or with other characters).
+  static String? normalizeTag(String raw) {
+    final tag = raw.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    return _tagPattern.hasMatch(tag) ? tag : null;
+  }
+
+  static const schemaVersion = 2;
   static const maxNameLength = 40;
-  static const minFundamentalHz = 40.0;
-  static const maxFundamentalHz = 2000.0;
+  static const maxTags = 6;
   static const maxHarmonics = 32;
   static const maxAttackMs = 500;
   static const minDecayMs = 20;
   static const maxDecayMs = 5000;
 
   static const _keys = {
+    'version',
+    'id',
+    'name',
+    'tags',
+    'harmonics',
+    'envelope',
+    'eq',
+  };
+  static const _keysV1 = {
     'version',
     'id',
     'name',
@@ -157,7 +215,9 @@ class Instrument {
 
   final String id;
   final String name;
-  final double fundamentalHz;
+
+  /// Lowercase labels to find the instrument again (click, bell, dark...).
+  final List<String> tags;
 
   /// Amplitude 0..1 of each harmonic; index 0 is the fundamental.
   final List<double> harmonics;
@@ -168,7 +228,7 @@ class Instrument {
   Instrument copyWith({
     String? id,
     String? name,
-    double? fundamentalHz,
+    List<String>? tags,
     List<double>? harmonics,
     int? attackMs,
     int? decayMs,
@@ -176,7 +236,7 @@ class Instrument {
   }) => Instrument(
     id: id ?? this.id,
     name: name ?? this.name,
-    fundamentalHz: fundamentalHz ?? this.fundamentalHz,
+    tags: tags ?? this.tags,
     harmonics: harmonics ?? this.harmonics,
     attackMs: attackMs ?? this.attackMs,
     decayMs: decayMs ?? this.decayMs,
@@ -187,7 +247,7 @@ class Instrument {
     'version': schemaVersion,
     'id': id,
     'name': name,
-    'fundamentalHz': fundamentalHz,
+    'tags': tags,
     'harmonics': harmonics,
     'envelope': {'attackMs': attackMs, 'decayMs': decayMs},
     'eq': eq.toJson(),
@@ -198,7 +258,7 @@ class Instrument {
       other is Instrument &&
       id == other.id &&
       name == other.name &&
-      fundamentalHz == other.fundamentalHz &&
+      _sameStrings(tags, other.tags) &&
       _sameDoubles(harmonics, other.harmonics) &&
       attackMs == other.attackMs &&
       decayMs == other.decayMs &&
@@ -208,7 +268,7 @@ class Instrument {
   int get hashCode => Object.hash(
     id,
     name,
-    fundamentalHz,
+    Object.hashAll(tags),
     Object.hashAll(harmonics),
     attackMs,
     decayMs,
@@ -248,13 +308,26 @@ int _integer(Object? input, String path) {
   return input;
 }
 
+/// Tags offered as suggestions when saving. Any valid tag is allowed.
+const suggestedInstrumentTags = [
+  'click',
+  'wood',
+  'metal',
+  'bell',
+  'tone',
+  'drum',
+  'soft',
+  'bright',
+  'dark',
+];
+
 /// Starting points for a new instrument. The numbers are placeholders until
 /// they are tuned by ear (`musical` gate).
 final List<Instrument> factoryInstruments = List.unmodifiable([
   Instrument(
     id: 'factory-wood',
     name: 'Wood',
-    fundamentalHz: 800,
+    tags: ['wood', 'click'],
     harmonics: [1, 0.55, 0.3, 0.15, 0.08, 0.04],
     attackMs: 1,
     decayMs: 70,
@@ -263,7 +336,7 @@ final List<Instrument> factoryInstruments = List.unmodifiable([
   Instrument(
     id: 'factory-sine',
     name: 'Sine',
-    fundamentalHz: 660,
+    tags: ['tone', 'soft'],
     harmonics: [1],
     attackMs: 2,
     decayMs: 120,
@@ -271,7 +344,7 @@ final List<Instrument> factoryInstruments = List.unmodifiable([
   Instrument(
     id: 'factory-bell',
     name: 'Bell',
-    fundamentalHz: 1046,
+    tags: ['bell', 'metal', 'bright'],
     harmonics: [1, 0, 0.6, 0, 0.4, 0, 0.25, 0.12],
     attackMs: 1,
     decayMs: 900,

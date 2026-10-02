@@ -6,6 +6,7 @@ import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../data/repositories/instrument_audition_repository.dart';
 import '../../data/repositories/instrument_library_repository.dart';
+import 'test_sound.dart';
 
 /// Edits one instrument. The draft is always a valid [Instrument]; only the
 /// name can be temporarily invalid, and then saving is disabled.
@@ -27,6 +28,9 @@ class InstrumentEditorViewModel extends ChangeNotifier {
         : source.copyWith(
             id: _newId(),
             name: instrument == null ? 'New instrument' : source.name,
+            // A brand-new instrument starts untagged; a copy of a preset keeps
+            // the preset's tags.
+            tags: instrument == null ? const [] : source.tags,
           );
     _draft = draft;
     _baseline = draft;
@@ -45,6 +49,7 @@ class InstrumentEditorViewModel extends ChangeNotifier {
 
   Timer? _auditionTimer;
   int _auditionCount = 0;
+  TestSound _testSound = TestSound.defaultNote;
 
   late Instrument _draft;
   late Instrument _baseline;
@@ -78,6 +83,47 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   /// A new instrument can be saved as it is; a saved one only after a change.
   bool get canSave => nameValid && !_saving && (dirty || !_persisted);
 
+  /// What is played to test the instrument: a note or a chord. It is not part
+  /// of the instrument, so changing it never marks the instrument as changed
+  /// and it is not saved.
+  TestSound get testSound => _testSound;
+
+  /// The root frequency of the test sound.
+  double get testHz => _testSound.rootHz;
+
+  void setTestSound(TestSound sound) {
+    if (sound == _testSound) return;
+    _testSound = sound;
+    notifyListeners();
+    auditionSoon();
+  }
+
+  /// Tags are part of the instrument and are saved with it.
+  List<String> get tags => _draft.tags;
+
+  bool get canAddTag => _draft.tags.length < Instrument.maxTags;
+
+  /// Adds a tag after normalizing it. Returns false when it is not a valid
+  /// tag, is already there, or the instrument already has the most it can.
+  bool addTag(String raw) {
+    final tag = Instrument.normalizeTag(raw);
+    if (tag == null || _draft.tags.contains(tag) || !canAddTag) return false;
+    _edit((i) => i.copyWith(tags: [...i.tags, tag]));
+    return true;
+  }
+
+  void removeTag(String tag) {
+    if (!_draft.tags.contains(tag)) return;
+    _edit(
+      (i) => i.copyWith(
+        tags: [
+          for (final t in i.tags)
+            if (t != tag) t,
+        ],
+      ),
+    );
+  }
+
   /// Counts audition requests; the mist pulses when it changes, so the
   /// picture and the sound start from the same tap.
   int get auditionCount => _auditionCount;
@@ -90,7 +136,7 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     _auditionTimer?.cancel();
     _auditionCount++;
     notifyListeners();
-    unawaited(_audition.play(_draft));
+    unawaited(_audition.play(_draft, _testSound.frequenciesHz));
   }
 
   /// Plays the instrument once the controls have been still for a moment.
@@ -120,16 +166,6 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     if (valid != null) _draft = valid;
     _changed();
   }
-
-  void setPitchHz(double hz) => _edit(
-    (i) => i.copyWith(
-      fundamentalHz: _clampDouble(
-        hz,
-        Instrument.minFundamentalHz,
-        Instrument.maxFundamentalHz,
-      ),
-    ),
-  );
 
   void setHarmonicCount(int count) {
     final clamped = _clampInt(count, 1, Instrument.maxHarmonics);

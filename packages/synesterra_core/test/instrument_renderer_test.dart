@@ -1,22 +1,39 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:synesterra_core/synesterra_core.dart';
 import 'package:test/test.dart';
 
-Instrument _instrument({
+/// A recipe and the pitch to play it at (the instrument itself has none).
+class _Voice {
+  _Voice(this.instrument, this.hz);
+
+  final Instrument instrument;
+  final double hz;
+}
+
+_Voice _instrument({
   double fundamentalHz = 440,
   List<double> harmonics = const [1],
   int attackMs = 20,
   int decayMs = 200,
   InstrumentEq? eq,
-}) => Instrument(
-  id: 'render-test',
-  name: 'Render test',
-  fundamentalHz: fundamentalHz,
-  harmonics: harmonics,
-  attackMs: attackMs,
-  decayMs: decayMs,
-  eq: eq,
+}) => _Voice(
+  Instrument(
+    id: 'render-test',
+    name: 'Render test',
+    harmonics: harmonics,
+    attackMs: attackMs,
+    decayMs: decayMs,
+    eq: eq,
+  ),
+  fundamentalHz,
+);
+
+Float32List _render(_Voice voice, {int sampleRate = 48000}) => renderInstrument(
+  voice.instrument,
+  fundamentalHz: voice.hz,
+  sampleRate: sampleRate,
 );
 
 List<double> _twoToneHarmonics(int highHarmonic) {
@@ -45,8 +62,8 @@ void main() {
       'returns deterministic, peak-limited mono samples with zero edges',
       () {
         final instrument = _instrument(harmonics: [1, 0.5, 0.25]);
-        final first = renderInstrument(instrument);
-        final second = renderInstrument(instrument);
+        final first = _render(instrument);
+        final second = _render(instrument);
 
         expect(first, second);
         expect(first.first, 0);
@@ -56,7 +73,7 @@ void main() {
     );
 
     test('uses a linear attack and an exponential decay to -60 dB', () {
-      final samples = renderInstrument(
+      final samples = _render(
         _instrument(fundamentalHz: 125, attackMs: 100, decayMs: 200),
         sampleRate: 10000,
       );
@@ -70,7 +87,7 @@ void main() {
 
     test('keeps harmonic DFT magnitudes proportional to the recipe', () {
       const sampleRate = 48000;
-      final samples = renderInstrument(
+      final samples = _render(
         _instrument(
           fundamentalHz: 400,
           harmonics: [1, 0.5, 0.25],
@@ -93,7 +110,7 @@ void main() {
 
     test('skips harmonics at and above Nyquist', () {
       const sampleRate = 8000;
-      final samples = renderInstrument(
+      final samples = _render(
         _instrument(
           fundamentalHz: 1000,
           harmonics: [0, 0, 0, 1],
@@ -109,7 +126,7 @@ void main() {
 
     test('applies EQ band gains with broad-band DFT tolerances', () {
       const sampleRate = 48000;
-      final flat = renderInstrument(
+      final flat = _render(
         _instrument(
           fundamentalHz: 400,
           harmonics: _twoToneHarmonics(20),
@@ -118,7 +135,7 @@ void main() {
         ),
         sampleRate: sampleRate,
       );
-      final bright = renderInstrument(
+      final bright = _render(
         _instrument(
           fundamentalHz: 400,
           harmonics: _twoToneHarmonics(20),
@@ -141,7 +158,7 @@ void main() {
     test('applies low shelf and mid peak gains within 1 dB', () {
       const sampleRate = 48000;
       final lowHarmonics = _twoToneHarmonics(20);
-      final flatLow = renderInstrument(
+      final flatLow = _render(
         _instrument(
           fundamentalHz: 100,
           harmonics: lowHarmonics,
@@ -150,7 +167,7 @@ void main() {
         ),
         sampleRate: sampleRate,
       );
-      final boostedLow = renderInstrument(
+      final boostedLow = _render(
         _instrument(
           fundamentalHz: 100,
           harmonics: lowHarmonics,
@@ -161,7 +178,7 @@ void main() {
         sampleRate: sampleRate,
       );
       final midHarmonics = _twoToneHarmonics(4);
-      final flatMid = renderInstrument(
+      final flatMid = _render(
         _instrument(
           fundamentalHz: 1000,
           harmonics: midHarmonics,
@@ -170,7 +187,7 @@ void main() {
         ),
         sampleRate: sampleRate,
       );
-      final boostedMid = renderInstrument(
+      final boostedMid = _render(
         _instrument(
           fundamentalHz: 1000,
           harmonics: midHarmonics,
@@ -198,11 +215,61 @@ void main() {
     });
 
     test('caps a rendered envelope at six seconds', () {
-      final samples = renderInstrument(
+      final samples = _render(
         _instrument(attackMs: 500, decayMs: 5000),
         sampleRate: 48000,
       );
       expect(samples.length, lessThanOrEqualTo(6 * 48000));
+    });
+  });
+
+  group('pitch is an argument, not part of the instrument', () {
+    test('the same instrument renders at the pitch it is asked for', () {
+      final instrument = Instrument(
+        id: 'pitch-test',
+        name: 'Pitch test',
+        harmonics: const [1],
+        attackMs: 0,
+        decayMs: 500,
+      );
+      for (final hz in <double>[110, 440, 1760]) {
+        final samples = renderInstrument(instrument, fundamentalHz: hz);
+        final at = _magnitude(samples, hz, 48000);
+        final off = _magnitude(samples, hz * 1.5, 48000);
+        expect(at, greaterThan(off * 20), reason: '$hz Hz');
+      }
+    });
+
+    test('a pitch outside the renderable range is rejected', () {
+      final instrument = Instrument(
+        id: 'pitch-test',
+        name: 'Pitch test',
+        harmonics: const [1],
+        attackMs: 0,
+        decayMs: 100,
+      );
+      for (final hz in <double>[
+        0,
+        19.9,
+        8000.1,
+        double.nan,
+        double.infinity,
+        -440,
+      ]) {
+        expect(
+          () => renderInstrument(instrument, fundamentalHz: hz),
+          throwsArgumentError,
+          reason: '$hz',
+        );
+      }
+      expect(
+        renderInstrument(instrument, fundamentalHz: minRenderFrequencyHz),
+        isNotEmpty,
+      );
+      expect(
+        renderInstrument(instrument, fundamentalHz: maxRenderFrequencyHz),
+        isNotEmpty,
+      );
     });
   });
 }

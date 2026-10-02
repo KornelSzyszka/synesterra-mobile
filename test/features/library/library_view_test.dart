@@ -9,14 +9,15 @@ import 'package:synesterra/features/library/library_view.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
-Instrument mine(String id, String name) => Instrument(
-  id: id,
-  name: name,
-  fundamentalHz: 330,
-  harmonics: const [1, 0.4, 0.2],
-  attackMs: 3,
-  decayMs: 150,
-);
+Instrument mine(String id, String name, {List<String> tags = const []}) =>
+    Instrument(
+      id: id,
+      name: name,
+      tags: tags,
+      harmonics: const [1, 0.4, 0.2],
+      attackMs: 3,
+      decayMs: 150,
+    );
 
 class UnreadableRepository extends InMemoryInstrumentLibraryRepository {
   @override
@@ -76,7 +77,7 @@ void main() {
         tester.getTopLeft(find.byKey(const Key('own-a'))).dy,
         lessThan(tester.getTopLeft(find.byKey(const Key('own-b'))).dy),
       );
-      expect(find.text('330 Hz · E4 · 3 harmonics · 150 ms'), findsNWidgets(2));
+      expect(find.text('3 harmonics · 150 ms'), findsNWidgets(2));
     },
   );
 
@@ -195,5 +196,122 @@ void main() {
     final all = repository.snapshot.value.instruments;
     expect(all.single.id, 'a');
     expect(all.single.name, 'Alpha 2');
+  });
+
+  group('tags', () {
+    testWidgets('each tile lists its tags', (tester) async {
+      await pumpLibrary(
+        tester,
+        InMemoryInstrumentLibraryRepository([
+          mine('a', 'Alpha', tags: ['click', 'wood']),
+          mine('b', 'Beta'),
+        ]),
+      );
+      expect(find.text('click · wood'), findsOneWidget);
+      expect(find.byKey(const Key('tags-a')), findsOneWidget);
+      expect(find.byKey(const Key('tags-b')), findsNothing);
+    });
+
+    testWidgets('filter chips list every tag in use, with All first', (
+      tester,
+    ) async {
+      await pumpLibrary(
+        tester,
+        InMemoryInstrumentLibraryRepository([
+          mine('a', 'Alpha', tags: ['click']),
+          mine('b', 'Beta', tags: ['zzz-mine']),
+        ]),
+      );
+      expect(find.byKey(const Key('filter-all')), findsOneWidget);
+      expect(find.byKey(const Key('filter-click')), findsOneWidget);
+      expect(find.byKey(const Key('filter-zzz-mine')), findsOneWidget);
+      // Factory tags are filterable too.
+      expect(find.byKey(const Key('filter-bell')), findsOneWidget);
+      final all = tester.widget<FilterChip>(
+        find.byKey(const Key('filter-all')),
+      );
+      expect(all.selected, isTrue);
+    });
+
+    testWidgets('choosing a tag shows only the instruments that have it', (
+      tester,
+    ) async {
+      await pumpLibrary(
+        tester,
+        InMemoryInstrumentLibraryRepository([
+          mine('a', 'Alpha', tags: ['click']),
+          mine('b', 'Beta', tags: ['wood']),
+        ]),
+      );
+      await tester.tap(find.byKey(const Key('filter-click')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('own-a')), findsOneWidget);
+      expect(find.byKey(const Key('own-b')), findsNothing);
+      // The factory Wood preset is tagged click, so it stays; Sine is not.
+      expect(
+        find.byKey(const Key('factory-tile-factory-wood')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('factory-tile-factory-sine')), findsNothing);
+    });
+
+    testWidgets('All brings everything back', (tester) async {
+      await pumpLibrary(
+        tester,
+        InMemoryInstrumentLibraryRepository([
+          mine('a', 'Alpha', tags: ['click']),
+          mine('b', 'Beta'),
+        ]),
+      );
+      await tester.tap(find.byKey(const Key('filter-click')));
+      await tester.pump();
+      expect(find.byKey(const Key('own-b')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('filter-all')));
+      await tester.pump();
+      expect(find.byKey(const Key('own-b')), findsOneWidget);
+    });
+
+    testWidgets('a tag only a factory preset has says so for your own list', (
+      tester,
+    ) async {
+      await pumpLibrary(
+        tester,
+        InMemoryInstrumentLibraryRepository([mine('a', 'Alpha')]),
+      );
+      await tester.tap(find.byKey(const Key('filter-bell')));
+      await tester.pump();
+
+      expect(
+        find.text('None of your instruments has the tag "bell".'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('factory-tile-factory-bell')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+      'deleting the last instrument with the filtered tag falls back to All',
+      (tester) async {
+        final repository = InMemoryInstrumentLibraryRepository([
+          mine('a', 'Alpha', tags: ['only-mine']),
+          mine('b', 'Beta'),
+        ]);
+        await pumpLibrary(tester, repository);
+        await tester.tap(find.byKey(const Key('filter-only-mine')));
+        await tester.pump();
+        expect(find.byKey(const Key('own-b')), findsNothing);
+
+        await tester.tap(find.byKey(const Key('delete-a')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(find.byKey(const Key('filter-only-mine')), findsNothing);
+        expect(find.byKey(const Key('own-b')), findsOneWidget);
+      },
+    );
   });
 }

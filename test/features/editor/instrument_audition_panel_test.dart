@@ -74,19 +74,19 @@ void main() {
   ) async {
     await openEditor(tester);
 
-    await tester.drag(sliderIn('instrument-pitch'), const Offset(60, 0));
+    await tester.drag(sliderIn('instrument-decay'), const Offset(60, 0));
     await tester.pump();
     expect(audition.played, isEmpty, reason: 'not while the gesture settles');
     await pastDelay(tester);
 
     expect(audition.played, hasLength(1));
-    expect(audition.played.single.fundamentalHz, isNot(660));
+    expect(audition.played.single.decayMs, isNot(120));
   });
 
   testWidgets('several quick changes make one sound', (tester) async {
     await openEditor(tester);
 
-    await tester.drag(sliderIn('instrument-pitch'), const Offset(40, 0));
+    await tester.drag(sliderIn('instrument-brightness'), const Offset(40, 0));
     await tester.drag(sliderIn('instrument-decay'), const Offset(40, 0));
     await tester.drag(sliderIn('instrument-eq-high'), const Offset(40, 0));
     await pastDelay(tester);
@@ -159,5 +159,130 @@ void main() {
     audition.isAvailable = true;
     await tester.pump();
     expect(find.textContaining('to hear it'), findsOneWidget);
+  });
+
+  group('test sound', () {
+    testWidgets('it starts as A4 and says what it plays', (tester) async {
+      await openEditor(tester);
+      expect(find.text('Plays A4'), findsOneWidget);
+      expect(find.byKey(const Key('test-quality-major')), findsNothing);
+    });
+
+    testWidgets('choosing a root note plays it, in the same octave', (
+      tester,
+    ) async {
+      await openEditor(tester);
+      await tester.tap(find.byKey(const Key('test-root-0'))); // C
+      await pastDelay(tester);
+
+      expect(find.text('Plays C4'), findsOneWidget);
+      expect(audition.frequencies.single.single, closeTo(261.6256, 1e-3));
+    });
+
+    testWidgets('the octave stepper moves the note', (tester) async {
+      await openEditor(tester);
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('test-octave')),
+          matching: find.byTooltip('Increase octave'),
+        ),
+      );
+      await pastDelay(tester);
+
+      expect(find.text('Plays A5'), findsOneWidget);
+      expect(audition.frequencies.single.single, closeTo(880, 1e-6));
+    });
+
+    testWidgets('the octave stays within C1..B7', (tester) async {
+      await openEditor(tester);
+      final increase = find.descendant(
+        of: find.byKey(const Key('test-octave')),
+        matching: find.byTooltip('Increase octave'),
+      );
+      for (var i = 0; i < 6; i++) {
+        await tester.tap(increase);
+        await tester.pump();
+      }
+      await pastDelay(tester);
+      expect(find.text('Plays A7'), findsOneWidget);
+    });
+
+    testWidgets('switching to Chord plays a chord and offers its qualities', (
+      tester,
+    ) async {
+      await openEditor(tester);
+      await tester.tap(find.text('Chord'));
+      await pastDelay(tester);
+
+      expect(find.text('Plays A4 Major'), findsOneWidget);
+      expect(audition.frequencies.single, hasLength(3));
+      for (final name in [
+        'major',
+        'minor',
+        'dominant7',
+        'major7',
+        'minor7',
+        'sus4',
+        'power',
+      ]) {
+        expect(find.byKey(Key('test-quality-$name')), findsOneWidget);
+      }
+    });
+
+    testWidgets('choosing a quality changes the notes that play', (
+      tester,
+    ) async {
+      await openEditor(tester);
+      await tester.tap(find.text('Chord'));
+      await pastDelay(tester);
+      audition.frequencies.clear();
+
+      await tester.tap(find.byKey(const Key('test-quality-dominant7')));
+      await pastDelay(tester);
+
+      expect(find.text('Plays A4 Dom 7'), findsOneWidget);
+      expect(audition.frequencies.single, hasLength(4));
+    });
+
+    testWidgets('going back to Note keeps the root and drops the chord', (
+      tester,
+    ) async {
+      await openEditor(tester);
+      await tester.tap(find.byKey(const Key('test-root-0')));
+      await tester.tap(find.text('Chord'));
+      await pastDelay(tester);
+      await tester.tap(find.text('Note'));
+      await pastDelay(tester);
+
+      expect(find.text('Plays C4'), findsOneWidget);
+      expect(find.byKey(const Key('test-quality-major')), findsNothing);
+    });
+
+    testWidgets('the Play button plays the chosen test sound', (tester) async {
+      await openEditor(tester);
+      await tester.tap(find.text('Chord'));
+      await pastDelay(tester);
+      audition.frequencies.clear();
+
+      await tester.tap(find.byKey(const Key('instrument-play')));
+      await tester.pump();
+
+      expect(audition.frequencies.single, hasLength(3));
+    });
+
+    testWidgets('the Figure and Wave views follow the test root', (
+      tester,
+    ) async {
+      await openEditor(tester);
+      await tester.tap(find.text('Figure'));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('test-root-5')));
+      await tester.pump();
+      await tester.tap(find.text('Wave'));
+      await tester.pump();
+      await pastDelay(tester);
+
+      expect(tester.takeException(), isNull);
+    });
   });
 }
