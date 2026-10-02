@@ -90,8 +90,19 @@ final class PlaybackScheduler {
     required this._sink,
     required this._state,
     required this._events,
+    this.onDiagnostics,
   }) {
-    _timer = Timer.periodic(const Duration(milliseconds: 25), (_) => replan());
+    _watch.start();
+    _timer = Timer.periodic(const Duration(milliseconds: 25), (_) {
+      final now = _watch.elapsed;
+      final lateness = now - (_lastWake + const Duration(milliseconds: 25));
+      _lastWake = now;
+      onDiagnostics?.call({
+        'type': 'wake',
+        'latenessUs': lateness.inMicroseconds,
+      });
+      replan();
+    });
   }
 
   static const horizon = Duration(milliseconds: 200);
@@ -100,7 +111,10 @@ final class PlaybackScheduler {
   final VoiceSink _sink;
   final PlaybackStateSource _state;
   final BeatEventSource _events;
+  final void Function(Map<String, Object?>)? onDiagnostics;
   late final Timer _timer;
+  final Stopwatch _watch = Stopwatch();
+  Duration _lastWake = Duration.zero;
   Generation? _lastGeneration;
   int? _plannedToBeat;
 
@@ -124,13 +138,42 @@ final class PlaybackScheduler {
       tempoMap.beatAt(earliest),
     );
     final toBeat = tempoMap.beatAt(reading.renderTime + horizon);
+    if (_plannedToBeat != null && fromBeat > _plannedToBeat!) {
+      final skipped = _events.plan(_plannedToBeat!, fromBeat);
+      if (skipped.isNotEmpty) {
+        onDiagnostics?.call({
+          'type': 'scheduler_skip',
+          'count': skipped.length,
+          'fromBeat': _plannedToBeat,
+          'toBeat': fromBeat,
+        });
+      }
+    }
+    onDiagnostics?.call({
+      'type': 'coverage',
+      'renderUs': reading.renderTime.microseconds,
+      'minLeadUs': reading.minLead.inMicroseconds,
+      'plannedCoverageUs':
+          (tempoMap.audioTimeOf(toBeat) - reading.renderTime).inMicroseconds,
+      'fromBeat': fromBeat,
+      'toBeat': toBeat,
+    });
     if (toBeat <= fromBeat) return;
     final planned = _events.plan(fromBeat, toBeat);
     final timed = <VoiceEvent>[];
     for (final event in planned) {
       if (event.beat < fromBeat || event.beat >= toBeat) continue;
       final at = tempoMap.audioTimeOf(event.beat);
-      if (at.compareTo(earliest) >= 0) timed.add(event.at(at));
+      if (at.compareTo(earliest) >= 0) {
+        timed.add(event.at(at));
+      } else {
+        onDiagnostics?.call({
+          'type': 'scheduler_skip',
+          'count': 1,
+          'eventId': event.eventId,
+          'reason': 'inside minLead',
+        });
+      }
     }
     if (timed.isNotEmpty) _sink.schedule(runtime.generation, timed);
     _plannedToBeat = toBeat;
