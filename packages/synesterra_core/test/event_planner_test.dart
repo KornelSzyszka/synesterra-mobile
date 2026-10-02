@@ -230,10 +230,7 @@ void main() {
         (event.layerId, event.instrumentId, event.pitch),
         ('lead', 'factory-bell', 84),
       );
-      expect(
-        (event.velocity, event.accent),
-        (0.25, true),
-      );
+      expect((event.velocity, event.accent), (0.25, true));
       expect((event.layerGain, event.masterGain, event.pan), (0.4, 0.7, -0.5));
       expect(event.eventId, 0);
       expect(planner.plan(3840, 7680).single.eventId, 128);

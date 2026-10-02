@@ -168,10 +168,17 @@ class LayerMix {
   int get hashCode => Object.hash(gain, pan, muted, solo);
 }
 
+/// Lowest layer pitch: MIDI note 24, C1.
+const minLayerPitch = 24;
+
+/// Highest layer pitch: MIDI note 107, B7.
+const maxLayerPitch = 107;
+
 class RhythmLayer {
   RhythmLayer({
     required this.id,
-    required this.sound,
+    required this.instrumentId,
+    required this.pitch,
     required this.pattern,
     required this.phaseSteps,
     required this.swing,
@@ -180,8 +187,11 @@ class RhythmLayer {
     if (!RegExp(r'^[A-Za-z0-9-]{1,64}$').hasMatch(id)) {
       throw ArgumentError.value(id, 'id');
     }
-    if (!const {'wood', 'sine', 'bell'}.contains(sound)) {
-      throw ArgumentError.value(sound, 'sound');
+    if (!RegExp(r'^[A-Za-z0-9-]{1,64}$').hasMatch(instrumentId)) {
+      throw ArgumentError.value(instrumentId, 'instrumentId');
+    }
+    if (pitch < minLayerPitch || pitch > maxLayerPitch) {
+      throw ArgumentError.value(pitch, 'pitch');
     }
     if (phaseSteps < 0 || phaseSteps >= pattern.steps.length) {
       throw ArgumentError.value(phaseSteps, 'phaseSteps');
@@ -201,14 +211,20 @@ class RhythmLayer {
     }
   }
   final String id;
-  final String sound;
+
+  /// Library instrument id; the core cannot resolve it (the data layer does).
+  final String instrumentId;
+
+  /// MIDI note number, [minLayerPitch]..[maxLayerPitch].
+  final int pitch;
   final Pattern pattern;
   final int phaseSteps;
   final Swing swing;
   final LayerMix mix;
   Map<String, Object> toJson() => {
     'id': id,
-    'sound': sound,
+    'instrumentId': instrumentId,
+    'pitch': pitch,
     'pattern': pattern.toJson(),
     'phaseSteps': phaseSteps,
     'swing': swing.toJson(),
@@ -218,11 +234,13 @@ class RhythmLayer {
   bool operator ==(Object other) =>
       other is RhythmLayer &&
       id == other.id &&
-      sound == other.sound &&
+      instrumentId == other.instrumentId &&
+      pitch == other.pitch &&
       pattern == other.pattern &&
       phaseSteps == other.phaseSteps &&
       swing == other.swing &&
       mix == other.mix;
   @override
-  int get hashCode => Object.hash(id, sound, pattern, phaseSteps, swing, mix);
+  int get hashCode =>
+      Object.hash(id, instrumentId, pitch, pattern, phaseSteps, swing, mix);
 }
