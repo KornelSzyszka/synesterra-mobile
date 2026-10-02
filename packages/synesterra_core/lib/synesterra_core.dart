@@ -8,3 +8,7 @@ export 'src/harmony/drone.dart';
 export 'src/sound/instrument.dart';
 export 'src/session/session_document.dart';
 export 'src/session/session_parser.dart';
+export 'src/playback/audio_time.dart';
+export 'src/playback/tempo_map.dart';
+export 'src/ports/audio_clock.dart';
+export 'src/ports/voice_sink.dart';
