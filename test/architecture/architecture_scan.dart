@@ -103,10 +103,11 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
       final to = _coreContext(target!);
       const allowed = {
         'rhythm': <String>{},
+        'sound': <String>{},
         'harmony': {'rhythm'},
-        'session': {'rhythm', 'harmony'},
-        'playback': {'rhythm', 'harmony', 'session'},
-        'ports': {'rhythm', 'harmony', 'session', 'playback'},
+        'session': {'rhythm', 'harmony', 'sound'},
+        'playback': {'rhythm', 'harmony', 'sound', 'session'},
+        'ports': {'rhythm', 'harmony', 'sound', 'session', 'playback'},
       };
       if (from != null &&
           to != null &&
