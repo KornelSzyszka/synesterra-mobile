@@ -9,6 +9,7 @@ All documentation is in English. Diagrams use Mermaid (rendered by GitHub, no ex
 | [agents/](agents/README.md) | Agent rules: task lifecycle, roles and routing, review and merge, change safety, Founder collaboration, model routing |
 | [product/vision.md](product/vision.md) | Mobile product vision: domain model (Instrument, Loop, Arrangement), start screen, editing and visualization layers (draft) |
 | [testing.md](testing.md) | Levels of evidence and the minimum checks per change |
+| [QA.md](QA.md) | Physical-device audio QA protocol and result form |
 | [../logs/](../logs/README.md) | Model outcome data, one JSON file per task, validated in CI |
 
 ## Where new material goes
