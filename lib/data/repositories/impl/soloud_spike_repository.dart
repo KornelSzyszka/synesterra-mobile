@@ -374,7 +374,8 @@ final class SoloudSpikeRepository implements AudioSpikeRepository {
       final events = <VoiceEvent>[
         for (var i = 0; i < voiceCount; i++)
           Trigger(
-            at: now + Duration(milliseconds: 100 + i % 20),
+            // The first four events are one chord of four distinct buffers.
+            at: now + Duration(milliseconds: 100 + (i < 4 ? 0 : i % 20)),
             eventId: 900000 + i,
             sound: 'ci-${i % 8}',
             gain: 0.4 / voiceCount,
@@ -387,6 +388,11 @@ final class SoloudSpikeRepository implements AudioSpikeRepository {
         'bufferCount': 8,
         'scheduledOneshots': events.length,
         'maxVoices': _soloud.getMaxActiveVoiceCount(),
+        'chordNotes': 4,
+        // Every voice rings for seconds, so all of them sound together.
+        'plannedSimultaneous': events.length,
+        'soloudActive': _sink!.activeVoices,
+        'soloudTotal': _sink!.totalVoices,
       });
       await Future<void>.delayed(const Duration(milliseconds: 180));
       final changeStarted = Stopwatch()..start();

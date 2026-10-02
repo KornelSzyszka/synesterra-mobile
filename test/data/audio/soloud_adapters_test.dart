@@ -65,8 +65,10 @@ final class _VoiceEngine implements SoloudVoiceEngine {
     if (!ignoreLimit) _maxVoices = count;
   }
 
+  /// Like SoLoud: only the cap's worth of voices is audible; the rest are
+  /// silently not mixed, with no rejected handle.
   @override
-  int get activeVoices => valid.length;
+  int get activeVoices => valid.length < _maxVoices ? valid.length : _maxVoices;
 
   @override
   int get totalVoices => valid.length;
@@ -280,6 +282,75 @@ void main() {
     engine.ignoreLimit = true;
     expect(() => sink.setVoiceLimit(201), throwsStateError);
   });
+
+  test(
+    'maximum simultaneous voices across old and new sources fit the cap',
+    () async {
+      final clock = SoloudAudioClock(
+        _ClockSource(),
+        hostElapsed: () => Duration.zero,
+      );
+      final engine = _VoiceEngine();
+      final entries = <Map<String, Object?>>[];
+      final sink = SoloudVoiceSink(engine, clock, onLog: entries.add);
+      clock.start();
+      final wav = encodeWav16(Float32List(4), sampleRate: 48000);
+      // Eight distinct pitch buffers; a four-note chord uses four of them.
+      for (var i = 0; i < 8; i++) {
+        await sink.loadWav('pitch$i', wav);
+      }
+      var id = 0;
+      Trigger hit(String sound, int at) => Trigger(
+        at: AudioTime(at),
+        eventId: ++id,
+        sound: sound,
+        gain: 0.5,
+        pan: 0,
+      );
+      // The first window: four-note chord plus the other four pitches.
+      final first = [
+        for (var i = 0; i < 4; i++) hit('pitch$i', 100000),
+        for (var i = 4; i < 8; i++) hit('pitch$i', 110000),
+      ];
+      // Roll pitch0 over while its old voice still rings, then play it again
+      // together with a new chord over the old tails.
+      sink.schedule(1, first);
+      await sink.loadWav('pitch0', wav);
+      expect(sink.retiredBuffers, 1);
+      final second = [
+        for (var i = 0; i < 8; i++) hit('pitch$i', 150000),
+        for (var i = 0; i < 4; i++) hit('pitch$i', 160000),
+      ];
+      final planned = first.length + second.length;
+      final bound = concurrentVoiceLimit(
+        layers: 1,
+        bpm: 60,
+        hitsPerQuarterPerLayer: planned.toDouble(),
+        maxRing: Duration.zero,
+        horizon: const Duration(seconds: 1),
+        droneVoices: 0,
+        auditionVoices: 0,
+      );
+      expect(bound, greaterThanOrEqualTo(planned));
+      // Below the cap SoLoud would hide voices without rejecting a handle.
+      expect(engine.maxVoices, lessThan(planned));
+      sink.setVoiceLimit(bound);
+      sink.schedule(1, second);
+
+      final counts = entries.lastWhere((e) => e['type'] == 'voice_counts');
+      expect(counts['limit'], bound);
+      expect(sink.rejected, 0);
+      expect(engine.scheduled.length, planned);
+      expect(engine.activeVoices, planned);
+      expect(engine.totalVoices, planned);
+      expect(counts['activeAfter'], planned);
+      expect(counts['totalAfter'], planned);
+      expect(sink.loadedBuffers, 9);
+      expect(planned, 20);
+      expect(planned, 20);
+      await sink.dispose();
+    },
+  );
 
   test('capacity includes ringing voices from prior windows', () {
     expect(
