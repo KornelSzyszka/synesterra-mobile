@@ -145,7 +145,7 @@ class SessionDocument {
 
   Map<String, Object> toJson() => {
     'format': 'polyrhythmer.session',
-    'version': 2,
+    'version': 3,
     'revision': 0,
     'title': title,
     'transport': transport.toJson(),

@@ -3,13 +3,22 @@ library;
 
 export 'src/core_identity.dart';
 export 'src/rhythm/rhythm_values.dart'
-    show Rational, PatternStep, Pattern, Swing, LayerMix, RhythmLayer;
+    show
+        Rational,
+        PatternStep,
+        Pattern,
+        Swing,
+        LayerMix,
+        RhythmLayer,
+        minLayerPitch,
+        maxLayerPitch;
 export 'src/harmony/drone.dart';
 export 'src/sound/instrument.dart';
 export 'src/sound/instrument_envelope.dart';
 export 'src/sound/instrument_renderer.dart';
 export 'src/sound/instrument_response.dart';
 export 'src/session/session_document.dart';
+export 'src/session/session_migration.dart';
 export 'src/session/session_parser.dart';
 export 'src/session/session_project.dart';
 export 'src/playback/audio_time.dart';

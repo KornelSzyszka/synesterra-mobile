@@ -28,10 +28,12 @@ RhythmLayer layer(
   num pan = 0,
   bool muted = false,
   bool solo = false,
-  String sound = 'wood',
+  String instrumentId = 'factory-wood',
+  int pitch = 69,
 }) => RhythmLayer(
   id: id,
-  sound: sound,
+  instrumentId: instrumentId,
+  pitch: pitch,
   pattern: Pattern(
     durationBeats: duration ?? Rational(4, 1),
     steps: steps ?? List.generate(stepCount, (_) => step()),
@@ -101,7 +103,7 @@ void main() {
         SessionProject(
           document([
             layer('first', counts[0]),
-            layer('second', counts[1], sound: 'sine'),
+            layer('second', counts[1], instrumentId: 'factory-sine', pitch: 48),
           ]),
         ),
       ).plan(0, 3840);
@@ -214,7 +216,8 @@ void main() {
               gain: 0.4,
               pan: -0.5,
               solo: true,
-              sound: 'bell',
+              instrumentId: 'factory-bell',
+              pitch: 84,
             ),
             layer('other', 2),
           ], master: 0.7),
@@ -224,9 +227,10 @@ void main() {
       expect(events, hasLength(1));
       final event = events.single;
       expect(
-        (event.layerId, event.sound, event.velocity, event.accent),
-        ('lead', 'bell', 0.25, true),
+        (event.layerId, event.instrumentId, event.pitch),
+        ('lead', 'factory-bell', 84),
       );
+      expect((event.velocity, event.accent), (0.25, true));
       expect((event.layerGain, event.masterGain, event.pan), (0.4, 0.7, -0.5));
       expect(event.eventId, 0);
       expect(planner.plan(3840, 7680).single.eventId, 128);

@@ -2,7 +2,7 @@
 
 Code: `packages/synesterra_core/lib/src/sound/` (`instrument.dart`, `instrument_renderer.dart`, `instrument_response.dart`, internal `biquad.dart`), tests in `packages/synesterra_core/test/`. Vision and the reason for the model: [product vision](../product/vision.md).
 
-An `Instrument` is a **reusable timbre preset**: harmonics, envelope, EQ and tags. It has **no pitch** (Founder, 2026-10-02): whoever plays it chooses the frequency. A loop layer will do that; the editor only plays a note or a chord to let the user hear it, and that test sound is not stored in the instrument. An instrument knows nothing about rhythm, tempo or the audio backend (core context `sound`, rule R2 of [decision 0001](../decisions/0001-architecture-style.md)). It validates in its constructor, so an existing instance is always renderable.
+An `Instrument` is a **reusable timbre preset**: harmonics, envelope, EQ and tags. It has **no pitch** (Founder, 2026-10-02): whoever plays it chooses the frequency. A loop layer does that; the editor only plays a note or a chord to let the user hear it, and that test sound is not stored in the instrument. An instrument knows nothing about rhythm, tempo or the audio backend (core context `sound`, rule R2 of [decision 0001](../decisions/0001-architecture-style.md)). It validates in its constructor, so an existing instance is always renderable.
 
 ## PCM rendering
 
@@ -60,6 +60,10 @@ The EQ graph draws the combined response (`eqResponseDb`) on a log frequency axi
 
 Both graphs take the gesture at once (`ImmediatePanDetector`, shared with the spectrum), so touching them never scrolls the page. A touch picks the nearest handle within 28 dp; farther away does nothing. The sound plays after the finger is lifted. The sliders under the graphs stay as the precise and accessible way to set the same values. Pure axis and hit-testing helpers are in `lib/features/editor/curve_geometry.dart`.
 
+## Sessions reference instruments
+
+Since `SessionDocument v3` ([session document](session-document.md)) a loop layer holds an `instrumentId` (the id rule above) and a `pitch`, an integer MIDI note 24..107 (C1..B7, the editor's test range). The frequency for `renderInstrument` is `440 * 2^((pitch - 69) / 12)`. Instruments are never embedded in a session; the library owns them. The core accepts an id it cannot resolve, and the data layer decides what a missing instrument means.
+
 ## Not here yet
 
-A layer referencing an instrument by id (and choosing its pitch), embedding instruments in a session file and a `SessionDocument` version bump are a separate task that needs a version and migration decision. So is a progression as a test sound (it needs timing).
+The UI to choose an instrument or a pitch in the Loop panel, and resolving a missing instrument against the library. So is a progression as a test sound (it needs timing).

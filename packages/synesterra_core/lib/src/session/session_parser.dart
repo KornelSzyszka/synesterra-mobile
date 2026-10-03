@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../harmony/drone.dart';
 import '../rhythm/rhythm_values.dart';
 import 'session_document.dart';
+import 'session_migration.dart';
 
 class ValidationError {
   const ValidationError(this.path, this.code, this.message);
@@ -130,7 +131,7 @@ void _checkDocumentHeader(Object? raw, String path) {
   if (!map.containsKey('version')) {
     _fail('$path.version', 'validation_error', 'Missing field');
   }
-  if (map['version'] != 2) {
+  if (map['version'] != 2 && map['version'] != 3) {
     _fail(
       '$path.version',
       'unsupported_version',
@@ -298,7 +299,8 @@ LayerMix _mix(Object? raw, String path) {
 RhythmLayer _layer(Object? raw, String path) {
   final map = _object(raw, path, {
     'id',
-    'sound',
+    'instrumentId',
+    'pitch',
     'pattern',
     'phaseSteps',
     'swing',
@@ -308,7 +310,8 @@ RhythmLayer _layer(Object? raw, String path) {
     path,
     () => RhythmLayer(
       id: _string(map['id'], '$path.id'),
-      sound: _string(map['sound'], '$path.sound'),
+      instrumentId: _string(map['instrumentId'], '$path.instrumentId'),
+      pitch: _int(map['pitch'], '$path.pitch'),
       pattern: _pattern(map['pattern'], '$path.pattern'),
       phaseSteps: _int(map['phaseSteps'], '$path.phaseSteps'),
       swing: _swing(map['swing'], '$path.swing'),
@@ -365,7 +368,13 @@ Scene _scene(Object? raw, String path) {
 
 SessionDocument _document(Object? raw, String path) {
   _checkDocumentHeader(raw, path);
-  final map = _object(raw, path, {
+  final Map<String, dynamic> migrated;
+  try {
+    migrated = migrateSessionJson(raw as Map<String, dynamic>);
+  } on SessionMigrationException catch (error) {
+    _fail('$path.${error.path}', 'validation_error', error.message);
+  }
+  final map = _object(migrated, path, {
     'format',
     'version',
     'revision',

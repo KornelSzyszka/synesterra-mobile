@@ -11,7 +11,8 @@ final class PlannedRhythmEvent {
     required this.layerIndex,
     required this.stepIndex,
     required this.cycleIndex,
-    required this.sound,
+    required this.instrumentId,
+    required this.pitch,
     required this.velocity,
     required this.accent,
     required this.layerGain,
@@ -25,7 +26,10 @@ final class PlannedRhythmEvent {
   final int layerIndex;
   final int stepIndex;
   final int cycleIndex;
-  final String sound;
+  final String instrumentId;
+
+  /// MIDI note number of the layer.
+  final int pitch;
   final num velocity;
   final bool accent;
   final num layerGain;
@@ -96,7 +100,8 @@ final class EventPlanner {
               layerIndex: layerIndex,
               stepIndex: stepIndex,
               cycleIndex: cycle,
-              sound: layer.sound,
+              instrumentId: layer.instrumentId,
+              pitch: layer.pitch,
               velocity: step.velocity,
               accent: step.accent,
               layerGain: layer.mix.gain,
