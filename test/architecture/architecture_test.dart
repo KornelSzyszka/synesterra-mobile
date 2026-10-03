@@ -38,6 +38,20 @@ void main() {
     );
   });
 
+  test('R5 rejects a feature importing flutter_soloud', () {
+    final violations = scanArchitecture(
+      Directory('test/architecture/fixtures/r5'),
+    );
+    expect(
+      violations.any(
+        (violation) =>
+            violation.rule == 'R5' &&
+            violation.detail.contains('flutter_soloud'),
+      ),
+      isTrue,
+    );
+  });
+
   for (var number = 1; number <= 9; number++) {
     final rule = 'R$number';
     test('$rule fixture reports its file and rule', () {

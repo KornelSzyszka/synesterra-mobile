@@ -55,7 +55,9 @@ class FakeEngine implements AuditionEngine {
 
   @override
   Future<void> unload(AuditionSource source) async {
-    unloaded.add((source as FakeSource).id);
+    final id = (source as FakeSource).id;
+    events.add('unload $id');
+    unloaded.add(id);
   }
 
   @override
@@ -252,6 +254,53 @@ void main() {
 
       expect(engine.unloaded, ['audition-1']);
     });
+
+    test(
+      'keeps the sounding source until a replacement has rendered',
+      () async {
+        final replacement = Completer<Float32List>();
+        final repository = create(
+          cacheSize: 1,
+          renderer: (instrument, hz) =>
+              hz == 300 ? replacement.future : render(instrument, hz),
+        );
+        await repository.play(recipe(), [200]);
+
+        final next = repository.play(recipe(), [300]);
+        await Future<void>.delayed(Duration.zero);
+        expect(engine.events, isNot(contains('unload audition-0')));
+
+        replacement.complete(Float32List.fromList([0, 0.5, -0.5, 0]));
+        expect(await next, isTrue);
+        await Future<void>.delayed(Duration.zero);
+        expect(
+          engine.events,
+          containsAllInOrder([
+            'load audition-1',
+            'stop audition-0',
+            'unload audition-0',
+            'play audition-1',
+          ]),
+        );
+      },
+    );
+
+    test(
+      'a failed replacement render leaves the sounding source loaded',
+      () async {
+        final repository = create(
+          cacheSize: 1,
+          renderer: (instrument, hz) => hz == 300
+              ? Future<Float32List>.error(StateError('render failed'))
+              : render(instrument, hz),
+        );
+        await repository.play(recipe(), [200]);
+
+        expect(await repository.play(recipe(), [300]), isFalse);
+        expect(engine.events, isNot(contains('stop audition-0')));
+        expect(engine.events, isNot(contains('unload audition-0')));
+      },
+    );
 
     test('a failed load is not cached', () async {
       final repository = create();

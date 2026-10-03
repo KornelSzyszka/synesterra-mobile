@@ -217,6 +217,7 @@ const _pluginPackages = {
   'audio_session',
   'device_info_plus',
   'file_picker',
+  'flutter_soloud',
   'just_audio',
   'package_info_plus',
   'path_provider',

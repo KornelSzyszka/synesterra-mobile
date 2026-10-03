@@ -124,6 +124,24 @@ void main() {
       final names = directory.listSync().map((e) => e.uri.pathSegments.last);
       expect(names, ['a.json']);
     });
+
+    test(
+      'overlapping saves for one id do not share a temporary file',
+      () async {
+        final store = InstrumentFileStore(directory);
+        final writes = [
+          for (var index = 0; index < 20; index++)
+            store.write('same', 'value-$index'),
+        ];
+
+        await Future.wait(writes);
+        expect(await file('same.json').readAsString(), startsWith('value-'));
+        expect(
+          directory.listSync().map((entity) => entity.uri.pathSegments.last),
+          ['same.json'],
+        );
+      },
+    );
   });
 
   group('in-memory repository', () {

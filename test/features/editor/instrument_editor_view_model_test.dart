@@ -238,6 +238,27 @@ void main() {
       vm.startFrom(factoryInstruments.last);
       expect(vm.testSound, const TestNote(48));
     });
+
+    test('does not accept harmonics that are silent at the selected pitch', () {
+      final vm = create(instrument: stored(), existing: true)
+        ..setHarmonicCount(8)
+        ..setTestSound(const TestNote(TestSound.highestMidi));
+
+      final before = vm.instrument.harmonics;
+      vm.setHarmonics({for (var index = 0; index < 7; index++) index: 0, 7: 1});
+
+      expect(vm.instrument.harmonics, before);
+    });
+    test('keeps the test sound when it would silence the instrument', () {
+      final vm = create(instrument: stored(), existing: true)
+        ..setHarmonicCount(8)
+        ..setHarmonics({for (var index = 0; index < 7; index++) index: 0, 7: 1})
+        ..setTestSound(const TestNote(48));
+
+      vm.setTestSound(const TestNote(TestSound.highestMidi));
+
+      expect(vm.testSound, const TestNote(48));
+    });
   });
 
   group('name', () {
