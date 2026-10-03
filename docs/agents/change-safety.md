@@ -13,7 +13,7 @@ These hold from the first line of implementation.
 - Generation rule: pause, stop, a tempo or scene change, an edit while playing and an audio interruption increment `generation`. Events from an older generation must never sound.
 - `PlaybackRepository` owns `RuntimePerformanceState`. View models only read it and send commands.
 - Visualization reads the transport position and never drives transport.
-- The session model is serializable, versioned and validated on every read. Target contract: `SessionDocument v2` (see *External references*).
+- The session model is serializable, versioned and validated on every read. Target contract: `SessionDocument v3` (see *External references*).
 - Dependency rules R1–R9 of [decision 0001](../decisions/0001-architecture-style.md) hold. Changing a rule means changing that decision first.
 
 ## Change boundaries
@@ -34,7 +34,7 @@ These hold from the first line of implementation.
 
 The web laboratory's specifications live in `synesterra-web` and are not part of this repository:
 
-- **`SessionDocument v2` contract (web PLR-010):** `SessionDocument`, `SessionProject`, `RuntimePerformanceState`, validation limits, v1 → v2 migration, planner invariants.
+- **`SessionDocument v3` contract (web PLR-010):** `SessionDocument`, `SessionProject`, `RuntimePerformanceState`, validation limits, v1 → v2 → v3 migration, planner invariants.
 - **Rhythm core gap analysis (web PLR-004):** the core boundary `SessionDocument → SessionProject + RuntimePerformanceState → EventPlanner → platform scheduler → VoiceSink`.
 
 The first `DOM` task that needs the contract copies the relevant parts into `docs/modules/` of this repository. After that, agents in any worktree read it from here.
