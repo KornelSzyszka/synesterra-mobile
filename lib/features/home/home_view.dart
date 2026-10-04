@@ -9,12 +9,14 @@ class HomeView extends StatelessWidget {
     super.key,
     required this.onOpenEditor,
     required this.onOpenLibrary,
+    this.onOpenAudioSpike,
     this.palette = SynesterraPalette.forest,
     this.onPaletteChanged,
   });
 
   final VoidCallback onOpenEditor;
   final VoidCallback onOpenLibrary;
+  final VoidCallback? onOpenAudioSpike;
   final SynesterraPalette palette;
   final ValueChanged<SynesterraPalette>? onPaletteChanged;
 
@@ -59,6 +61,16 @@ class HomeView extends StatelessWidget {
             description: 'Your saved instruments, loops and arrangements.',
             onTap: onOpenLibrary,
           ),
+          if (onOpenAudioSpike != null) ...[
+            const SizedBox(height: 16),
+            _EntryCard(
+              key: const Key('home-audio-spike'),
+              icon: Icons.graphic_eq,
+              title: 'Audio spike',
+              description: 'Run rhythm and instrument-buffer measurements.',
+              onTap: onOpenAudioSpike!,
+            ),
+          ],
         ],
       ),
     );

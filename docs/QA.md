@@ -239,3 +239,57 @@ Tester sign-off:
 ## iOS status
 
 C3 and later iOS device stages are blocked. The Founder has an iPhone, but there is currently no Mac, Apple Developer account, or signed install path. Record C3 as `not run — blocked pending signed iOS build path; see #44`; do not treat an unsigned CI build, simulator, or static review as iOS device evidence.
+
+## AUD-043 phone run form — pending device
+
+The APK is prepared before the phone is available. Fill in a separate copy of the [result form](#result-form) for every device, route, fixture, and scenario. Until then, every physical gate below is **not run: no device yet**; empty number cells are intentional. An adapter log proves enqueue and buffer actions, not audible timing, xruns, or quality.
+
+**Install and open:** run `adb devices`, confirm the Founder's serial is `device`, check `adb shell getprop ro.build.version.sdk`, then `adb install -r build/app/outputs/flutter-apk/app-debug.apk` or sideload `build/app/outputs/flutter-apk/app-release.apk`. The local release APK uses the project's debug signing configuration for this test only. Open **Synesterra → Audio spike**; no playback starts until **Start**. Leave the unrelated `Medium_Phone_API_36.1` AVD and `com.example.app_1` package untouched.
+
+**Harness controls:** select `3:2` or `5:4`, 20/90/300 BPM, 2/4 layers and Drone on/off; use Start, Pause, Stop and the UI stress switch per scenarios A–E. While playing, tap **Run C-I instrument buffers**: it loads eight generated WAV buffers from isolate-rendered PCM, schedules the configured concurrent-voice bound across them (the first four voices are one four-note chord of distinct buffers; the log records the planned simultaneous count against SoLoud active/total counts and the verified voice cap, to compare with the recording), replaces one buffer while old voices sound and queues a new audition. Export diagnostics after each run; the screen shows a selectable JSON path. Use `adb pull <path-from-screen> <local-results-directory>` to retain it beside the recording. Record the device audio path, build/commit, raw recording, listening score and every applicable gate below.
+
+**Open question for the device run:** is the Founder's phone API level at least 27? The APK uses `minSdk 27`. If the phone is API 24–26, record the level and ask the Founder/coordinator to adjust the test build to that phone's API as ADR 0002 allows; do not label a failed install as an audio gate failure.
+
+```markdown
+# AUD-043 Android physical result — not run: no device yet
+
+Run ID / date:
+Tester:
+Build / commit / install method:
+Evidence level: not run: no device yet
+Device manufacturer / model:
+Android version / API level:
+ADB serial:
+Route / route hardware:
+Fixture / BPM / layers / drone / UI stress:
+Scenario: C1-A | C1-E | C2-B | C2-C | C2-D | C-I
+Recording method, accuracy limit, raw recording path:
+Diagnostics JSON path:
+
+| Gate | Class | Reason | n | p50 | p95 | max | unit / source |
+|---|---|---|---:|---:|---:|---:|---|
+| G1 | not applicable | Option C uses physical G4 | | | | | |
+| G2 | not run | no device yet | | | | | |
+| G3 | not run | no device yet | | | | | |
+| G4 | not run | no device yet | | | | | |
+| G5 | not run | no device yet | | | | | |
+| G6 | not run | no device yet | | | | | |
+| G7 | not run | no device yet | | | | | |
+| G8 | not run | no device yet | | | | | |
+| G9 | not run | no device yet | | | | | |
+| G10 | not run | no device yet | | | | | |
+
+Loss / double / late / rejected / xrun observations:
+Minimum planned coverage / wake-up lateness p99 and max:
+Output latency / jitter / drift / clock ppm:
+Stop tail (software / route) and method:
+C-I buffer count / peak voices / old-source retirement / audition delay:
+Listening scores and number of listeners:
+Lifecycle state / background / lock / interruption / route observations:
+Thirty-minute battery / heat / active-voice trend:
+Overall class: not run: no device yet
+Engine A or B recommendation: pending device numbers and Founder architecture decision
+Next action / owner: Founder identifies and brings phone; audio-platform and QA run this protocol
+```
+
+C3 iOS: **not run — no signed install path; see #44**. No Android result decides the iOS engine.

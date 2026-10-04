@@ -3,9 +3,11 @@ import 'package:synesterra_core/synesterra_core.dart';
 
 import '../data/repositories/instrument_audition_repository.dart';
 import '../data/repositories/instrument_library_repository.dart';
+import '../data/repositories/audio_spike_repository.dart';
 import '../features/editor/editor_view.dart';
 import '../features/home/home_view.dart';
 import '../features/library/library_view.dart';
+import '../features/audio_spike/audio_spike_view.dart';
 import '../shared/theme/synesterra_theme.dart';
 
 class SynesterraApp extends StatefulWidget {
@@ -13,10 +15,12 @@ class SynesterraApp extends StatefulWidget {
     super.key,
     required this.instrumentLibrary,
     required this.instrumentAudition,
+    this.audioSpikeRepositoryFactory,
   });
 
   final InstrumentLibraryRepository instrumentLibrary;
   final InstrumentAuditionRepository instrumentAudition;
+  final AudioSpikeRepository Function()? audioSpikeRepositoryFactory;
 
   @override
   State<SynesterraApp> createState() => _SynesterraAppState();
@@ -55,6 +59,15 @@ class _SynesterraAppState extends State<SynesterraApp> {
                 ),
               ),
             ),
+            onOpenAudioSpike: widget.audioSpikeRepositoryFactory == null
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AudioSpikeView(
+                        repository: widget.audioSpikeRepositoryFactory!(),
+                      ),
+                    ),
+                  ),
           );
         },
       ),
