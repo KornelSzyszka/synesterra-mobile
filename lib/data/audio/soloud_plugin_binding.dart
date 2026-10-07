@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
 import 'soloud_audio_clock.dart';
+import 'soloud_playback_engine.dart';
 import 'soloud_voice_sink.dart';
 
 /// The only spike adapter file that depends on plugin types.
@@ -72,4 +73,42 @@ final class FlutterSoloudVoiceEngine implements SoloudVoiceEngine {
 
   @override
   int get totalVoices => soloud.getVoiceCount();
+
+  /// False after the shared engine was deinitialized, which drops sources.
+  bool isLoaded(Object source) => soloud.activeSounds.contains(source);
+}
+
+final class FlutterSoloudLifecycle implements SoloudEngineLifecycle {
+  FlutterSoloudLifecycle(this.soloud);
+
+  final SoLoud soloud;
+  Future<void>? _starting;
+
+  @override
+  bool get isInitialized => soloud.isInitialized;
+
+  @override
+  Future<void> initialize() {
+    if (soloud.isInitialized) return Future.value();
+    // lowLatency is the plugin default; a failed start can be retried.
+    return _starting ??= soloud
+        .init(lowLatency: true)
+        .whenComplete(() => _starting = null);
+  }
+
+  @override
+  void keepDeviceOpen(bool open) =>
+      soloud.setAudioDeviceIdleTimeout(open ? null : Duration.zero);
+}
+
+/// Session playback on the shared `SoLoud.instance`. Nothing starts until Play.
+SoloudPlaybackEngine flutterSoloudPlaybackEngine() {
+  final soloud = SoLoud.instance;
+  final voices = FlutterSoloudVoiceEngine(soloud);
+  return SoloudPlaybackEngine(
+    clockSource: FlutterSoloudClockSource(soloud),
+    voiceEngine: voices,
+    lifecycle: FlutterSoloudLifecycle(soloud),
+    isSourceLoaded: voices.isLoaded,
+  );
 }
