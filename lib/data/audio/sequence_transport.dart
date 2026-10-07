@@ -277,7 +277,16 @@ final class SequenceTransport implements PlaybackStateSource, BeatEventSource {
       );
     }
     final tick = _heardTick(reading);
-    final segment = _segments[_segmentIndexAt(tick)];
+    // The section layout is fixed, so a read may run ahead of planning.
+    var index = _segmentIndexAt(tick);
+    while (true) {
+      final end = _segments[index].endTick;
+      if (end == null || tick < end) break;
+      final next = _segmentAfter(index);
+      if (next == null) break;
+      index = next.index;
+    }
+    final segment = _segments[index];
     final section = _sections[segment.sectionIndex];
     var local = tick - segment.startTick;
     final end = segment.endTick;
@@ -285,11 +294,16 @@ final class SequenceTransport implements PlaybackStateSource, BeatEventSource {
     if (local < 0) local = 0;
     final scaled = local * section.cycleTicksDenominator;
     final cycle = section.cycleTicksNumerator;
-    var generation = _marks.first.$2;
-    for (final (markTick, markGeneration) in _marks.reversed) {
-      if (markTick <= tick) {
-        generation = markGeneration;
-        break;
+    // Planning hands over one generation per section run, so a section not
+    // reached by planning yet gets the generation it is about to receive.
+    var generation = _generation + (index - _planSegment);
+    if (index <= _planSegment) {
+      generation = _marks.first.$2;
+      for (final (markTick, markGeneration) in _marks.reversed) {
+        if (markTick <= tick) {
+          generation = markGeneration;
+          break;
+        }
       }
     }
     return (
