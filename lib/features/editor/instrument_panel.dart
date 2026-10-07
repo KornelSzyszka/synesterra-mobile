@@ -194,8 +194,8 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                         ),
                         const SizedBox(height: Space.xs),
                         Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
+                          spacing: Space.sm,
+                          runSpacing: Space.xs,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             const Text('Shape'),
@@ -371,8 +371,8 @@ class _StartFrom extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 4,
+      spacing: Space.sm,
+      runSpacing: Space.xs,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const Text('Start from'),
@@ -571,8 +571,8 @@ class _TestSoundPanel extends StatelessWidget {
           ),
           const SizedBox(height: Space.md),
           Wrap(
-            spacing: 8,
-            runSpacing: 4,
+            spacing: Space.sm,
+            runSpacing: Space.xs,
             children: [
               for (var i = 0; i < _names.length; i++)
                 ChoiceChip(
@@ -601,8 +601,8 @@ class _TestSoundPanel extends StatelessWidget {
           if (isChord) ...[
             const SizedBox(height: Space.xs),
             Wrap(
-              spacing: 8,
-              runSpacing: 4,
+              spacing: Space.sm,
+              runSpacing: Space.xs,
               children: [
                 for (final option in ChordQuality.values)
                   ChoiceChip(
@@ -691,8 +691,8 @@ class _TagsPanelState extends State<_TagsPanel> {
             Text('No tags yet.', style: TextStyle(color: tokens.muted))
           else
             Wrap(
-              spacing: 8,
-              runSpacing: 4,
+              spacing: Space.sm,
+              runSpacing: Space.xs,
               children: [
                 for (final tag in vm.tags)
                   InputChip(
@@ -724,8 +724,8 @@ class _TagsPanelState extends State<_TagsPanel> {
             if (suggestions.isNotEmpty) ...[
               const SizedBox(height: Space.sm),
               Wrap(
-                spacing: 8,
-                runSpacing: 4,
+                spacing: Space.sm,
+                runSpacing: Space.xs,
                 children: [
                   for (final tag in suggestions)
                     ActionChip(

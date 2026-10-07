@@ -100,8 +100,8 @@ class _InstrumentsTabState extends State<_InstrumentsTab> {
               const SectionLabel('Filter by tag'),
               const SizedBox(height: Space.sm),
               Wrap(
-                spacing: 8,
-                runSpacing: 4,
+                spacing: Space.sm,
+                runSpacing: Space.xs,
                 children: [
                   FilterChip(
                     key: const Key('filter-all'),
