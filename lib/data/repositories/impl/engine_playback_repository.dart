@@ -74,6 +74,23 @@ final class EnginePlaybackRepository implements PlaybackRepository {
   _VoiceDemand? _demand;
   bool _disposed = false;
 
+  /// Engine operations run one after another, in call order, so a stop or
+  /// dispose can never be overtaken by an earlier start or buffer load.
+  Future<void> _engineQueue = Future.value();
+
+  Future<T> _serial<T>(Future<T> Function() operation) {
+    final result = _engineQueue.then((_) => operation());
+    _engineQueue = result.then<void>((_) {}, onError: (Object _) {});
+    return result;
+  }
+
+  /// Runs [operation] on the engine only if [request] is still current.
+  Future<void> _ifCurrent(int request, Future<void> Function() operation) =>
+      _serial(() async {
+        if (request != _request || _disposed) throw const _Superseded();
+        await operation();
+      });
+
   @override
   ValueListenable<PlaybackStatus> get status => _status;
 
@@ -156,8 +173,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
     final bpm = _bpmOf(requested.first.document);
     _publish(PlaybackStatus(state: PlaybackState.preparing, bpm: bpm));
     try {
-      await _engine.start();
-      if (request != _request) return;
+      await _ifCurrent(request, _engine.start);
       final missing = <String>{};
       var maxRing = Duration.zero;
       final sections = <TransportSection>[];
@@ -179,8 +195,9 @@ final class EnginePlaybackRepository implements PlaybackRepository {
           if (ring > maxRing) maxRing = ring;
           soundIds[layer.id] = await _buffer(
             _key(instrument, pitchToHz(layer.pitch)),
+            request,
           );
-          if (request != _request) return;
+          if (request != _request || _disposed) return;
         }
         sections.add(
           TransportSection(
@@ -213,8 +230,10 @@ final class EnginePlaybackRepository implements PlaybackRepository {
       );
       _refresh();
       _quietly(_trimCache(sections));
+    } on _Superseded {
+      return;
     } catch (error) {
-      if (request != _request) return;
+      if (request != _request || _disposed) return;
       await _fail(error);
     }
   }
@@ -226,7 +245,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
       PlaybackStatus(stopReason: PlaybackStopReason.error, error: '$error'),
     );
     try {
-      await _engine.stop();
+      await _serial(_engine.stop);
     } catch (_) {
       // Already failing; the first error is the one to report.
     }
@@ -238,7 +257,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
     _request++;
     _halt();
     _publish(PlaybackStatus());
-    await _engine.stop();
+    await _serial(_engine.stop);
   }
 
   /// New generation, cancel in the sink, reset the position.
@@ -336,11 +355,11 @@ final class EnginePlaybackRepository implements PlaybackRepository {
       _request++;
       _halt();
       _publish(PlaybackStatus(stopReason: PlaybackStopReason.finished));
-      _quietly(_engine.stop());
+      _quietly(_serial(_engine.stop));
       return;
     }
     _position.value = readPosition();
-    if (++_wakes % 40 == 0) _quietly(_engine.maintain());
+    if (++_wakes % 40 == 0) _quietly(_serial(_engine.maintain));
   }
 
   @visibleForTesting
@@ -364,25 +383,35 @@ final class EnginePlaybackRepository implements PlaybackRepository {
     hz: hz,
   );
 
-  Future<String> _buffer(_BufferKey key) async {
+  Future<String> _buffer(_BufferKey key, int request) async {
     final known = _bufferIds.remove(key);
     final id = known ?? 'playback-${_nextBuffer++}';
     _bufferIds[key] = id; // most recent again
     if (_engine.hasBuffer(id)) return id;
     final pending = _loading[id];
     if (pending != null) {
-      await pending;
-      return id;
+      try {
+        await pending;
+      } on _Superseded {
+        // That start was abandoned before loading; load for this one.
+      }
+      if (request != _request || _disposed) throw const _Superseded();
+      if (_engine.hasBuffer(id)) return id;
+      return _buffer(key, request);
     }
-    final load = _render(
-      key.sound,
-      key.hz,
-    ).then((samples) => _engine.loadBuffer(id, samples, sampleRate));
+    // The render runs off the engine queue; the load is queued and skipped
+    // when a newer command or dispose arrived meanwhile.
+    final load = _render(key.sound, key.hz).then(
+      (samples) => _ifCurrent(
+        request,
+        () => _engine.loadBuffer(id, samples, sampleRate),
+      ),
+    );
     _loading[id] = load;
     try {
       await load;
     } finally {
-      _loading.remove(id);
+      if (identical(_loading[id], load)) _loading.remove(id);
     }
     return id;
   }
@@ -401,7 +430,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
       if (inUse.contains(id) || _loading.containsKey(id)) continue;
       _bufferIds.remove(key);
       excess--;
-      unloads.add(_engine.unloadBuffer(id));
+      unloads.add(_serial(() => _engine.unloadBuffer(id)));
     }
     await Future.wait(unloads);
   }
@@ -420,7 +449,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
     _request++;
     _halt();
     _disposed = true;
-    await _engine.dispose();
+    await _serial(_engine.dispose);
     _status.dispose();
     _position.dispose();
   }
@@ -491,4 +520,9 @@ bool _sameMix(SessionDocument a, SessionDocument b) {
     if (x.layers[i].mix != y.layers[i].mix) return false;
   }
   return true;
+}
+
+/// A start or load abandoned because a newer command or dispose came first.
+final class _Superseded implements Exception {
+  const _Superseded();
 }

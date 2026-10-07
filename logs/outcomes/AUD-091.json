@@ -11,11 +11,11 @@
   "attempts": 1,
   "escalation": null,
   "error_type": null,
-  "review": null,
+  "review": "changes",
   "ci": null,
   "evidence": "unit",
   "failure_cost": null,
   "minutes": null,
   "tokens": null,
-  "notes": "PlaybackRepository (loop, sequence, tempo, gain, position) on the existing scheduler and SoLoud spike adapters; PlaybackScheduler gained an optional continuous handover for section boundaries. Scheduler handover tests were red (compile) then green; repository tests were written after the first draft and checked by six mutations, all caught. Full flutter test (383) and flutter analyze ran in a scratch copy with a hookless flutter_soloud (no MSVC on the Windows host); flutter analyze, dart format and flutter build apk --debug ran in the worktree. Core dart test not run locally (frontend_server failed to launch from the scratch path); the core is unchanged. No device run: timing, latency and sound are unmeasured (#43). Codex review and CI pending."
+  "notes": "PlaybackRepository (loop, sequence, tempo, gain, position) on the existing scheduler and SoLoud spike adapters; PlaybackScheduler gained an optional continuous handover for section boundaries. Scheduler handover tests were red (compile) then green; repository tests were written after the first draft and checked by six mutations, all caught. Full flutter test (383) and flutter analyze ran in a scratch copy with a hookless flutter_soloud (no MSVC on the Windows host); flutter analyze, dart format and flutter build apk --debug ran in the worktree. Core dart test not run locally (frontend_server failed to launch from the scratch path); the core is unchanged. No device run: timing, latency and sound are unmeasured (#43). Codex review and CI pending. Codex review (changes requested: 2 major, 1 minor) fixed red-then-green: hard cancel stops sounding voices, engine operations serialized with request tokens, position reads ahead of planning; full flutter test 389 in the scratch copy."
 }

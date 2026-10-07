@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:synesterra/data/audio/playback_engine.dart';
@@ -79,8 +80,12 @@ final class FakeEngine implements PlaybackEngine {
   bool refuseVoiceLimit = false;
   int maintained = 0;
 
+  /// When set, start() waits for it, like a slow SoLoud initialization.
+  Completer<void>? startGate;
+
   @override
   Future<void> start() async {
+    await startGate?.future;
     clock.state = EngineState.running;
     log.add('start');
   }
@@ -135,6 +140,7 @@ final class Harness {
       engine: engine,
       instruments: InMemoryInstrumentLibraryRepository(library),
       render: (instrument, hz) async {
+        await renderGate?.future;
         renders.add((decayMs: instrument.decayMs, hz: hz));
         return Float32List(1);
       },
@@ -143,6 +149,9 @@ final class Harness {
 
   final engine = FakeEngine();
   final renders = <RenderCall>[];
+
+  /// When set, rendering waits for it, like a heavy recipe in an isolate.
+  Completer<void>? renderGate;
   late final EnginePlaybackRepository repository;
 
   FakeClock get clock => engine.clock;

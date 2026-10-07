@@ -50,11 +50,17 @@ The data layer never imports UI code. The Loop panel task writes the adapter fro
 | `play(doc)` with another structure (steps, instrument, pitch, layers, cycle, seed), or any `play` during a sequence | New generation at once (silence while buffers are prepared), then a restart from the cycle start. |
 | `stop()` | New generation, cancel, engine stopped, position reset to cycle 0. |
 
+**Tempo in a sequence:** the whole sequence plays at the first section's tempo; the other sections' document tempos are not used. `setTempo` changes the tempo of the whole sequence.
+
+**Volume:** a gain or mix change affects only events planned after the change. Hits already queued (up to the 200 ms horizon) keep their old gain; nothing is replanned or retuned.
+
+**Hard cancel:** stop, a structural change and a tempo change stop the older generation's voices that are **already sounding** too, not only the pending ones (`SoloudVoiceSink(stopSoundingOnCancel: true)`). This deliberately departs from ADR 0002 `cancelFrom` rule 4 ("sounding one-shots finish their envelope") for session playback, because a long instrument tail of a stopped loop must not ring on; the spike keeps the ADR rule. The cut is an immediate SoLoud `stop`, which may click; that is unmeasured. A section hand-over never cancels, so section tails ring out.
+
 Scene B is ignored (the prototype writes A and B together). The drone is not played. A document's tempo is rounded to whole BPM, because the core `TempoMap` takes an integer BPM.
 
 ## Sequences
 
-`playSequence` lays the sections end to end on one beat timeline: section *k* lasts `repeats × practiceCycleBeats` (rounded up to a whole tick when the cycle is not a whole number of ticks). The tempo is the first section's; `setTempo` changes it for the whole sequence (other sections' tempos are not used; see *Open points*). An empty list stops with `emptySequence`; without `repeatAll` the transport stops with `finished` once the end has been heard.
+`playSequence` lays the sections end to end on one beat timeline: section *k* lasts `repeats × practiceCycleBeats` (rounded up to a whole tick when the cycle is not a whole number of ticks). The whole sequence plays at the first section's tempo; `setTempo` changes it for the whole sequence (other sections' tempos are not used; see *Open points*). An empty list stops with `emptySequence`; without `repeatAll` the transport stops with `finished` once the end has been heard.
 
 **Section boundary = generation handover.** A section switch increments the generation, but a cancel at that moment would cut the previous section's hits that are already queued up to 200 ms ahead. So `PlaybackScheduler` gained two optional snapshot fields: `planUntilBeat` stops planning at the section end, and `continuousSince` marks generations of one continuous run. When planning reaches the boundary (or the clock passed it after a stall), the transport moves to the next section with a new generation; the scheduler sees that the previous generation belongs to the same run and continues planning from the boundary **without** `cancelFrom`. Every event of a section therefore carries that section's generation, and nothing older is cancelled because nothing older lies after the boundary. Start, stop, tempo and structural changes still start a new run and cancel. Existing callers (the spike) pass neither field and keep the old rule.
 
@@ -62,7 +68,11 @@ Scene B is ignored (the prototype writes A and B together). The drone is not pla
 
 ## How the position is derived
 
-From one `AudioClockReading`: heard time = `outputTime` when the engine reports one, else `renderTime − fallbackOutputLatency` (always the case with SoLoud, so the position is **approximate**, ADR 0002). `TempoMap.beatAt(heard)` gives a tick; the section run containing it gives `sectionIndex`; the tick within that run divided by the practice cycle (exact integer arithmetic) gives `cycleIndex` and `cyclePosition` in [0, 1). Before the first beat (the 30 ms start pad) the position is cycle 0, position 0.
+From one `AudioClockReading`: heard time = `outputTime` when the engine reports one, else `renderTime − fallbackOutputLatency` (always the case with SoLoud, so the position is **approximate**, ADR 0002). `TempoMap.beatAt(heard)` gives a tick; the section run containing it gives `sectionIndex`; the tick within that run divided by the practice cycle (exact integer arithmetic) gives `cycleIndex` and `cyclePosition` in [0, 1). Before the first beat (the 30 ms start pad) the position is cycle 0, position 0. The section layout is fixed when playback starts, so a read finds the heard section even when planning has not handed over yet (for example a read exactly on a boundary before the next scheduler wake); it then reports the generation that section is about to receive.
+
+## Engine lifecycle
+
+Every engine operation (start, stop, buffer load and unload, maintenance, dispose) runs through one queue in call order. Each Play carries a request token; a start or buffer load whose token is no longer current, or that arrives after `dispose()`, is skipped. So a Stop during a slow initialization leaves the engine stopped, and a render that finishes after dispose loads nothing. Rendering itself runs in an isolate outside the queue.
 
 ## Instruments and buffers
 

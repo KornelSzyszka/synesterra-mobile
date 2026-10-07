@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/data/audio/playback_scheduler.dart';
 import 'package:synesterra/data/audio/soloud_voice_sink.dart'
@@ -264,6 +266,36 @@ void main() {
     expect(refused.sink.scheduled, isEmpty);
   });
 
+  test('stop during a slow engine start leaves the engine stopped', () async {
+    final h = Harness();
+    addTearDown(h.repository.dispose);
+    h.engine.startGate = Completer<void>();
+    final playing = h.repository.play(threeTwo());
+    final stopping = h.repository.stop();
+    h.engine.startGate!.complete();
+    await playing;
+    await stopping;
+    expect(h.engine.clock.state, EngineState.stopped);
+    expect(h.engine.log.where((l) => l == 'start' || l == 'stop').last, 'stop');
+    expect(h.repository.status.value.state, PlaybackState.stopped);
+    expect(h.sink.scheduled, isEmpty);
+  });
+
+  test('a render finishing after dispose loads nothing', () async {
+    final h = Harness();
+    h.renderGate = Completer<void>();
+    final playing = h.repository.play(threeTwo());
+    await Future<void>.delayed(Duration.zero);
+    final disposing = h.repository.dispose();
+    h.renderGate!.complete();
+    await playing;
+    await disposing;
+    final disposedAt = h.engine.log.indexOf('dispose');
+    expect(disposedAt, isNonNegative);
+    expect(h.engine.log.skip(disposedAt + 1), isEmpty);
+    expect(h.engine.buffers, isEmpty);
+  });
+
   test('renders off the UI isolate the same samples as the core', () async {
     final instrument = factoryInstruments.first;
     final samples = await renderPlaybackBufferInIsolate(instrument, 440);
@@ -325,6 +357,37 @@ void main() {
       expect(status.state, PlaybackState.stopped);
       expect(status.stopReason, PlaybackStopReason.finished);
       expect(h.repository.position.value.playing, isFalse);
+    });
+
+    test('a read on the boundary before the next planner tick', () async {
+      final h = Harness();
+      addTearDown(h.repository.dispose);
+      await h.repository.playSequence(sections(), repeatAll: false);
+      final generation = h.repository.readPosition().generation;
+      // The clock moves on, but no scheduler wake has happened yet.
+      h.clock.microseconds = at(anchor, 1930);
+      final position = h.repository.readPosition();
+      expect(position.sectionIndex, 5);
+      expect(position.cycleIndex, 0);
+      expect(position.cyclePosition, closeTo(10 / 960, 2e-3));
+      expect(position.generation, generation + 1);
+      // The planner then assigns the same generation to that section.
+      h.runTo(at(anchor, 2000));
+      expect(h.repository.readPosition().generation, generation + 1);
+    });
+
+    test('a newer start loads a buffer an abandoned start left', () async {
+      final h = Harness();
+      addTearDown(h.repository.dispose);
+      h.renderGate = Completer<void>();
+      final first = h.repository.play(threeTwo());
+      await Future<void>.delayed(Duration.zero);
+      final second = h.repository.play(threeTwo(gain: 0.5));
+      h.renderGate!.complete();
+      await first;
+      await second;
+      expect(h.repository.status.value.state, PlaybackState.playing);
+      expect(h.engine.buffers, {'playback-0', 'playback-1'});
     });
 
     test('repeat all wraps to the first section', () async {
