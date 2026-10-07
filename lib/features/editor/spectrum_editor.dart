@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import 'immediate_pan.dart';
 import 'spectrum_geometry.dart';
@@ -31,7 +34,10 @@ class SpectrumEditor extends StatefulWidget {
   /// The finger was lifted.
   final VoidCallback onChangeEnd;
 
-  static const chartHeight = 150.0;
+  /// A golden rectangle (`width / φ`) is a generous surface to draw on.
+  static double chartHeightFor(double width) =>
+      math.min(260.0, math.max(120.0, goldenHeight(width)));
+
   static const labelHeight = 20.0;
 
   @override
@@ -42,10 +48,15 @@ class _SpectrumEditorState extends State<SpectrumEditor> {
   int? _lastIndex;
   double _lastAmplitude = 0;
 
-  void _touch(Offset position, double width, {required bool stroke}) {
+  void _touch(
+    Offset position,
+    double width,
+    double height, {
+    required bool stroke,
+  }) {
     final count = widget.amplitudes.length;
     final index = barIndexAt(position.dx, width, count);
-    final amplitude = amplitudeAt(position.dy, SpectrumEditor.chartHeight);
+    final amplitude = amplitudeAt(position.dy, height);
     final last = _lastIndex;
     final changes = stroke && last != null
         ? strokeBetween(last, _lastAmplitude, index, amplitude)
@@ -73,16 +84,16 @@ class _SpectrumEditorState extends State<SpectrumEditor> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
+          final height = SpectrumEditor.chartHeightFor(width);
           return ImmediatePanDetector(
-            onDown: (position) => _touch(position, width, stroke: false),
-            onUpdate: (position) => _touch(position, width, stroke: true),
+            onDown: (position) =>
+                _touch(position, width, height, stroke: false),
+            onUpdate: (position) =>
+                _touch(position, width, height, stroke: true),
             onEnd: _end,
             child: CustomPaint(
               key: const Key('spectrum-chart'),
-              size: Size(
-                width,
-                SpectrumEditor.chartHeight + SpectrumEditor.labelHeight,
-              ),
+              size: Size(width, height + SpectrumEditor.labelHeight),
               painter: _SpectrumPainter(
                 amplitudes: widget.amplitudes,
                 shaped: widget.shaped,
@@ -118,10 +129,11 @@ class _SpectrumPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const chartHeight = SpectrumEditor.chartHeight;
+    final chartHeight = size.height - SpectrumEditor.labelHeight;
     final count = amplitudes.length;
     final slot = size.width / count;
-    final barWidth = slot * 0.7;
+    // Bars have a limit, so a few harmonics are bars and not wide blocks.
+    final barWidth = math.min(slot * 0.7, 28.0);
 
     for (final fraction in const [0.0, 0.5, 1.0]) {
       final y = chartHeight * (1 - fraction);
@@ -140,7 +152,7 @@ class _SpectrumPainter extends CustomPainter {
       final isSelected = i == selected;
       final bar = RRect.fromRectAndRadius(
         Rect.fromLTWH(left, chartHeight - height, barWidth, height),
-        const Radius.circular(2),
+        const Radius.circular(Radii.xs),
       );
       canvas.drawRRect(
         bar,
@@ -176,7 +188,7 @@ class _SpectrumPainter extends CustomPainter {
       final text = TextPainter(
         text: TextSpan(
           text: '$number',
-          style: TextStyle(color: labelColor, fontSize: 10),
+          style: TextStyle(color: labelColor, fontSize: TypeScale.overline),
         ),
         textDirection: TextDirection.ltr,
       )..layout();

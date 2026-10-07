@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
+import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import 'curve_geometry.dart';
 import 'immediate_pan.dart';
@@ -27,7 +30,10 @@ class EnvelopeEditor extends StatefulWidget {
   /// The finger was lifted.
   final VoidCallback onChangeEnd;
 
-  static const graphHeight = 130.0;
+  /// A flat golden rectangle (`width / φ²`).
+  static double graphHeightFor(double width) =>
+      math.min(200.0, math.max(96.0, flatGoldenHeight(width)));
+
   static const labelHeight = 22.0;
 
   @override
@@ -39,20 +45,17 @@ enum _Handle { peak, end }
 class _EnvelopeEditorState extends State<EnvelopeEditor> {
   _Handle? _active;
 
-  List<Offset> _handles(double width) {
+  List<Offset> _handles(double width, double height) {
     final attack = widget.attackMs / 1000;
     final end = attack + widget.decayMs / 1000;
     return [
       Offset(envelopeTimeToX(attack, width), 0),
-      Offset(
-        envelopeTimeToX(end, width),
-        EnvelopeEditor.graphHeight * (1 - envelopeFloor),
-      ),
+      Offset(envelopeTimeToX(end, width), height * (1 - envelopeFloor)),
     ];
   }
 
-  void _down(Offset position, double width) {
-    final picked = nearestHandle(position, _handles(width));
+  void _down(Offset position, double width, double height) {
+    final picked = nearestHandle(position, _handles(width, height));
     _active = picked == null ? null : _Handle.values[picked];
   }
 
@@ -95,16 +98,14 @@ class _EnvelopeEditorState extends State<EnvelopeEditor> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
+          final height = EnvelopeEditor.graphHeightFor(width);
           return ImmediatePanDetector(
-            onDown: (position) => _down(position, width),
+            onDown: (position) => _down(position, width, height),
             onUpdate: (position) => _move(position, width),
             onEnd: _end,
             child: CustomPaint(
               key: const Key('envelope-graph'),
-              size: Size(
-                width,
-                EnvelopeEditor.graphHeight + EnvelopeEditor.labelHeight,
-              ),
+              size: Size(width, height + EnvelopeEditor.labelHeight),
               painter: _EnvelopePainter(
                 attackMs: widget.attackMs,
                 decayMs: widget.decayMs,
@@ -145,7 +146,7 @@ class _EnvelopePainter extends CustomPainter {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: TextStyle(color: labelColor, fontSize: 10),
+        style: TextStyle(color: labelColor, fontSize: TypeScale.overline),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
@@ -157,7 +158,7 @@ class _EnvelopePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const height = EnvelopeEditor.graphHeight;
+    final height = size.height - EnvelopeEditor.labelHeight;
     final width = size.width;
 
     // Time ticks on the square-root axis.

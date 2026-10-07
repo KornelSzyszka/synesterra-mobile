@@ -43,7 +43,7 @@ Offset envelopeAt(WidgetTester tester, double seconds, double level) {
   final rect = tester.getRect(envelope);
   return Offset(
     rect.left + envelopeTimeToX(seconds, rect.width),
-    rect.top + EnvelopeEditor.graphHeight * (1 - level),
+    rect.top + (rect.height - EnvelopeEditor.labelHeight) * (1 - level),
   );
 }
 
@@ -52,7 +52,7 @@ Offset eqAt(WidgetTester tester, double hz, double db) {
   final rect = tester.getRect(eq);
   return Offset(
     rect.left + hzToX(hz, rect.width),
-    rect.top + dbToY(db, EqEditor.graphHeight),
+    rect.top + dbToY(db, rect.height - EqEditor.labelHeight),
   );
 }
 
@@ -159,7 +159,8 @@ void main() {
       gesture = await tester.startGesture(
         Offset(
           rect.left + envelopeTimeToX(5.002, rect.width),
-          rect.top + EnvelopeEditor.graphHeight * (1 - envelopeFloor),
+          rect.top +
+              (rect.height - EnvelopeEditor.labelHeight) * (1 - envelopeFloor),
         ),
       );
       await gesture.moveBy(const Offset(-4000, 0));

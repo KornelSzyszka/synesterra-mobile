@@ -12,6 +12,7 @@ import 'eq_editor.dart';
 import 'instrument_editor_view_model.dart';
 import 'spectrum_editor.dart';
 import 'test_sound.dart';
+import '../../shared/theme/design_scale.dart';
 
 /// Shape the sound of one instrument and see its mist react.
 class InstrumentPanel extends StatefulWidget {
@@ -89,10 +90,10 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(Space.lg),
                 children: [
                   _StartFrom(onPick: _startFrom),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: Space.md),
                   DesignPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +114,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                             errorText: vm.nameValid ? null : 'Give it a name',
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: Space.lg),
                         Center(
                           child: InstrumentSoundView(
                             key: const Key('instrument-preview'),
@@ -124,7 +125,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                             pulseToken: vm.auditionCount,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.sm),
                         Center(
                           child: FilledButton.icon(
                             key: const Key('instrument-play'),
@@ -136,7 +137,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                             label: const Text('Play'),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.sm),
                         ValueListenableBuilder<bool>(
                           valueListenable: vm.soundAvailable,
                           builder: (context, available, _) => Text(
@@ -151,22 +152,22 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                               color: available
                                   ? tokens.muted
                                   : Theme.of(context).colorScheme.error,
-                              fontSize: 12,
+                              fontSize: TypeScale.caption,
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: Space.lg),
                   _TestSoundPanel(viewModel: vm),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: Space.lg),
                   DesignPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SectionLabel('Spectrum'),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.sm),
                         SpectrumEditor(
                           amplitudes: instrument.harmonics,
                           shaped: shapedHarmonics(
@@ -180,7 +181,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                               vm.setHarmonics(changes, select: select),
                           onChangeEnd: vm.auditionSoon,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: Space.xs),
                         _ValueSlider(
                           key: const Key('spectrum-selected'),
                           label: 'Harmonic ${vm.selectedHarmonic + 1}',
@@ -191,10 +192,10 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                               vm.setHarmonic(vm.selectedHarmonic, value),
                           onChangeEnd: vm.auditionSoon,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: Space.xs),
                         Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
+                          spacing: Space.sm,
+                          runSpacing: Space.xs,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             const Text('Shape'),
@@ -209,14 +210,17 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                               ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: Space.xs),
                         Text(
                           'Drag across the bars to draw them. White marks show '
                           'each harmonic after the EQ. Shapes and Brightness '
                           'redraw every bar.',
-                          style: TextStyle(color: tokens.muted, fontSize: 12),
+                          style: TextStyle(
+                            color: tokens.muted,
+                            fontSize: TypeScale.caption,
+                          ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.sm),
                         Row(
                           children: [
                             const Expanded(child: Text('Harmonics')),
@@ -246,13 +250,13 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: Space.lg),
                   DesignPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SectionLabel('Envelope'),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.sm),
                         EnvelopeEditor(
                           attackMs: instrument.attackMs,
                           decayMs: instrument.decayMs,
@@ -282,13 +286,13 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: Space.lg),
                   DesignPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SectionLabel('EQ'),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.sm),
                         EqEditor(
                           eq: instrument.eq,
                           testHz: vm.testHz,
@@ -322,7 +326,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: Space.lg),
                   _TagsPanel(viewModel: vm),
                 ],
               ),
@@ -367,8 +371,8 @@ class _StartFrom extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 4,
+      spacing: Space.sm,
+      runSpacing: Space.xs,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const Text('Start from'),
@@ -410,7 +414,7 @@ class _ValueSlider extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.only(top: Space.sm),
           child: Row(
             children: [
               Expanded(child: Text(label)),
@@ -446,7 +450,12 @@ class _SaveBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: const EdgeInsets.fromLTRB(
+            Space.lg,
+            Space.sm,
+            Space.lg,
+            Space.sm,
+          ),
           child: Row(
             children: [
               Expanded(
@@ -541,12 +550,12 @@ class _TestSoundPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SectionLabel('Test sound'),
-          const SizedBox(height: 4),
+          const SizedBox(height: Space.xs),
           Text(
             'Only for hearing the instrument. It is not saved with it.',
-            style: TextStyle(color: tokens.muted, fontSize: 12),
+            style: TextStyle(color: tokens.muted, fontSize: TypeScale.caption),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           SegmentedButton<bool>(
             key: const Key('test-mode'),
             showSelectedIcon: false,
@@ -560,10 +569,10 @@ class _TestSoundPanel extends StatelessWidget {
             selected: {isChord},
             onSelectionChanged: (selection) => choose(chord: selection.single),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           Wrap(
-            spacing: 8,
-            runSpacing: 4,
+            spacing: Space.sm,
+            runSpacing: Space.xs,
             children: [
               for (var i = 0; i < _names.length; i++)
                 ChoiceChip(
@@ -574,7 +583,7 @@ class _TestSoundPanel extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: Space.xs),
           Row(
             children: [
               const Expanded(child: Text('Octave')),
@@ -590,10 +599,10 @@ class _TestSoundPanel extends StatelessWidget {
             ],
           ),
           if (isChord) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             Wrap(
-              spacing: 8,
-              runSpacing: 4,
+              spacing: Space.sm,
+              runSpacing: Space.xs,
               children: [
                 for (final option in ChordQuality.values)
                   ChoiceChip(
@@ -605,7 +614,7 @@ class _TestSoundPanel extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
           Text(
             'Plays ${sound.label}',
             key: const Key('test-label'),
@@ -672,18 +681,18 @@ class _TagsPanelState extends State<_TagsPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SectionLabel('Tags'),
-          const SizedBox(height: 4),
+          const SizedBox(height: Space.xs),
           Text(
             'Labels to find this instrument again in the library.',
-            style: TextStyle(color: tokens.muted, fontSize: 12),
+            style: TextStyle(color: tokens.muted, fontSize: TypeScale.caption),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
           if (vm.tags.isEmpty)
             Text('No tags yet.', style: TextStyle(color: tokens.muted))
           else
             Wrap(
-              spacing: 8,
-              runSpacing: 4,
+              spacing: Space.sm,
+              runSpacing: Space.xs,
               children: [
                 for (final tag in vm.tags)
                   InputChip(
@@ -695,7 +704,7 @@ class _TagsPanelState extends State<_TagsPanel> {
               ],
             ),
           if (vm.canAddTag) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
             TextField(
               key: const Key('instrument-tag-input'),
               controller: _input,
@@ -713,10 +722,10 @@ class _TagsPanelState extends State<_TagsPanel> {
               ),
             ),
             if (suggestions.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               Wrap(
-                spacing: 8,
-                runSpacing: 4,
+                spacing: Space.sm,
+                runSpacing: Space.xs,
                 children: [
                   for (final tag in suggestions)
                     ActionChip(
@@ -729,10 +738,13 @@ class _TagsPanelState extends State<_TagsPanel> {
             ],
           ] else
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: Space.sm),
               child: Text(
                 'That is the most tags an instrument can have.',
-                style: TextStyle(color: tokens.muted, fontSize: 12),
+                style: TextStyle(
+                  color: tokens.muted,
+                  fontSize: TypeScale.caption,
+                ),
               ),
             ),
         ],

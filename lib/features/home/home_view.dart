@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/palette_menu_button.dart';
+import '../../shared/theme/design_scale.dart';
 
 /// The first screen: two entries and nothing else for now.
 class HomeView extends StatelessWidget {
@@ -44,7 +45,7 @@ class HomeView extends StatelessWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         children: [
           _EntryCard(
             key: const Key('home-editor'),
@@ -53,7 +54,7 @@ class HomeView extends StatelessWidget {
             description: 'Shape an instrument, build a loop, arrange a track.',
             onTap: onOpenEditor,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: Space.lg),
           _EntryCard(
             key: const Key('home-library'),
             icon: Icons.library_music_outlined,
@@ -104,19 +105,19 @@ class _EntryCard extends StatelessWidget {
         color: tokens.surface,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: tokens.border),
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(Radii.sm),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(Radii.sm),
           onTap: onTap,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 140),
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(Space.lg),
               child: Row(
                 children: [
                   Icon(icon, size: 36, color: tokens.accent),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: Space.lg),
                   Expanded(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -130,10 +131,10 @@ class _EntryCard extends StatelessWidget {
                             fontFamilyFallback: SynesterraFonts.serifFallback(
                               platform,
                             ),
-                            fontSize: 28,
+                            fontSize: TypeScale.headline,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: Space.sm),
                         Text(
                           description,
                           style: TextStyle(color: tokens.muted),

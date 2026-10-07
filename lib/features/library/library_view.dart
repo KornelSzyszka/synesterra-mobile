@@ -5,6 +5,7 @@ import '../../data/repositories/instrument_library_repository.dart';
 import '../../shared/instrument_mist/instrument_mist.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
+import '../../shared/theme/design_scale.dart';
 
 /// Opens an instrument in the editor. [existing] is true for the user's own
 /// instruments (edited in place) and false for a factory preset (copied).
@@ -82,11 +83,11 @@ class _InstrumentsTabState extends State<_InstrumentsTab> {
         final mine = snapshot.instruments.where(matches).toList();
         final presets = factoryInstruments.where(matches).toList();
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(Space.lg),
           children: [
             if (snapshot.unreadableCount > 0)
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: Space.md),
                 child: Text(
                   key: const Key('unreadable-note'),
                   '${snapshot.unreadableCount} stored '
@@ -97,10 +98,10 @@ class _InstrumentsTabState extends State<_InstrumentsTab> {
               ),
             if (tags.isNotEmpty) ...[
               const SectionLabel('Filter by tag'),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               Wrap(
-                spacing: 8,
-                runSpacing: 4,
+                spacing: Space.sm,
+                runSpacing: Space.xs,
                 children: [
                   FilterChip(
                     key: const Key('filter-all'),
@@ -117,13 +118,13 @@ class _InstrumentsTabState extends State<_InstrumentsTab> {
                     ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.lg),
             ],
             const SectionLabel('My instruments'),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
             if (mine.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: Space.md),
                 child: Text(
                   tag == null
                       ? 'No instruments yet. Save one from the Editor.'
@@ -139,9 +140,9 @@ class _InstrumentsTabState extends State<_InstrumentsTab> {
                 onDelete: () => _delete(context, instrument),
               ),
             if (presets.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.lg),
               const SectionLabel('Factory'),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               for (final preset in presets)
                 _InstrumentTile(
                   key: Key('factory-tile-${preset.id}'),
@@ -190,24 +191,29 @@ class _InstrumentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = SynesterraTokens.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: Space.sm),
       child: Material(
         color: tokens.surface,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: tokens.border),
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(Radii.sm),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(Radii.sm),
           onTap: onTap,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 72),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+              padding: const EdgeInsets.fromLTRB(
+                Space.md,
+                Space.sm,
+                Space.xs,
+                Space.sm,
+              ),
               child: Row(
                 children: [
                   InstrumentMist(instrument: instrument, size: 56),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: Space.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,7 +222,10 @@ class _InstrumentTile extends StatelessWidget {
                         Text(
                           '${instrument.harmonics.length} harmonics · '
                           '${instrument.decayMs} ms',
-                          style: TextStyle(color: tokens.muted, fontSize: 12),
+                          style: TextStyle(
+                            color: tokens.muted,
+                            fontSize: TypeScale.caption,
+                          ),
                         ),
                         if (instrument.tags.isNotEmpty)
                           Text(
@@ -224,7 +233,7 @@ class _InstrumentTile extends StatelessWidget {
                             instrument.tags.join(' · '),
                             style: TextStyle(
                               color: tokens.accent,
-                              fontSize: 12,
+                              fontSize: TypeScale.caption,
                             ),
                           ),
                       ],
@@ -257,7 +266,7 @@ class _EmptyTab extends StatelessWidget {
     final tokens = SynesterraTokens.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(Space.xl),
         child: Text(
           text,
           textAlign: TextAlign.center,

@@ -108,7 +108,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('delete-a')));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    // The floating snack bar has to finish sliding in before Undo is hittable.
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(repository.snapshot.value.instruments, isEmpty);
     expect(find.byKey(const Key('own-a')), findsNothing);

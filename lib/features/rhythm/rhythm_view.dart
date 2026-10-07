@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import 'rhythm_view_model.dart';
+import '../../shared/theme/design_scale.dart';
 
 class RhythmView extends StatelessWidget {
   const RhythmView({
@@ -61,7 +62,7 @@ class RhythmView extends StatelessWidget {
         builder: (context, _) {
           final state = viewModel.state;
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(Space.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -70,7 +71,7 @@ class RhythmView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SectionLabel('Independent voices'),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: Space.md),
                       Row(
                         children: [
                           Expanded(
@@ -95,7 +96,7 @@ class RhythmView extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: Space.md),
                       for (var index = 0; index < state.layers.length; index++)
                         _LayerRow(
                           index: index,
@@ -110,7 +111,7 @@ class RhythmView extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: Space.lg),
                 DesignPanel(
                   child: Row(
                     children: [
@@ -160,7 +161,7 @@ class _LayerRow extends StatelessWidget {
         ? layerColor
         : tokens.disabledLayerText(layerColor);
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: Space.sm),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: tokens.border)),
       ),
@@ -169,7 +170,7 @@ class _LayerRow extends StatelessWidget {
           Row(
             children: [
               LayerChip(number: index + 1, color: displayColor),
-              const SizedBox(width: 9),
+              const SizedBox(width: Space.sm),
               Expanded(
                 child: Text(
                   'Layer ${index + 1}',
@@ -194,10 +195,10 @@ class _LayerRow extends StatelessWidget {
                 child: Container(
                   width: 48,
                   height: 48,
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(Space.sm),
                   decoration: BoxDecoration(
                     border: Border.all(color: tokens.border),
-                    borderRadius: BorderRadius.circular(5),
+                    borderRadius: BorderRadius.circular(Radii.xs),
                   ),
                   child: ColoredBox(
                     color: enabled
