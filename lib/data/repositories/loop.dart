@@ -116,6 +116,10 @@ class Loop {
     document: document ?? this.document,
   );
 
+  /// An editable copy for the user's library: a new id and `<name> copy`.
+  /// This is how a read-only factory loop is edited.
+  Loop copyAsNew() => copyWith(id: newLibraryId('loop'), name: copyName(name));
+
   @override
   bool operator ==(Object other) =>
       other is Loop &&

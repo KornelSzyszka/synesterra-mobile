@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
+import '../../data/repositories/arrangement_library_repository.dart';
 import '../../data/repositories/instrument_library_repository.dart';
+import '../../data/repositories/loop_library_repository.dart';
 import '../../shared/instrument_mist/instrument_mist.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import '../../shared/theme/design_scale.dart';
+import 'arrangements_tab.dart';
+import 'loops_tab.dart';
+
+export 'arrangements_tab.dart' show OpenArrangement;
+export 'loops_tab.dart' show OpenLoop;
 
 /// Opens an instrument in the editor. [existing] is true for the user's own
 /// instruments (edited in place) and false for a factory preset (copied).
@@ -16,11 +23,19 @@ class LibraryView extends StatelessWidget {
   const LibraryView({
     super.key,
     required this.instrumentLibrary,
+    required this.loopLibrary,
+    required this.arrangementLibrary,
     required this.onOpenInstrument,
+    required this.onOpenLoop,
+    required this.onOpenArrangement,
   });
 
   final InstrumentLibraryRepository instrumentLibrary;
+  final LoopLibraryRepository loopLibrary;
+  final ArrangementLibraryRepository arrangementLibrary;
   final OpenInstrument onOpenInstrument;
+  final OpenLoop onOpenLoop;
+  final OpenArrangement onOpenArrangement;
 
   @override
   Widget build(BuildContext context) {
@@ -43,8 +58,12 @@ class LibraryView extends StatelessWidget {
               library: instrumentLibrary,
               onOpen: onOpenInstrument,
             ),
-            const _EmptyTab(text: 'No loops yet.'),
-            const _EmptyTab(text: 'No arrangements yet.'),
+            LoopsTab(library: loopLibrary, onOpen: onOpenLoop),
+            ArrangementsTab(
+              library: arrangementLibrary,
+              loops: loopLibrary,
+              onOpen: onOpenArrangement,
+            ),
           ],
         ),
       ),
@@ -250,27 +269,6 @@ class _InstrumentTile extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyTab extends StatelessWidget {
-  const _EmptyTab({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(Space.xl),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: tokens.muted),
         ),
       ),
     );

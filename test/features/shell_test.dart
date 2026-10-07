@@ -86,10 +86,18 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('library-tab-loops')));
     await tester.pumpAndSettle();
-    expect(find.text('No loops yet.'), findsOneWidget);
+    expect(
+      find.text('No loops of your own yet. Copy a factory loop to start one.'),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const Key('library-tab-arrangements')));
     await tester.pumpAndSettle();
-    expect(find.text('No arrangements yet.'), findsOneWidget);
+    expect(
+      find.text(
+        'No arrangements yet. An arrangement plays loops one after another.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('back from the Editor returns to the start screen', (
