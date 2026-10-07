@@ -9,13 +9,13 @@
   "reasoning": null,
   "success": true,
   "attempts": 1,
-  "escalation": "DOM-089 (#97) not merged: interim arrangement type behind TODO(DOM-089) with the same JSON shape; swap after #97 merges.",
+  "escalation": "Started with an interim arrangement type while DOM-089 (#97) was open; switched to the core Arrangement after #97 merged.",
   "error_type": null,
-  "review": null,
+  "review": "changes",
   "ci": null,
   "evidence": "widget",
   "failure_cost": null,
   "minutes": null,
   "tokens": null,
-  "notes": "Model log check ran in the scratch copy (the soloud build hook fails it in the worktree). New repository and widget tests failed to compile (red) before the code existed, then passed. Full flutter test (425) ran in a scratch copy without flutter_soloud (no MSVC for its build hook; bootstrap engine substituted by the noop audition repository); dart test in the core (124) ran there too. dart format and flutter analyze ran in the worktree; flutter build apk --debug built. No emulator or device run. Cross-agent review and CI pending."
+  "notes": "Codex review (major): atomic write not tested; fixed with fault-injected store tests (red: a failed temp write or rename left a .json.tmp behind; the target was already preserved), store now removes the temp file on failure. Red-then-green throughout. Full flutter test (417) and core dart test (141) and the model log check ran in a scratch copy without flutter_soloud (no MSVC for its build hook; bootstrap engine substituted by the noop audition repository). dart format and flutter analyze ran in the worktree; flutter build apk --debug built. No emulator or device run. CI pending."
 }

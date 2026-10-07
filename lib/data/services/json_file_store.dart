@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 /// One stored file. [text] is null when the file could not be read.
 class StoredJsonFile {
   const StoredJsonFile({required this.name, required this.text});
@@ -58,10 +60,31 @@ class JsonFileStore {
     return _enqueue(id, () async {
       await directory.create(recursive: true);
       final temporary = File(_path(id, '.json.tmp'));
-      await temporary.writeAsString(text, flush: true);
-      await temporary.rename(path);
+      try {
+        await writeTemporary(temporary, text);
+        await replaceTarget(temporary, path);
+      } catch (_) {
+        // The target was never touched; drop the partial temporary file so
+        // nothing half-written stays on disk, then report the failure.
+        try {
+          if (await temporary.exists()) await temporary.delete();
+        } on FileSystemException {
+          // Best effort: a leftover `.json.tmp` is ignored by readAll.
+        }
+        rethrow;
+      }
     });
   }
+
+  /// Writes the complete text to [temporary] and flushes it to disk.
+  @visibleForTesting
+  Future<void> writeTemporary(File temporary, String text) =>
+      temporary.writeAsString(text, flush: true);
+
+  /// Renames [temporary] over [targetPath] in one step (same directory).
+  @visibleForTesting
+  Future<void> replaceTarget(File temporary, String targetPath) =>
+      temporary.rename(targetPath);
 
   /// Deletes `<id>.json` if it exists, after any earlier write of that id.
   Future<void> remove(String id) {

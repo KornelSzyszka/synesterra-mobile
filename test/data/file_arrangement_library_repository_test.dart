@@ -5,16 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/data/repositories/arrangement_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/file_arrangement_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_arrangement_library_repository.dart';
-import 'package:synesterra/data/repositories/interim_arrangement.dart';
 import 'package:synesterra/data/services/json_file_store.dart';
+import 'package:synesterra_core/synesterra_core.dart';
 
-InterimArrangement arrangement(String id, String name, {int repeats = 2}) =>
-    InterimArrangement(
+Arrangement arrangement(String id, String name, {int repeats = 2}) =>
+    Arrangement(
       id: id,
       name: name,
       sections: [
-        InterimArrangementSection(loopId: 'factory-loop-3-2', repeats: repeats),
-        InterimArrangementSection(loopId: 'loop-x', repeats: 1),
+        ArrangementSection(loopId: 'factory-loop-3-2', repeats: repeats),
+        ArrangementSection(loopId: 'loop-x', repeats: 1),
       ],
     );
 
@@ -53,7 +53,7 @@ void main() {
     await reopened.load();
     expect(reopened.snapshot.value.items, [original]);
 
-    await reopened.save(original.copyWith(name: 'Tune'));
+    await reopened.save(original.renamed('Tune'));
     reopened = open();
     await reopened.load();
     expect(reopened.snapshot.value.items.single.name, 'Tune');

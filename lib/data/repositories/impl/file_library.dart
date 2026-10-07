@@ -26,7 +26,7 @@ class FileLibrary<T> {
 
   /// Strict parse; throws [FormatException] for anything invalid.
   final T Function(Object? json) decode;
-  final Map<String, Object> Function(T item) encode;
+  final Map<String, dynamic> Function(T item) encode;
   final String Function(T item) idOf;
   final int Function(T a, T b) compare;
 

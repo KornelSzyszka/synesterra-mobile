@@ -6,7 +6,7 @@ import 'package:synesterra/data/repositories/impl/in_memory_arrangement_library_
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_loop_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
-import 'package:synesterra/data/repositories/interim_arrangement.dart';
+import 'package:synesterra_core/synesterra_core.dart';
 import 'package:synesterra/data/repositories/library_item.dart';
 import 'package:synesterra/data/repositories/loop.dart';
 import 'package:synesterra/data/repositories/loop_library_repository.dart';
@@ -26,16 +26,16 @@ Loop myLoop(String id, String name, {List<int> hits = const [3, 2]}) => Loop(
   ),
 );
 
-InterimArrangement myArrangement(
+Arrangement myArrangement(
   String id,
   String name, {
   List<(String, int)> sections = const [('factory-loop-3-2', 4), ('gone', 2)],
-}) => InterimArrangement(
+}) => Arrangement(
   id: id,
   name: name,
   sections: [
     for (final (loopId, repeats) in sections)
-      InterimArrangementSection(loopId: loopId, repeats: repeats),
+      ArrangementSection(loopId: loopId, repeats: repeats),
   ],
 );
 

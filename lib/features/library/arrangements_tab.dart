@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../data/repositories/arrangement_library_repository.dart';
-import '../../data/repositories/interim_arrangement.dart';
 import '../../data/repositories/loop.dart';
 import '../../data/repositories/loop_library_repository.dart';
 import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import 'library_widgets.dart';
 
-typedef OpenArrangement = void Function(InterimArrangement arrangement);
+typedef OpenArrangement = void Function(Arrangement arrangement);
 
 /// `2 sections · 6 repeats`.
-String arrangementSummary(InterimArrangement arrangement) {
+String arrangementSummary(Arrangement arrangement) {
   final sections = arrangement.sections.length;
   final repeats = arrangement.totalRepeats;
   return '$sections ${sections == 1 ? 'section' : 'sections'} · '
@@ -67,16 +67,13 @@ class ArrangementsTab extends StatelessWidget {
     );
   }
 
-  Future<void> _rename(
-    BuildContext context,
-    InterimArrangement arrangement,
-  ) async {
+  Future<void> _rename(BuildContext context, Arrangement arrangement) async {
     final name = await showRenameDialog(
       context,
       title: 'Rename arrangement',
       initial: arrangement.name,
     );
-    if (name != null) await library.save(arrangement.copyWith(name: name));
+    if (name != null) await library.save(arrangement.renamed(name));
   }
 }
 
@@ -89,7 +86,7 @@ class _ArrangementCard extends StatelessWidget {
     required this.onDelete,
   });
 
-  final InterimArrangement arrangement;
+  final Arrangement arrangement;
   final Loop? Function(String id) resolve;
   final VoidCallback onTap;
   final VoidCallback onRename;

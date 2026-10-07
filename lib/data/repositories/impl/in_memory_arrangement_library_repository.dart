@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:synesterra_core/synesterra_core.dart';
 
 import '../arrangement_library_repository.dart';
-import '../interim_arrangement.dart';
 import '../library_item.dart';
 import 'file_library.dart';
 
@@ -9,25 +9,24 @@ import 'file_library.dart';
 class InMemoryArrangementLibraryRepository
     implements ArrangementLibraryRepository {
   InMemoryArrangementLibraryRepository([
-    Iterable<InterimArrangement> initial = const [],
+    Iterable<Arrangement> initial = const [],
   ]) : _library = MemoryLibrary(
          initial,
          idOf: (arrangement) => arrangement.id,
          compare: compareArrangements,
        );
 
-  final MemoryLibrary<InterimArrangement> _library;
+  final MemoryLibrary<Arrangement> _library;
 
   @override
-  ValueListenable<LibrarySnapshot<InterimArrangement>> get snapshot =>
+  ValueListenable<LibrarySnapshot<Arrangement>> get snapshot =>
       _library.snapshot;
 
   @override
   Future<void> load() => _library.load();
 
   @override
-  Future<void> save(InterimArrangement arrangement) =>
-      _library.save(arrangement);
+  Future<void> save(Arrangement arrangement) => _library.save(arrangement);
 
   @override
   Future<void> delete(String id) => _library.delete(id);
