@@ -64,6 +64,10 @@ Both graphs take the gesture at once (`ImmediatePanDetector`, shared with the sp
 
 Since `SessionDocument v3` ([session document](session-document.md)) a loop layer holds an `instrumentId` (the id rule above) and a `pitch`, an integer MIDI note 24..107 (C1..B7, the editor's test range). The frequency for `renderInstrument` is `440 * 2^((pitch - 69) / 12)`. Instruments are never embedded in a session; the library owns them. The core accepts an id it cannot resolve, and the data layer decides what a missing instrument means.
 
+## Pad
+
+`instrumentForPad(PadPoint(x, y), id: ..., name: ..., tags: ...)` (`instrument_pad.dart`) maps a point on the 2D pad to a valid `Instrument`; the recipe and JSON v2 do not change. `PadPoint` holds `x` (dark 0 to bright 1) and `y` (soft 0, top, to hard 1, bottom), both finite and in 0..1, otherwise `ArgumentError`. `padAnchors` is the data table of the five named recipes (`warm drone`, `airy pad`, `bass`, `guitar`, `click`); their values are **untuned** until the Founder's `musical` gate. The mapping is deterministic, continuous and piecewise linear: top edge warm drone to airy pad, bottom edge bass to click to guitar, then top to bottom by `y`; harmonics are blended in amplitude (zero-padded), attack and decay in the log domain, EQ in dB. An anchor point returns its anchor exactly. Principles, axes and the anchor table: [instrument pad](../product/instrument-pad.md). Tests: `test/instrument_pad_test.dart`.
+
 ## Not here yet
 
-The UI to choose an instrument or a pitch in the Loop panel, and resolving a missing instrument against the library. So is a progression as a test sound (it needs timing).
+The pad UI, a true sustain (note length and release), noise and a pitch drop, the inverse mapping from an instrument to a pad point and saving the pad position. Also the UI to choose an instrument or a pitch in the Loop panel, and resolving a missing instrument against the library. So is a progression as a test sound (it needs timing).

@@ -25,7 +25,7 @@ flowchart LR
 - **Loop** (Founder): layers built on the polyrhythmic metronome; every layer has an instrument.
 - **Arrangement** (Founder): several loops in sequence or a structure built from loops, used as a backing track.
 - Each of the three has its own library (Founder).
-- A Loop embeds the definitions of the instruments it uses, so an exported file is self-contained (Proposal).
+- A Loop never embeds instruments: a layer references its instrument by id and the library owns the recipe (Founder, 2026-10-03). Making an exported file self-contained is a separate, later question.
 
 ## Navigation
 
@@ -74,6 +74,7 @@ flowchart TD
 - Recipe v1 (Proposal): N harmonics with an amplitude each, an envelope (attack, decay), 3-band EQ, tags (no pitch). Noise and a pitch drop (kick, snare) come in v2. Without an envelope every sound is a sustained tone, so one is required for percussion.
 - Library of instruments, with factory presets for the three web sounds `wood`, `sine` and `bell`. Web files map onto them.
 - Rendered once per edit or load into a PCM buffer; the engine plays buffers. This keeps real-time audio simple and is a requirement to record in ADR 0002 (#16). Until that ADR is decided, the Instrument panel has no audition sound; it edits, previews the mist and saves.
+- Experience (Founder, 2026-10-04): simple and synaesthetic. The user shapes a timbre by placing one dot on a 2D pad (dark to bright, soft to hard); harmonics, envelope and EQ are hidden and there is no advanced mode in v1. The pad is a view on the recipe, which does not change. Rules and the first untuned anchors: [instrument pad](instrument-pad.md).
 - Scope in v1 is rhythm layers only. The drone keeps its current model (Proposal).
 
 ## Visualization layer
