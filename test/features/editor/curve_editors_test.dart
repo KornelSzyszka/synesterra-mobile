@@ -6,6 +6,7 @@ import 'package:synesterra/features/editor/curve_geometry.dart';
 import 'package:synesterra/features/editor/envelope_editor.dart';
 import 'package:synesterra/features/editor/eq_editor.dart';
 import 'package:synesterra/features/editor/instrument_editor_view_model.dart';
+import 'package:synesterra/features/editor/instrument_panel.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 import 'audition_fakes.dart';
@@ -16,6 +17,9 @@ Future<void> openEditor(
   WidgetTester tester, {
   Size size = const Size(800, 3200),
 }) async {
+  // The technical controls are hidden in v1; these tests still cover them.
+  showTechnicalControls = true;
+  addTearDown(() => showTechnicalControls = false);
   tester.view
     ..devicePixelRatio = 1
     ..physicalSize = size;

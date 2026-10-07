@@ -29,6 +29,7 @@ class InstrumentSoundView extends StatefulWidget {
     this.size = 220,
     this.onTap,
     this.pulseToken = 0,
+    this.showViewSwitch = true,
   });
 
   final Instrument instrument;
@@ -39,6 +40,9 @@ class InstrumentSoundView extends StatefulWidget {
   final double size;
   final VoidCallback? onTap;
   final int pulseToken;
+
+  /// False shows only the mist, without the Mist, Figure and Wave switch.
+  final bool showViewSwitch;
 
   @override
   State<InstrumentSoundView> createState() => _InstrumentSoundViewState();
@@ -98,21 +102,23 @@ class _InstrumentSoundViewState extends State<InstrumentSoundView>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SegmentedButton<SoundView>(
-          key: const Key('instrument-view-switch'),
-          showSelectedIcon: false,
-          style: const ButtonStyle(
-            minimumSize: WidgetStatePropertyAll(Size(0, 48)),
+        if (widget.showViewSwitch) ...[
+          SegmentedButton<SoundView>(
+            key: const Key('instrument-view-switch'),
+            showSelectedIcon: false,
+            style: const ButtonStyle(
+              minimumSize: WidgetStatePropertyAll(Size(0, 48)),
+            ),
+            segments: [
+              for (final view in SoundView.values)
+                ButtonSegment(value: view, label: Text(view.label)),
+            ],
+            selected: {_view},
+            onSelectionChanged: (selection) =>
+                setState(() => _view = selection.single),
           ),
-          segments: [
-            for (final view in SoundView.values)
-              ButtonSegment(value: view, label: Text(view.label)),
-          ],
-          selected: {_view},
-          onSelectionChanged: (selection) =>
-              setState(() => _view = selection.single),
-        ),
-        const SizedBox(height: Space.md),
+          const SizedBox(height: Space.md),
+        ],
         Semantics(
           button: true,
           label:
