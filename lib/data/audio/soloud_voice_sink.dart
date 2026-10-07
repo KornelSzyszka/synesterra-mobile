@@ -81,11 +81,17 @@ final class _ScheduledHandle {
 /// Records what Dart sent to the engine. It cannot observe the actual DAC
 /// onset, xrun count, or output-route latency; the phone protocol measures those.
 final class SoloudVoiceSink implements VoiceSink {
-  SoloudVoiceSink(this._engine, this._clock, {this.onLog});
+  SoloudVoiceSink(
+    this._engine,
+    this._clock, {
+    this.onLog,
+    this._isSourceLoaded,
+  });
 
   final SoloudVoiceEngine _engine;
   final SoloudAudioClock _clock;
   final void Function(Map<String, Object?>)? onLog;
+  final bool Function(Object source)? _isSourceLoaded;
   final Map<String, _LoadedSource> _current = {};
   final List<_LoadedSource> _retired = [];
   final List<_ScheduledHandle> _handles = [];
@@ -126,6 +132,36 @@ final class SoloudVoiceSink implements VoiceSink {
       _retired.add(previous);
       await collectRetired();
     }
+  }
+
+  bool hasSound(String id) => _current.containsKey(id);
+
+  /// Stops using [id] for new events. Its source is disposed once its last
+  /// voice has finished, like a replaced buffer.
+  Future<void> retire(String id) async {
+    final source = _current.remove(id);
+    if (source == null) return;
+    source.retired = true;
+    _retired.add(source);
+    await collectRetired();
+  }
+
+  /// True when the engine no longer knows a source this sink loaded, which
+  /// happens when another owner deinitialized the shared engine.
+  bool get lostSources {
+    final loaded = _isSourceLoaded;
+    if (loaded == null) return false;
+    return [..._current.values, ..._retired].any((s) => !loaded(s.source));
+  }
+
+  /// Drops every source and handle without calling the engine. Only for an
+  /// engine that was deinitialized: its sources and voices no longer exist.
+  void forgetEngineState() {
+    _current.clear();
+    _retired.clear();
+    _handles.clear();
+    _sustained.clear();
+    onLog?.call({'type': 'engine_state_forgotten'});
   }
 
   @override
