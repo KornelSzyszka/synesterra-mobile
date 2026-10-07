@@ -3,14 +3,17 @@ import 'package:synesterra/shared/loop_view/position_source.dart';
 
 void main() {
   group('LoopPosition', () {
-    test('rejects a cycle position outside [0, 1)', () {
-      expect(() => LoopPosition(cyclePosition: 1), throwsAssertionError);
-      expect(() => LoopPosition(cyclePosition: -0.1), throwsAssertionError);
-      expect(
-        () => LoopPosition(cyclePosition: double.nan),
-        throwsAssertionError,
-      );
+    test('rejects a cycle position outside [0, 1) at runtime', () {
+      // ArgumentError, not an assert: release builds must reject it too.
+      for (final bad in [1.0, 1.5, -0.1, double.nan, double.infinity]) {
+        expect(
+          () => LoopPosition(cyclePosition: bad),
+          throwsA(isA<ArgumentError>()),
+          reason: '$bad',
+        );
+      }
       expect(LoopPosition(cyclePosition: 0).cyclePosition, 0);
+      expect(LoopPosition(cyclePosition: 0.999).cyclePosition, 0.999);
     });
 
     test('has value equality', () {

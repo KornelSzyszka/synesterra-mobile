@@ -22,7 +22,15 @@ class LoopLayerView {
     required List<bool> steps,
     this.phaseSteps = 0,
     this.muted = false,
-  }) : steps = List.unmodifiable(steps);
+  }) : steps = List.unmodifiable(steps) {
+    if (steps.isEmpty) {
+      throw ArgumentError.value(
+        steps,
+        'steps',
+        'a layer needs at least a step',
+      );
+    }
+  }
 
   /// 1-based. With the colour it is the layer's identity: the number is always
   /// drawn, so colour is never the only cue.

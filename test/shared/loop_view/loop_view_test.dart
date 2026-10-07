@@ -122,6 +122,29 @@ void main() {
     expect(canvasRender(tester), isNot(playheadAt(0.25)));
   });
 
+  testWidgets('the circle draws dots only for enabled steps', (tester) async {
+    final state = LoopViewState(
+      cycleBeats: 4,
+      layers: [
+        LoopLayerView(number: 1, colorIndex: 0, steps: [true, false, true]),
+        LoopLayerView(number: 2, colorIndex: 1, steps: [true, true]),
+      ],
+    );
+    await pumpView(tester, state: state, source: FakePositionSource());
+    final layout = RingLayout(
+      tester.getSize(find.byKey(const ValueKey('loop-canvas'))),
+    );
+    Offset dot(int index) => pointOnCircle(
+      layout.center,
+      ringRadius(0, 2, layout.outerRadius),
+      playheadAngle(stepFraction(index, 3)),
+    );
+
+    expect(canvasRender(tester), drawsCircle(dot(0)));
+    expect(canvasRender(tester), drawsCircle(dot(2)));
+    expect(canvasRender(tester), isNot(drawsCircle(dot(1))));
+  });
+
   testWidgets('the fake position rotates the circle playhead', (tester) async {
     final source = FakePositionSource();
     await pumpView(tester, state: state32(), source: source);

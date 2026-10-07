@@ -7,20 +7,27 @@ import 'package:flutter/scheduler.dart';
 /// never imports UI code; the Loop panel writes the adapter to this one.
 @immutable
 class LoopPosition {
-  const LoopPosition({
+  LoopPosition({
     this.playing = false,
     this.cyclePosition = 0,
     this.cycleIndex = 0,
     this.generation = 0,
     this.sectionIndex,
-  }) : assert(
-         cyclePosition >= 0 && cyclePosition < 1,
-         'cyclePosition must be in [0, 1): the cycle boundary is 0 of the '
-         'next cycle',
-       );
+  }) {
+    // Checked at runtime, not by assert: a bad position from an adapter must
+    // fail the same way in release builds. The cycle boundary is 0 of the
+    // next cycle, so 1 is invalid.
+    if (!(cyclePosition >= 0 && cyclePosition < 1)) {
+      throw ArgumentError.value(
+        cyclePosition,
+        'cyclePosition',
+        'must be finite and in [0, 1)',
+      );
+    }
+  }
 
   /// Stopped at the start of the cycle.
-  static const stopped = LoopPosition();
+  static final stopped = LoopPosition();
 
   /// Whether the transport is running. A stopped view shows no pulses.
   final bool playing;

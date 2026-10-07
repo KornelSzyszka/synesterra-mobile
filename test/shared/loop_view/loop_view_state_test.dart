@@ -61,4 +61,11 @@ void main() {
     expect(describeLoopPosition(playing: true), 'Playing');
     expect(describeLoopPosition(playing: false), 'Stopped');
   });
+
+  test('a layer without steps is rejected', () {
+    expect(
+      () => LoopLayerView(number: 1, colorIndex: 0, steps: const []),
+      throwsArgumentError,
+    );
+  });
 }

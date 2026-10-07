@@ -140,7 +140,9 @@ class CirclePainter extends LoopPainter {
             stepFraction(i, layer.stepCount, phaseSteps: layer.phaseSteps),
           ),
         );
-        paintStepDot(canvas, layer, at, layer.steps[i], pulseOf(layer, i));
+        // Disabled steps make no hit, so the circle does not draw them.
+        if (!layer.steps[i]) continue;
+        paintStepDot(canvas, layer, at, true, pulseOf(layer, i));
       }
       // The number sits left of 12 o'clock, off the first step's dot.
       paintNumber(
