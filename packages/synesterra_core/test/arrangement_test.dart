@@ -141,6 +141,19 @@ void main() {
       expectPath(loop, r'$.sections[0].loopId: expected a string');
     });
 
+    test('rejects integral doubles where an integer is required', () {
+      expectPath(json()..['version'] = 1.0, r'$.version');
+      for (final r in [1.0, 2.0]) {
+        final bad = json();
+        (bad['sections'] as List)[0]['repeats'] = r;
+        expectPath(bad, r'$.sections[0].repeats: expected an integer');
+      }
+      final parsed = jsonDecode(
+        '{"version":1.0,"id":"a","name":"n","sections":[]}',
+      );
+      expectPath(parsed, r'$.version');
+    });
+
     test('rejects out-of-range values with a path', () {
       expectPath(json()..['id'] = 'a b', r'$.id');
       expectPath(json()..['name'] = '  ', r'$.name');

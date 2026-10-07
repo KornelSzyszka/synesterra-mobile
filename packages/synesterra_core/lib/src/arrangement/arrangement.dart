@@ -72,7 +72,7 @@ class Arrangement {
   factory Arrangement.fromJson(Object? json) {
     final map = _object(json, r'$', _keys);
     final version = map['version'];
-    if (version != currentVersion) {
+    if (version is! int || version != currentVersion) {
       throw const FormatException(r'$.version: unsupported version');
     }
     final id = _string(map['id'], r'$.id');
