@@ -22,7 +22,7 @@ Start screen: **Editor**, **Library**, **Learn** (Learn is new; the Founder aske
 
 ## Loop panel
 
-Per layer: on/off, instrument (picker over the library with the mist as thumbnail), pitch (note picker C1..B7, default A4), number of beats in the cycle (1..16, pattern is evenly spaced steps with tap-to-toggle steps and accents), volume. Global: tempo (20..300 BPM), Play/Stop. Tempo and volume apply immediately; structural changes (steps, instrument, pitch, adding or removing a layer) are applied to scenes A and B together and restart from the start of the cycle: the generation is incremented, pending events are cancelled, the planner replans (generation rule in [change safety](../agents/change-safety.md)); stale events never sound. Layer identity is its number plus its colour, never colour alone.
+Per layer: on/off, instrument (picker over the library with the mist as thumbnail), pitch (note picker C1..B7, default A4), number of beats in the cycle (1..16, pattern is evenly spaced steps with tap-to-toggle steps and accents), volume. Global: tempo (20..300 BPM), Play/Stop. Volume changes apply immediately without replanning. A tempo change increments the generation too, but keeps the phase (playback continues from the current cycle position at the new rate), cancels pending events and replans. Structural changes (steps, instrument, pitch, adding or removing a layer) are applied to scenes A and B together and restart from the start of the cycle: the generation is incremented, pending events are cancelled, the planner replans (generation rule in [change safety](../agents/change-safety.md)); stale events never sound. Layer identity is its number plus its colour, never colour alone.
 
 ## Visualizations
 
@@ -30,15 +30,15 @@ Three views of the same loop, switchable (the choice is UI state; Polygons is tr
 
 1. **Circle**: one ring per layer, a dot per enabled step, a rotating playhead; a hit pulses the dot.
 2. **Timeline**: one row per layer across the cycle, a moving playhead line, steps as blocks.
-3. **Polygons**: each layer is a polygon with one vertex per beat of its cycle, so 3:2 shows a triangle and a line, 5:4 a pentagon and a square; the playhead is a dot travelling along each polygon.
+3. **Polygons**: each layer is a polygon with one vertex per step (hit) of its pattern, so 3:2 shows a triangle and a line, 5:4 a pentagon and a square; the playhead is a dot travelling along each polygon.
 
 Arrangement view: a strip of sections with the current section and cycle progress highlighted. Instrument mist, figure and wave already exist. Painters use `CustomPainter` with `RepaintBoundary`.
 
-**Position contract.** The visualization task defines `PositionSource` (a `ValueListenable` of `{playing, cyclePosition 0..1, cycleIndex, generation}`) and a fake. The playback task exposes its own `PlaybackPosition` and does not import UI code (`data/` never imports the UI). The Loop panel task writes the adapter between the two.
+**Position contract.** The visualization task defines `PositionSource` (a `ValueListenable` of `{playing, cyclePosition in [0, 1) (half-open: the cycle boundary is 0 of the next cycle), cycleIndex, generation, sectionIndex (null outside an arrangement)}`) and a fake. The playback task exposes its own `PlaybackPosition` and does not import UI code (`data/` never imports the UI). The Loop panel task writes the adapter between the two.
 
 ## Learn tab
 
-A list of short lessons, each: a title, 2-4 plain sentences, a live visualization (the same painters, running on a built-in loop) and an optional "Try it" button that opens the Loop panel with that loop loaded. The live visualization runs on a built-in loop with a fake position source (no audio); "Try it" needs the Loop panel, so the Learn task comes after it. Content lives in code as data (`lib/features/learn/`), English first (localization is issue #25). Lessons for v0: What a pulse and a cycle are; Two against three (3:2); Four against five (5:4); Layers and instruments; Shaping a sound (the pad); Building and saving a loop; Chaining loops (arrangement).
+A list of short lessons, each: a title, 2-4 plain sentences, a live visualization (the same painters, running on a built-in loop) and an optional "Try it" button that opens the Loop panel with that loop loaded. The live visualization runs on a built-in loop with a **tutorial clock**: a deterministic, ticker-driven position source with no audio and no transport. This is the one explicit exception to "never driven by a UI timer", and it is allowed because nothing is being played; a tap on the picture may instead play the loop through the playback repository; "Try it" needs the Loop panel, so the Learn task comes after it. Content lives in code as data (`lib/features/learn/`), English first (localization is issue #25). Lessons for v0: What a pulse and a cycle are; Two against three (3:2); Four against five (5:4); Layers and instruments; Shaping a sound (the pad); Building and saving a loop; Chaining loops (arrangement).
 
 ## Out of scope for v0
 
@@ -49,7 +49,7 @@ True sustain and the drone, noise and pitch-drop instruments, export/import file
 1. This document.
 2. Core: `Arrangement` model, JSON, validation, section sequencing (`DOM`).
 3. Data: loop and arrangement repositories (file and in-memory) and the Library tabs (`MOB`/`UX`).
-4. Audio: a playback repository that turns a `SessionDocument` into sound through `EventPlanner`, the scheduler and the SoLoud sink, with instrument buffers rendered per instrument and pitch, and that exposes the transport position (`AUD`, class L).
+4. Audio: a playback repository that turns a `SessionDocument` into sound through `EventPlanner`, the scheduler and the SoLoud sink, with instrument buffers rendered per instrument and pitch, exposing the transport position, and that also plays a **sequence**: `playSequence(sections, repeatAll)` with `sections` an ordered list of `(SessionDocument, repeats)` already filtered by the caller for missing loops; it switches section on a cycle boundary (generation rule, phase reset to the new section's cycle start), reports `sectionIndex`, and stops with a clear state when the list is empty (`AUD`, class L).
 5. UI: visualization painters, `PositionSource` and a fake (`UX`), parallel to 4; no dependency on 4.
 6. UI: Loop panel, transport and the `PositionSource` adapter (`UX`), after 3, 4 and 5.
 7. UI: Learn tab (`UX`), after 5 and 6.
