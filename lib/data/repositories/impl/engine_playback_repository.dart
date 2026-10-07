@@ -144,9 +144,9 @@ final class EnginePlaybackRepository implements PlaybackRepository {
   }) async {
     _checkAlive();
     if (sections.isEmpty) {
-      _request++;
-      _halt();
-      _publish(PlaybackStatus(stopReason: PlaybackStopReason.emptySequence));
+      await _stopWith(
+        PlaybackStatus(stopReason: PlaybackStopReason.emptySequence),
+      );
       return;
     }
     await _start(
@@ -239,13 +239,10 @@ final class EnginePlaybackRepository implements PlaybackRepository {
   }
 
   Future<void> _fail(Object error) async {
-    _request++;
-    _halt();
-    _publish(
-      PlaybackStatus(stopReason: PlaybackStopReason.error, error: '$error'),
-    );
     try {
-      await _serial(_engine.stop);
+      await _stopWith(
+        PlaybackStatus(stopReason: PlaybackStopReason.error, error: '$error'),
+      );
     } catch (_) {
       // Already failing; the first error is the one to report.
     }
@@ -254,9 +251,17 @@ final class EnginePlaybackRepository implements PlaybackRepository {
   @override
   Future<void> stop() async {
     _checkAlive();
+    await _stopWith(PlaybackStatus());
+  }
+
+  /// The one way to a stopped state (Stop, empty sequence, finished
+  /// sequence, error): supersede pending starts, cancel with a new
+  /// generation, publish [status], and stop the engine through the queue so
+  /// the device is never left open.
+  Future<void> _stopWith(PlaybackStatus status) async {
     _request++;
     _halt();
-    _publish(PlaybackStatus());
+    _publish(status);
     await _serial(_engine.stop);
   }
 
@@ -352,10 +357,9 @@ final class EnginePlaybackRepository implements PlaybackRepository {
     if (_disposed || !_transport.isPlaying) return;
     final reading = _engine.clock.now();
     if (_transport.finishedAt(reading)) {
-      _request++;
-      _halt();
-      _publish(PlaybackStatus(stopReason: PlaybackStopReason.finished));
-      _quietly(_serial(_engine.stop));
+      _quietly(
+        _stopWith(PlaybackStatus(stopReason: PlaybackStopReason.finished)),
+      );
       return;
     }
     _position.value = readPosition();

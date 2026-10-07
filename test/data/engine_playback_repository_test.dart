@@ -264,6 +264,8 @@ void main() {
     expect(status.stopReason, PlaybackStopReason.error);
     expect(status.error, contains('voice limit refused'));
     expect(refused.sink.scheduled, isEmpty);
+    expect(refused.engine.clock.state, EngineState.stopped);
+    expect(refused.engine.log.last, 'stop');
   });
 
   test('stop during a slow engine start leaves the engine stopped', () async {
@@ -357,6 +359,9 @@ void main() {
       expect(status.state, PlaybackState.stopped);
       expect(status.stopReason, PlaybackStopReason.finished);
       expect(h.repository.position.value.playing, isFalse);
+      await Future<void>.delayed(Duration.zero);
+      expect(h.engine.clock.state, EngineState.stopped);
+      expect(h.engine.log.last, 'stop');
     });
 
     test('a read on the boundary before the next planner tick', () async {
@@ -415,6 +420,9 @@ void main() {
       expect(status.state, PlaybackState.stopped);
       expect(status.stopReason, PlaybackStopReason.emptySequence);
       expect(h.sink.pending, isEmpty);
+      // The engine is stopped too, like Stop: no device held open.
+      expect(h.engine.clock.state, EngineState.stopped);
+      expect(h.engine.log.last, 'stop');
       h.runTo(2000000);
       expect(
         h.sink.sounded.where((e) => e.event.at.microseconds > 600000),
