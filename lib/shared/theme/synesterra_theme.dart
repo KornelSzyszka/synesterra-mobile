@@ -34,6 +34,11 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
   Color get controlSelectedBackground => Color.lerp(surface, accent, .16)!;
   Color get controlSelectedBorder => Color.lerp(border, accent, .45)!;
   Color get focus => accent;
+
+  /// Accent for small text on tinted or raised grounds (selected controls,
+  /// dialog and snack bar actions), where the plain accent falls below 4.5:1
+  /// in Autumn. A slight pull toward [text] keeps the hue.
+  Color get accentText => Color.lerp(accent, text, .2)!;
   Color get onAccent => background;
 
   // A slight blend keeps layer identity while meeting text contrast on the
@@ -190,15 +195,15 @@ ThemeData synesterraTheme(SynesterraPalette palette) {
     primary: tokens.accent,
     onPrimary: tokens.onAccent,
     primaryContainer: tokens.controlSelectedBackground,
-    onPrimaryContainer: tokens.accent,
+    onPrimaryContainer: tokens.accentText,
     secondary: tokens.accent,
     onSecondary: tokens.onAccent,
     secondaryContainer: tokens.controlSelectedBackground,
-    onSecondaryContainer: tokens.accent,
+    onSecondaryContainer: tokens.accentText,
     tertiary: tokens.accent,
     onTertiary: tokens.onAccent,
     tertiaryContainer: tokens.controlSelectedBackground,
-    onTertiaryContainer: tokens.accent,
+    onTertiaryContainer: tokens.accentText,
     error: _error,
     onError: tokens.background,
     errorContainer: Color.lerp(tokens.surface, _error, .18)!,
@@ -308,7 +313,7 @@ ThemeData synesterraTheme(SynesterraPalette palette) {
       shape: shape,
       labelStyle: TextStyle(color: tokens.text, fontSize: TypeScale.body),
       secondaryLabelStyle: TextStyle(
-        color: tokens.accent,
+        color: tokens.accentText,
         fontSize: TypeScale.body,
       ),
       checkmarkColor: tokens.accent,
@@ -329,7 +334,7 @@ ThemeData synesterraTheme(SynesterraPalette palette) {
           ),
         ),
         foregroundColor: WidgetStateProperty.resolveWith(
-          (states) => selectedOr(states, tokens.accent, tokens.text),
+          (states) => selectedOr(states, tokens.accentText, tokens.text),
         ),
         side: WidgetStateProperty.resolveWith(
           (states) =>
@@ -363,7 +368,7 @@ ThemeData synesterraTheme(SynesterraPalette palette) {
         foregroundColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.disabled)
               ? tokens.muted
-              : tokens.accent,
+              : tokens.accentText,
         ),
         overlayColor: WidgetStatePropertyAll(accentOverlay),
         shape: WidgetStatePropertyAll(shape),
@@ -428,7 +433,7 @@ ThemeData synesterraTheme(SynesterraPalette palette) {
     snackBarTheme: SnackBarThemeData(
       backgroundColor: tokens.surfaceHigh,
       contentTextStyle: TextStyle(color: tokens.text, fontSize: TypeScale.body),
-      actionTextColor: tokens.accent,
+      actionTextColor: tokens.accentText,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.sm),

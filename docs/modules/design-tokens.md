@@ -32,7 +32,7 @@ The interface uses three colour roles in roughly these proportions:
 |---|---|---|
 | Ground | 60% | `background`, `surface`, `surfaceHigh` (dialogs, menus, snack bars) |
 | Neutral | 30% | `text`, `muted`, `border` |
-| Accent | 10% | `accent` (gold): the primary action, the selection, the focus |
+| Accent | 10% | `accent` (gold): the primary action, the selection, the focus. `accentText` (gold pulled 20% toward `text`) is the small text on tinted or raised grounds: selected chip and segment labels, dialog and snack bar actions |
 
 Everything interactive that is not the primary action stays neutral: controls are
 outlined in `border`, selected chips and segments get a gold-tinted background and

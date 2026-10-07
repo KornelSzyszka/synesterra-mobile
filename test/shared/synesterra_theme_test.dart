@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
 
@@ -61,6 +62,240 @@ void main() {
       );
     }
     expect(SynesterraTokens.layerPalette, hasLength(12));
+  });
+
+  test('selected controls, dialogs and snack bars meet 4.5:1 contrast', () {
+    for (final palette in SynesterraPalette.values) {
+      final tokens = SynesterraTokens.forPalette(palette);
+      final theme = synesterraTheme(palette);
+      final scheme = theme.colorScheme;
+      const selected = {WidgetState.selected};
+      const enabled = <WidgetState>{};
+      final segment = theme.segmentedButtonTheme.style!;
+      final pairs = <String, (Color, Color)>{
+        'segment selected': (
+          segment.foregroundColor!.resolve(selected)!,
+          segment.backgroundColor!.resolve(selected)!,
+        ),
+        'segment unselected on surface': (
+          segment.foregroundColor!.resolve(enabled)!,
+          tokens.surface,
+        ),
+        'chip selected label': (
+          theme.chipTheme.secondaryLabelStyle!.color!,
+          theme.chipTheme.selectedColor!,
+        ),
+        'chip unselected label': (
+          theme.chipTheme.labelStyle!.color!,
+          theme.chipTheme.backgroundColor!,
+        ),
+        'primary container': (
+          scheme.onPrimaryContainer,
+          scheme.primaryContainer,
+        ),
+        'secondary container': (
+          scheme.onSecondaryContainer,
+          scheme.secondaryContainer,
+        ),
+        'tertiary container': (
+          scheme.onTertiaryContainer,
+          scheme.tertiaryContainer,
+        ),
+        'dialog action': (
+          theme.textButtonTheme.style!.foregroundColor!.resolve(enabled)!,
+          theme.dialogTheme.backgroundColor!,
+        ),
+        'snack bar action': (
+          theme.snackBarTheme.actionTextColor!,
+          theme.snackBarTheme.backgroundColor!,
+        ),
+        'dialog text': (tokens.text, tokens.surfaceHigh),
+        'muted on surfaceHigh': (tokens.muted, tokens.surfaceHigh),
+        'error on surfaceHigh': (scheme.error, tokens.surfaceHigh),
+        'error on surface': (scheme.error, tokens.surface),
+        'onError on error': (scheme.onError, scheme.error),
+        'onAccent on accent': (tokens.onAccent, tokens.accent),
+        'accentText on surface': (tokens.accentText, tokens.surface),
+      };
+      for (final MapEntry(:key, :value) in pairs.entries) {
+        expect(
+          _contrast(value.$1, value.$2),
+          greaterThanOrEqualTo(4.5),
+          reason: '$palette $key',
+        );
+      }
+    }
+  });
+
+  test('every ColorScheme role comes from the tokens', () {
+    for (final palette in SynesterraPalette.values) {
+      final tokens = SynesterraTokens.forPalette(palette);
+      final scheme = synesterraTheme(palette).colorScheme;
+      final allowed = <Color>{
+        tokens.background,
+        tokens.surface,
+        tokens.surfaceHigh,
+        tokens.text,
+        tokens.muted,
+        tokens.border,
+        tokens.accent,
+        tokens.accentText,
+        tokens.onAccent,
+        tokens.controlBorder,
+        tokens.controlSelectedBackground,
+        scheme.error,
+        scheme.errorContainer,
+        Colors.black,
+        Colors.transparent,
+      };
+      final roles = <String, Color>{
+        'primary': scheme.primary,
+        'onPrimary': scheme.onPrimary,
+        'primaryContainer': scheme.primaryContainer,
+        'onPrimaryContainer': scheme.onPrimaryContainer,
+        'primaryFixed': scheme.primaryFixed,
+        'primaryFixedDim': scheme.primaryFixedDim,
+        'onPrimaryFixed': scheme.onPrimaryFixed,
+        'onPrimaryFixedVariant': scheme.onPrimaryFixedVariant,
+        'secondary': scheme.secondary,
+        'onSecondary': scheme.onSecondary,
+        'secondaryContainer': scheme.secondaryContainer,
+        'onSecondaryContainer': scheme.onSecondaryContainer,
+        'secondaryFixed': scheme.secondaryFixed,
+        'secondaryFixedDim': scheme.secondaryFixedDim,
+        'onSecondaryFixed': scheme.onSecondaryFixed,
+        'onSecondaryFixedVariant': scheme.onSecondaryFixedVariant,
+        'tertiary': scheme.tertiary,
+        'onTertiary': scheme.onTertiary,
+        'tertiaryContainer': scheme.tertiaryContainer,
+        'onTertiaryContainer': scheme.onTertiaryContainer,
+        'tertiaryFixed': scheme.tertiaryFixed,
+        'tertiaryFixedDim': scheme.tertiaryFixedDim,
+        'onTertiaryFixed': scheme.onTertiaryFixed,
+        'onTertiaryFixedVariant': scheme.onTertiaryFixedVariant,
+        'error': scheme.error,
+        'onError': scheme.onError,
+        'errorContainer': scheme.errorContainer,
+        'onErrorContainer': scheme.onErrorContainer,
+        'surface': scheme.surface,
+        'onSurface': scheme.onSurface,
+        'surfaceDim': scheme.surfaceDim,
+        'surfaceBright': scheme.surfaceBright,
+        'surfaceContainerLowest': scheme.surfaceContainerLowest,
+        'surfaceContainerLow': scheme.surfaceContainerLow,
+        'surfaceContainer': scheme.surfaceContainer,
+        'surfaceContainerHigh': scheme.surfaceContainerHigh,
+        'surfaceContainerHighest': scheme.surfaceContainerHighest,
+        'onSurfaceVariant': scheme.onSurfaceVariant,
+        'outline': scheme.outline,
+        'outlineVariant': scheme.outlineVariant,
+        'shadow': scheme.shadow,
+        'scrim': scheme.scrim,
+        'inverseSurface': scheme.inverseSurface,
+        'onInverseSurface': scheme.onInverseSurface,
+        'inversePrimary': scheme.inversePrimary,
+        'surfaceTint': scheme.surfaceTint,
+      };
+      for (final MapEntry(:key, :value) in roles.entries) {
+        expect(allowed, contains(value), reason: '$palette $key $value');
+      }
+      expect(scheme.primary, tokens.accent);
+      expect(scheme.secondary, tokens.accent);
+      expect(scheme.tertiary, tokens.accent);
+    }
+  });
+
+  group('selected and unselected controls in a widget tree', () {
+    for (final palette in SynesterraPalette.values) {
+      testWidgets('$palette chip and segmented button', (tester) async {
+        final tokens = SynesterraTokens.forPalette(palette);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: synesterraTheme(palette),
+            home: Scaffold(
+              body: Column(
+                children: [
+                  ChoiceChip(
+                    label: const Text('on-chip'),
+                    selected: true,
+                    onSelected: (_) {},
+                  ),
+                  ChoiceChip(
+                    label: const Text('off-chip'),
+                    selected: false,
+                    onSelected: (_) {},
+                  ),
+                  SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(value: 1, label: Text('on-seg')),
+                      ButtonSegment(value: 2, label: Text('off-seg')),
+                    ],
+                    selected: const {1},
+                    onSelectionChanged: (_) {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        Color labelColor(String text) =>
+            (tester.renderObject<RenderParagraph>(find.text(text)).text
+                    as TextSpan)
+                .style!
+                .color!;
+
+        // The Material closest to the label is the segment's own.
+        Material segmentMaterial(String text) => tester.widget(
+          find
+              .ancestor(of: find.text(text), matching: find.byType(Material))
+              .first,
+        );
+
+        ShapeDecoration chipFill(String text) =>
+            tester
+                    .widget<Ink>(
+                      find
+                          .descendant(
+                            of: find.ancestor(
+                              of: find.text(text),
+                              matching: find.byType(ChoiceChip),
+                            ),
+                            matching: find.byType(Ink),
+                          )
+                          .first,
+                    )
+                    .decoration!
+                as ShapeDecoration;
+
+        final chipOn = chipFill('on-chip');
+        final chipOff = chipFill('off-chip');
+        expect(chipOn.color, tokens.controlSelectedBackground);
+        expect(chipOff.color, tokens.controlBackground);
+        expect(
+          (chipOn.shape as RoundedRectangleBorder).side.color,
+          tokens.controlSelectedBorder,
+        );
+        expect(
+          (chipOff.shape as RoundedRectangleBorder).side.color,
+          tokens.controlBorder,
+        );
+        expect(labelColor('on-chip'), tokens.accentText);
+        expect(labelColor('off-chip'), tokens.text);
+
+        final segOn = segmentMaterial('on-seg');
+        final segOff = segmentMaterial('off-seg');
+        expect(segOn.color, tokens.controlSelectedBackground);
+        expect(segOff.color, anyOf(isNull, Colors.transparent));
+        expect(labelColor('on-seg'), tokens.accentText);
+        expect(labelColor('off-seg'), tokens.text);
+        expect(
+          _contrast(labelColor('on-seg'), segOn.color!),
+          greaterThanOrEqualTo(4.5),
+        );
+      });
+    }
   });
 
   test('platform font families have explicit fallbacks', () {
