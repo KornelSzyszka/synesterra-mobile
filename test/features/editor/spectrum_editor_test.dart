@@ -4,6 +4,7 @@ import 'package:synesterra/app/synesterra_app.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
 import 'package:synesterra/features/editor/instrument_editor_view_model.dart';
 import 'package:synesterra/features/editor/spectrum_editor.dart';
+import 'package:synesterra/features/editor/instrument_panel.dart';
 
 import 'audition_fakes.dart';
 
@@ -15,6 +16,9 @@ Future<void> openEditor(
   int harmonics = 8,
   bool prepare = true,
 }) async {
+  // The technical controls are hidden in v1; these tests still cover them.
+  showTechnicalControls = true;
+  addTearDown(() => showTechnicalControls = false);
   tester.view
     ..devicePixelRatio = 1
     ..physicalSize = size;
@@ -235,7 +239,13 @@ void main() {
   ) async {
     await openEditor(tester, size: const Size(800, 600), prepare: false);
     final scrollable = pageScrollable();
-    await tester.scrollUntilVisible(chart, 200, scrollable: scrollable);
+    // The pad fills the middle of the screen and takes the gesture, so scroll
+    // by dragging in the page margin, then bring the chart into view.
+    while (chart.evaluate().isEmpty) {
+      await tester.dragFrom(const Offset(4, 300), const Offset(0, -200));
+      await tester.pump();
+    }
+    await tester.ensureVisible(chart);
     await tester.pump();
     final state = tester.state<ScrollableState>(scrollable);
     final before = state.position.pixels;
