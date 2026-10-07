@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-07",
+  "task": "MOB-090",
+  "prefix": "MOB",
+  "size": "L",
+  "risk": "risk-platform",
+  "agent": "claude",
+  "model": "claude-opus-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": "Started with an interim arrangement type while DOM-089 (#97) was open; switched to the core Arrangement after #97 merged.",
+  "error_type": null,
+  "review": "changes",
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Codex review (major): atomic write not tested; fixed with fault-injected store tests (red: a failed temp write or rename left a .json.tmp behind; the target was already preserved), store now removes the temp file on failure. Red-then-green throughout. Full flutter test (417) and core dart test (141) and the model log check ran in a scratch copy without flutter_soloud (no MSVC for its build hook; bootstrap engine substituted by the noop audition repository). dart format and flutter analyze ran in the worktree; flutter build apk --debug built. No emulator or device run. CI pending."
+}

@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/app/synesterra_app.dart';
+import 'package:synesterra/data/repositories/impl/in_memory_arrangement_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
+import 'package:synesterra/data/repositories/impl/in_memory_loop_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
 import 'package:synesterra/data/repositories/instrument_library_repository.dart';
 import 'package:synesterra/features/library/library_view.dart';
@@ -35,7 +37,11 @@ Future<void> pumpLibrary(
       theme: synesterraTheme(SynesterraPalette.forest),
       home: LibraryView(
         instrumentLibrary: repository,
+        loopLibrary: InMemoryLoopLibraryRepository(),
+        arrangementLibrary: InMemoryArrangementLibraryRepository(),
         onOpenInstrument: onOpen ?? (_, _) {},
+        onOpenLoop: (_, _) {},
+        onOpenArrangement: (_) {},
       ),
     ),
   );
