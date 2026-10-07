@@ -4,7 +4,7 @@ Status: decided by the coordinator on the Founder's brief of 2026-10-07 ("a work
 
 ## What the prototype is
 
-A phone app where a user can: shape an instrument on the pad (shipped in #86, see [instrument pad](instrument-pad.md); the docs follow-up is #87), build a **loop** from 2-4 layers (each with an instrument, a pitch and a beat pattern), see it as moving pictures, save loops and instruments in a **library**, chain loops into an **arrangement** and play it, and open a **Learn** tab that explains polyrhythm with live examples.
+A phone app where a user can: shape an instrument on the pad (shipped in #86; [instrument pad](instrument-pad.md) and [instrument](../modules/instrument.md) still list the pad UI as out of scope, and this spec supersedes them on that point until #87 corrects them), build a **loop** from 2-4 layers (each with an instrument, a pitch and a beat pattern), see it as moving pictures, save loops and instruments in a **library**, chain loops into an **arrangement** and play it, and open a **Learn** tab that explains polyrhythm with live examples.
 
 It is a prototype: the audio path is the ADR 0002 phase-1 engine (`flutter_soloud` behind the ports) and its timing is not yet measured on a device (issue #43, gates G2-G10). Do not claim timing quality. Nothing is published.
 
@@ -49,7 +49,7 @@ True sustain and the drone, noise and pitch-drop instruments, export/import file
 1. This document.
 2. Core: `Arrangement` model, JSON, validation, section sequencing (`DOM`).
 3. Data: loop and arrangement repositories (file and in-memory) and the Library tabs (`MOB`/`UX`).
-4. Audio: a playback repository that turns a `SessionDocument` into sound through `EventPlanner`, the scheduler and the SoLoud sink, with instrument buffers rendered per instrument and pitch, exposing the transport position, and that also plays a **sequence**: `playSequence(sections, repeatAll)` with `sections` an ordered list of `(SessionDocument, repeats)` already filtered by the caller for missing loops; it switches section on a cycle boundary (generation rule, phase reset to the new section's cycle start), reports `sectionIndex`, and stops with a clear state when the list is empty (`AUD`, class L).
+4. Audio: a playback repository that turns a `SessionDocument` into sound through `EventPlanner`, the scheduler and the SoLoud sink, with instrument buffers rendered per instrument and pitch, exposing the transport position, and that also plays a **sequence**: `playSequence(sections, repeatAll)` with `sections` an ordered list of `(originalIndex, SessionDocument, repeats)` already filtered by the caller for missing loops, where `originalIndex` is the section's index in the arrangement; it switches section on a cycle boundary (generation rule, phase reset to the new section's cycle start), reports `sectionIndex` as that **original** index (so the arrangement strip highlights the right section), and stops with a clear state when the list is empty (`AUD`, class L).
 5. UI: visualization painters, `PositionSource` and a fake (`UX`), parallel to 4; no dependency on 4.
 6. UI: Loop panel, transport and the `PositionSource` adapter (`UX`), after 3, 4 and 5.
 7. UI: Learn tab (`UX`), after 5 and 6.
