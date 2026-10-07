@@ -86,7 +86,14 @@ final class SoloudVoiceSink implements VoiceSink {
     this._clock, {
     this.onLog,
     this._isSourceLoaded,
+    this.stopSoundingOnCancel = false,
   });
+
+  /// When true, [cancelFrom] also stops older voices that already started.
+  /// Session playback uses it: its only cancels are hard changes (stop,
+  /// structure, tempo); a section hand-over never cancels. The spike keeps
+  /// ADR 0002's "sounding one-shots finish their envelope".
+  final bool stopSoundingOnCancel;
 
   final SoloudVoiceEngine _engine;
   final SoloudAudioClock _clock;
@@ -291,7 +298,7 @@ final class SoloudVoiceSink implements VoiceSink {
       if (tracked.generation >= generation) continue;
       // Already sounding one-shots may finish their envelope. Pending old
       // starts and old drones are silenced at the software cutoff.
-      if (tracked.at.compareTo(render) > 0) {
+      if (stopSoundingOnCancel || tracked.at.compareTo(render) > 0) {
         unawaited(_stop(tracked));
       }
     }

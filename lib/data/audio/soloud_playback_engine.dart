@@ -35,6 +35,7 @@ final class SoloudPlaybackEngine implements PlaybackEngine {
       _clock,
       onLog: onLog,
       isSourceLoaded: isSourceLoaded,
+      stopSoundingOnCancel: true,
     );
   }
 

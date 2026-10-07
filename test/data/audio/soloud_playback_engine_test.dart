@@ -154,6 +154,30 @@ void main() {
     expect(rig.lifecycle.deviceOpen, isFalse);
   });
 
+  test('a hard cancel also stops voices that already started', () async {
+    final rig = _Rig();
+    addTearDown(rig.repository.dispose);
+    await rig.repository.play(threeTwo());
+    final first = rig.voices.scheduled.first.handle;
+    rig.advance(const Duration(milliseconds: 100)); // beat 0 has started
+    expect(rig.voices.valid, contains(first));
+
+    await rig.repository.stop();
+    await Future<void>.delayed(Duration.zero);
+    expect(rig.voices.valid, isEmpty);
+  });
+
+  test('a tempo change stops sounding voices of the old generation', () async {
+    final rig = _Rig();
+    addTearDown(rig.repository.dispose);
+    await rig.repository.play(threeTwo());
+    final first = rig.voices.scheduled.first.handle;
+    rig.advance(const Duration(milliseconds: 100));
+    rig.repository.setTempo(60);
+    await Future<void>.delayed(Duration.zero);
+    expect(rig.voices.valid, isNot(contains(first)));
+  });
+
   test('buffers load again after another owner deinitialized SoLoud', () async {
     final rig = _Rig();
     addTearDown(rig.repository.dispose);
