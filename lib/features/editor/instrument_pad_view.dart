@@ -142,7 +142,10 @@ class InstrumentPadPainter extends CustomPainter {
       final painter = TextPainter(
         text: TextSpan(
           text: anchor.name,
-          style: TextStyle(color: label.withValues(alpha: 0.7), fontSize: TypeScale.caption),
+          style: TextStyle(
+            color: label.withValues(alpha: 0.7),
+            fontSize: TypeScale.caption,
+          ),
         ),
         textDirection: TextDirection.ltr,
         maxLines: 1,
@@ -150,11 +153,17 @@ class InstrumentPadPainter extends CustomPainter {
       final center = padOffsetOf(PadPoint(anchor.x, anchor.y), size);
       final left = (center.dx - painter.width / 2).clamp(
         Space.sm,
-        (size.width - painter.width - Space.sm).clamp(Space.sm, double.infinity),
+        (size.width - painter.width - Space.sm).clamp(
+          Space.sm,
+          double.infinity,
+        ),
       );
       final top = (center.dy - painter.height / 2).clamp(
         Space.sm,
-        (size.height - painter.height - Space.sm).clamp(Space.sm, double.infinity),
+        (size.height - painter.height - Space.sm).clamp(
+          Space.sm,
+          double.infinity,
+        ),
       );
       painter.paint(canvas, Offset(left, top));
     }

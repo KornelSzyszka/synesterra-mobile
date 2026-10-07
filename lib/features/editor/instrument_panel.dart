@@ -202,7 +202,10 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                               : 'Touch the pad to shape the sound. It plays '
                                     'when you lift your finger.',
                           key: const Key('instrument-pad-hint'),
-                          style: TextStyle(color: tokens.muted, fontSize: TypeScale.caption),
+                          style: TextStyle(
+                            color: tokens.muted,
+                            fontSize: TypeScale.caption,
+                          ),
                         ),
                         const SizedBox(height: Space.md),
                         Center(
@@ -277,7 +280,10 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                             'Drag across the bars to draw them. White marks show '
                             'each harmonic after the EQ. Shapes and Brightness '
                             'redraw every bar.',
-                            style: TextStyle(color: tokens.muted, fontSize: TypeScale.caption),
+                            style: TextStyle(
+                              color: tokens.muted,
+                              fontSize: TypeScale.caption,
+                            ),
                           ),
                           const SizedBox(height: Space.sm),
                           Row(
