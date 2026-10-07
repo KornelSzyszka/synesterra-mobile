@@ -224,10 +224,11 @@ final class SequenceTransport implements PlaybackStateSource, BeatEventSource {
     final plannedTo = _plannedTo;
     if (plannedTo == null || toBeat > plannedTo) _plannedTo = toBeat;
     final planned = <PlannedVoiceEvent>[];
-    for (final segment in _segments) {
+    // Newest first: a long "repeat all" run keeps many finished segments.
+    for (final segment in _segments.reversed) {
       final end = segment.endTick;
-      if (end != null && end <= fromBeat) continue;
-      if (segment.startTick >= toBeat) break;
+      if (segment.startTick >= toBeat) continue;
+      if (end != null && end <= fromBeat) break;
       final section = _sections[segment.sectionIndex];
       final localFrom = (fromBeat - segment.startTick).clamp(0, 1 << 62);
       final localTo =
@@ -285,8 +286,11 @@ final class SequenceTransport implements PlaybackStateSource, BeatEventSource {
     final scaled = local * section.cycleTicksDenominator;
     final cycle = section.cycleTicksNumerator;
     var generation = _marks.first.$2;
-    for (final (markTick, markGeneration) in _marks) {
-      if (markTick <= tick) generation = markGeneration;
+    for (final (markTick, markGeneration) in _marks.reversed) {
+      if (markTick <= tick) {
+        generation = markGeneration;
+        break;
+      }
     }
     return (
       playing: true,

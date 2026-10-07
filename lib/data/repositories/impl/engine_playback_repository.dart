@@ -212,7 +212,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
         ),
       );
       _refresh();
-      unawaited(_trimCache(sections));
+      _quietly(_trimCache(sections));
     } catch (error) {
       if (request != _request) return;
       await _fail(error);
@@ -266,7 +266,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
     try {
       cap = _applyVoiceLimit(bpm);
     } catch (error) {
-      unawaited(_fail(error));
+      _quietly(_fail(error));
       return;
     }
     _transport.changeTempo(bpm, reading.renderTime + reading.minLead);
@@ -336,11 +336,11 @@ final class EnginePlaybackRepository implements PlaybackRepository {
       _request++;
       _halt();
       _publish(PlaybackStatus(stopReason: PlaybackStopReason.finished));
-      unawaited(_engine.stop());
+      _quietly(_engine.stop());
       return;
     }
     _position.value = readPosition();
-    if (++_wakes % 40 == 0) unawaited(_engine.maintain());
+    if (++_wakes % 40 == 0) _quietly(_engine.maintain());
   }
 
   @visibleForTesting
@@ -454,6 +454,9 @@ final class _VoiceDemand {
   final double hitsPerQuarter;
   final Duration maxRing;
 }
+
+/// Housekeeping that must not surface as an unhandled error.
+void _quietly(Future<void> work) => unawaited(work.catchError((Object _) {}));
 
 int _bpmOf(SessionDocument document) =>
     document.transport.bpm.round().clamp(20, 300);
