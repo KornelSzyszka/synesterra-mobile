@@ -207,6 +207,61 @@ void main() {
     expect(sink.pending.map((event) => event.eventId), [768]);
   });
 
+  test('a continuous handover keeps queued hits and planning position', () {
+    final clock = FakeClock();
+    final sink = FakeSink();
+    final state = FakeState();
+    state.snapshot = PlaybackSnapshot(
+      transport: PlaybackTransport.playing,
+      generation: 4,
+      tempoMap: state.snapshot.tempoMap,
+      continuousSince: 4,
+      planUntilBeat: 300,
+    );
+    final scheduler = PlaybackScheduler(
+      clock: clock,
+      sink: sink,
+      state: state,
+      events: FixedEvents([hit(96), hit(288), hit(300), hit(360)]),
+    );
+    addTearDown(scheduler.dispose);
+    scheduler.replan();
+    // The window stops at the section end, so 300 is not planned under 4.
+    expect(sink.eventIds, [96, 288]);
+    state.snapshot = PlaybackSnapshot(
+      transport: PlaybackTransport.playing,
+      generation: 5,
+      tempoMap: state.snapshot.tempoMap,
+      continuousSince: 4,
+    );
+    scheduler.replan();
+    expect(sink.cutoffs, [4]);
+    expect(sink.pending.map((event) => event.eventId), [96, 288, 300, 360]);
+    expect(sink.actions, ['cancel:4', 'schedule:4', 'schedule:5']);
+  });
+
+  test('a generation outside the continuous run still cancels', () {
+    final clock = FakeClock();
+    final sink = FakeSink();
+    final state = FakeState();
+    final scheduler = PlaybackScheduler(
+      clock: clock,
+      sink: sink,
+      state: state,
+      events: FixedEvents([hit(96), hit(288)]),
+    );
+    addTearDown(scheduler.dispose);
+    scheduler.replan();
+    state.snapshot = PlaybackSnapshot(
+      transport: PlaybackTransport.playing,
+      generation: 2,
+      tempoMap: state.snapshot.tempoMap,
+      continuousSince: 2,
+    );
+    scheduler.replan();
+    expect(sink.cutoffs, [0, 2]);
+  });
+
   test('cutoff runs even when the engine is stopped', () {
     final clock = FakeClock();
     final sink = FakeSink();

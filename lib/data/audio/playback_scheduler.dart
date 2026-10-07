@@ -10,13 +10,34 @@ final class PlaybackSnapshot {
     required this.transport,
     required this.generation,
     required this.tempoMap,
+    this.continuousSince,
+    this.planUntilBeat,
   }) {
     if (generation < 0) throw ArgumentError.value(generation, 'generation');
+    final since = continuousSince;
+    if (since != null && (since < 0 || since > generation)) {
+      throw ArgumentError.value(since, 'continuousSince');
+    }
+    if (planUntilBeat != null && planUntilBeat! < 0) {
+      throw ArgumentError.value(planUntilBeat, 'planUntilBeat');
+    }
   }
 
   final PlaybackTransport transport;
   final Generation generation;
   final TempoMap tempoMap;
+
+  /// First generation of one continuous run on a single beat timeline (the
+  /// sections of a sequence). Moving from a generation in
+  /// [continuousSince, generation) to [generation] is a planned handover on a
+  /// section boundary: events already queued stay valid, so the scheduler
+  /// neither cancels nor restarts planning. Null means every generation
+  /// change cancels, which is the rule for pause, stop, tempo and edits.
+  final Generation? continuousSince;
+
+  /// Planning never reaches this beat (exclusive) under [generation]; the
+  /// owner hands over to the next generation once planning arrives here.
+  final int? planUntilBeat;
 }
 
 abstract interface class PlaybackStateSource {
@@ -122,9 +143,18 @@ final class PlaybackScheduler {
   void replan() {
     final runtime = _state.snapshot;
     if (_lastGeneration != runtime.generation) {
-      _sink.cancelFrom(runtime.generation);
+      final last = _lastGeneration;
+      final since = runtime.continuousSince;
+      final handover =
+          last != null &&
+          since != null &&
+          last >= since &&
+          last < runtime.generation;
+      if (!handover) {
+        _sink.cancelFrom(runtime.generation);
+        _plannedToBeat = null;
+      }
       _lastGeneration = runtime.generation;
-      _plannedToBeat = null;
     }
     final reading = _clock.now();
     if (runtime.transport != PlaybackTransport.playing ||
@@ -137,7 +167,9 @@ final class PlaybackScheduler {
       _plannedToBeat ?? tempoMap.anchorBeat,
       tempoMap.beatAt(earliest),
     );
-    final toBeat = tempoMap.beatAt(reading.renderTime + horizon);
+    final horizonBeat = tempoMap.beatAt(reading.renderTime + horizon);
+    final limit = runtime.planUntilBeat;
+    final toBeat = limit != null && limit < horizonBeat ? limit : horizonBeat;
     if (_plannedToBeat != null && fromBeat > _plannedToBeat!) {
       final skipped = _events.plan(_plannedToBeat!, fromBeat);
       if (skipped.isNotEmpty) {
