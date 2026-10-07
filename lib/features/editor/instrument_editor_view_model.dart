@@ -57,6 +57,7 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   late String _name;
   late double _brightness;
   int _selectedHarmonic = 0;
+  PadPoint? _padPoint;
   bool _saving = false;
   String? _saveError;
 
@@ -133,6 +134,34 @@ class InstrumentEditorViewModel extends ChangeNotifier {
 
   /// False when the engine could not start or play.
   ValueListenable<bool> get soundAvailable => _audition.available;
+
+  /// Where the user last touched the pad; null until the first touch. An
+  /// instrument cannot be placed on the pad (there is no inverse mapping), so
+  /// a new, copied or opened instrument has no point yet.
+  PadPoint? get padPoint => _padPoint;
+
+  /// An instrument from the library is open and the pad has not been touched:
+  /// the first touch starts a new sound, which replaces the saved one only
+  /// when the user saves.
+  bool get startsNewSound => _persisted && _padPoint == null;
+
+  /// Replaces the recipe with the one for [point], keeping id, name and tags.
+  /// Never plays sound; the pad calls [releasePad] when the finger lifts.
+  void setPadPoint(PadPoint point) {
+    if (point == _padPoint) return;
+    _padPoint = point;
+    final next = instrumentForPad(
+      point,
+      id: _draft.id,
+      name: _draft.name,
+      tags: _draft.tags,
+    );
+    _brightness = fitBrightness(next.harmonics);
+    _edit((_) => next);
+  }
+
+  /// The finger left the pad: plays the sound once.
+  void releasePad() => audition();
 
   /// Plays the instrument now. Only ever called from a user gesture.
   void audition() {
@@ -277,6 +306,7 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     _draft = preset.copyWith(id: _newId());
     _baseline = _draft;
     _persisted = false;
+    _padPoint = null;
     _name = _draft.name;
     _brightness = fitBrightness(_draft.harmonics);
     _saveError = null;
