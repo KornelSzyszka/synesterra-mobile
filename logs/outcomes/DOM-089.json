@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-07",
+  "task": "DOM-089",
+  "prefix": "DOM",
+  "size": "M",
+  "risk": "none",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "unit",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Tests were written first and failed to compile, then passed. Core dart test, dart format and dart analyze run locally; root flutter test and CI not run (flutter_soloud build hook needs MSVC on this host; the task touches only the core and docs). Codex review pending."
+}
