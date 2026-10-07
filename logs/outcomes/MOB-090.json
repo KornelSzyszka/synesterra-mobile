@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-07",
+  "task": "MOB-090",
+  "prefix": "MOB",
+  "size": "L",
+  "risk": "risk-platform",
+  "agent": "claude",
+  "model": "claude-opus-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": "DOM-089 (#97) not merged: interim arrangement type behind TODO(DOM-089) with the same JSON shape; swap after #97 merges.",
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Model log check ran in the scratch copy (the soloud build hook fails it in the worktree). New repository and widget tests failed to compile (red) before the code existed, then passed. Full flutter test (425) ran in a scratch copy without flutter_soloud (no MSVC for its build hook; bootstrap engine substituted by the noop audition repository); dart test in the core (124) ran there too. dart format and flutter analyze ran in the worktree; flutter build apk --debug built. No emulator or device run. Cross-agent review and CI pending."
+}
