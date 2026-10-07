@@ -12,6 +12,7 @@ export 'src/rhythm/rhythm_values.dart'
         RhythmLayer,
         minLayerPitch,
         maxLayerPitch;
+export 'src/arrangement/arrangement.dart';
 export 'src/harmony/drone.dart';
 export 'src/sound/instrument.dart';
 export 'src/sound/instrument_envelope.dart';
