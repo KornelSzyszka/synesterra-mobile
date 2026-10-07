@@ -161,4 +161,11 @@ void main() {
       expect(stepPulse(0.0, 0.0), 1);
     });
   });
+
+  test('helpers reject counts and windows that would divide by zero', () {
+    expect(() => stepFraction(0, 0), throwsArgumentError);
+    expect(() => polygonVertices(Offset.zero, 10, 0), throwsArgumentError);
+    expect(() => polygonDotPoint(const [], 0.5), throwsArgumentError);
+    expect(() => stepPulse(0.5, 0.5, window: 0), throwsArgumentError);
+  });
 }

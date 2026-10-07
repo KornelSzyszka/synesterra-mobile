@@ -16,6 +16,13 @@ void main() {
       expect(LoopPosition(cyclePosition: 0.999).cyclePosition, 0.999);
     });
 
+    test('rejects negative counters and section index', () {
+      expect(() => LoopPosition(cycleIndex: -1), throwsArgumentError);
+      expect(() => LoopPosition(generation: -1), throwsArgumentError);
+      expect(() => LoopPosition(sectionIndex: -1), throwsArgumentError);
+      expect(LoopPosition(sectionIndex: 0).sectionIndex, 0);
+    });
+
     test('has value equality', () {
       expect(
         LoopPosition(playing: true, cyclePosition: 0.5, sectionIndex: 1),
@@ -82,6 +89,20 @@ void main() {
   });
 
   group('TutorialClock', () {
+    testWidgets('rejects a cycle that is not positive', (tester) async {
+      expect(
+        () => TutorialClock(vsync: tester, cycleDuration: Duration.zero),
+        throwsArgumentError,
+      );
+      expect(
+        () => TutorialClock(
+          vsync: tester,
+          cycleDuration: const Duration(seconds: -1),
+        ),
+        throwsArgumentError,
+      );
+    });
+
     testWidgets('runs from the ticker, stops and resets', (tester) async {
       final clock = TutorialClock(
         vsync: tester,

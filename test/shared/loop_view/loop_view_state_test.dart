@@ -68,4 +68,34 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('layer fields outside their documented range are rejected', () {
+    LoopLayerView layer({int number = 1, int color = 0, int phase = 0}) =>
+        LoopLayerView(
+          number: number,
+          colorIndex: color,
+          steps: const [true, true],
+          phaseSteps: phase,
+        );
+    expect(() => layer(number: 0), throwsArgumentError);
+    expect(() => layer(color: -1), throwsArgumentError);
+    expect(() => layer(phase: -1), throwsArgumentError);
+    expect(() => layer(phase: 2), throwsArgumentError);
+    expect(layer(phase: 1).phaseSteps, 1);
+  });
+
+  test('a state needs layers and a positive finite cycle', () {
+    final one = LoopLayerView(number: 1, colorIndex: 0, steps: const [true]);
+    expect(
+      () => LoopViewState(layers: const [], cycleBeats: 4),
+      throwsArgumentError,
+    );
+    for (final bad in [0, -1, double.nan, double.infinity]) {
+      expect(
+        () => LoopViewState(layers: [one], cycleBeats: bad),
+        throwsArgumentError,
+        reason: '$bad',
+      );
+    }
+  });
 }

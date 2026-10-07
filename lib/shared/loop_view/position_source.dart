@@ -17,6 +17,11 @@ class LoopPosition {
     // Checked at runtime, not by assert: a bad position from an adapter must
     // fail the same way in release builds. The cycle boundary is 0 of the
     // next cycle, so 1 is invalid.
+    if (cycleIndex < 0 || generation < 0 || (sectionIndex ?? 0) < 0) {
+      throw ArgumentError(
+        'cycleIndex, generation and sectionIndex must not be negative',
+      );
+    }
     if (!(cyclePosition >= 0 && cyclePosition < 1)) {
       throw ArgumentError.value(
         cyclePosition,
@@ -108,8 +113,14 @@ class FakePositionSource extends ValueNotifier<LoopPosition>
 class TutorialClock extends ValueNotifier<LoopPosition>
     implements PositionSource {
   TutorialClock({required TickerProvider vsync, required this.cycleDuration})
-    : assert(cycleDuration > Duration.zero),
-      super(LoopPosition.stopped) {
+    : super(LoopPosition.stopped) {
+    if (cycleDuration <= Duration.zero) {
+      throw ArgumentError.value(
+        cycleDuration,
+        'cycleDuration',
+        'must be positive',
+      );
+    }
     _ticker = vsync.createTicker(_onTick);
   }
 

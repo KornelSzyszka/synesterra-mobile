@@ -241,7 +241,7 @@ void main() {
   });
 
   group('ArrangementStrip', () {
-    const sections = [
+    final sections = [
       StripSection(label: 'Verse', repeats: 4),
       StripSection(label: 'Chorus', repeats: 2),
       StripSection(label: 'Gone', repeats: 1, missing: true),
@@ -276,6 +276,18 @@ void main() {
       );
       expect(strip.painter, isA<ArrangementStripPainter>());
       handle.dispose();
+    });
+
+    test('a section needs 1..32 repeats, checked at runtime', () {
+      for (final bad in [0, -1, 33]) {
+        expect(
+          () => StripSection(label: 'x', repeats: bad),
+          throwsArgumentError,
+          reason: '$bad',
+        );
+      }
+      expect(StripSection(label: 'x', repeats: 1).repeats, 1);
+      expect(StripSection(label: 'x', repeats: 32).repeats, 32);
     });
 
     test('progress through a section is cycle plus position over repeats', () {

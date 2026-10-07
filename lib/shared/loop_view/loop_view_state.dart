@@ -23,11 +23,21 @@ class LoopLayerView {
     this.phaseSteps = 0,
     this.muted = false,
   }) : steps = List.unmodifiable(steps) {
+    if (number < 1 || colorIndex < 0) {
+      throw ArgumentError('number must be >= 1 and colorIndex >= 0');
+    }
     if (steps.isEmpty) {
       throw ArgumentError.value(
         steps,
         'steps',
         'a layer needs at least a step',
+      );
+    }
+    if (phaseSteps < 0 || phaseSteps >= steps.length) {
+      throw ArgumentError.value(
+        phaseSteps,
+        'phaseSteps',
+        'must be in 0..steps-1',
       );
     }
   }
@@ -68,7 +78,18 @@ class LoopLayerView {
 @immutable
 class LoopViewState {
   LoopViewState({required List<LoopLayerView> layers, required this.cycleBeats})
-    : layers = List.unmodifiable(layers);
+    : layers = List.unmodifiable(layers) {
+    if (layers.isEmpty) {
+      throw ArgumentError.value(layers, 'layers', 'needs at least one layer');
+    }
+    if (!cycleBeats.isFinite || cycleBeats <= 0) {
+      throw ArgumentError.value(
+        cycleBeats,
+        'cycleBeats',
+        'must be positive and finite',
+      );
+    }
+  }
 
   /// Reads the layers of the document's default scene. In the prototype every
   /// layer's pattern spans the practice cycle, so a step's place in the cycle

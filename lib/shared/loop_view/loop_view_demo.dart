@@ -77,7 +77,7 @@ class _LoopViewDemoState extends State<LoopViewDemo>
       const SizedBox(height: Space.md),
       ArrangementStrip(
         source: _stripSource,
-        sections: const [
+        sections: [
           StripSection(label: 'Verse', repeats: 4),
           StripSection(label: 'Chorus', repeats: 2),
           StripSection(label: 'Gone', repeats: 1, missing: true),

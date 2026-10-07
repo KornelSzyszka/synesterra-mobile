@@ -11,11 +11,15 @@ import 'source_semantics.dart';
 /// One section of the arrangement as the strip shows it.
 @immutable
 class StripSection {
-  const StripSection({
+  StripSection({
     required this.label,
     required this.repeats,
     this.missing = false,
-  });
+  }) {
+    if (repeats < 1 || repeats > 32) {
+      throw ArgumentError.value(repeats, 'repeats', 'must be in 1..32');
+    }
+  }
 
   final String label;
 

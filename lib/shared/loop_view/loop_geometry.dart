@@ -13,8 +13,10 @@ import '../theme/design_scale.dart';
 /// Where step [stepIndex] of [stepCount] hits in the cycle. Steps are evenly
 /// spaced; [phaseSteps] moves every step forward and wraps (the planner's
 /// rule).
-double stepFraction(int stepIndex, int stepCount, {int phaseSteps = 0}) =>
-    ((stepIndex + phaseSteps) % stepCount) / stepCount;
+double stepFraction(int stepIndex, int stepCount, {int phaseSteps = 0}) {
+  if (stepCount < 1) throw ArgumentError.value(stepCount, 'stepCount');
+  return ((stepIndex + phaseSteps) % stepCount) / stepCount;
+}
 
 /// The angle of the playhead at [cyclePosition]: 12 o'clock, clockwise.
 double playheadAngle(double cyclePosition) =>
@@ -36,10 +38,13 @@ double ringRadius(int layerIndex, int layerCount, double outerRadius) {
 /// The vertices of a regular polygon with [count] vertices on the circle of
 /// [radius]: vertex 0 at the top, then clockwise. Two vertices make a line
 /// through the centre, one vertex a point.
-List<Offset> polygonVertices(Offset center, double radius, int count) => [
-  for (var i = 0; i < count; i++)
-    pointOnCircle(center, radius, playheadAngle(i / count)),
-];
+List<Offset> polygonVertices(Offset center, double radius, int count) {
+  if (count < 1) throw ArgumentError.value(count, 'count');
+  return [
+    for (var i = 0; i < count; i++)
+      pointOnCircle(center, radius, playheadAngle(i / count)),
+  ];
+}
 
 /// Where the dot is on the closed polygon at [cyclePosition]: on vertex `k`
 /// exactly when step `k` hits (see [stepFraction]) and on the edge to the next
@@ -50,6 +55,7 @@ Offset polygonDotPoint(
   int phaseSteps = 0,
 }) {
   final n = vertices.length;
+  if (n == 0) throw ArgumentError.value(vertices, 'vertices', 'is empty');
   if (n == 1) return vertices.first;
   final u = ((cyclePosition * n - phaseSteps) % n + n) % n;
   final from = u.floor() % n;
@@ -69,6 +75,7 @@ double stepPulse(
   double stepFraction, {
   double window = 0.12,
 }) {
+  if (!(window > 0)) throw ArgumentError.value(window, 'window');
   final since = ((cyclePosition - stepFraction) % 1 + 1) % 1;
   return since >= window ? 0 : 1 - since / window;
 }
