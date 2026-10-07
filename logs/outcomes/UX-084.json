@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-07",
+  "task": "UX-084",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "New tests failed to compile (red) before the code existed, then passed. Full flutter test (340) ran in a scratch copy without flutter_soloud (MSVC toolchain missing); flutter analyze and dart format ran in the worktree; flutter build apk --debug built. Existing technical-control tests now turn the controls on through a test-only flag. No emulator or device run; feel and sound unverified. Review and CI pending."
+}
