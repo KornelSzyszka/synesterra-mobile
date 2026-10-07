@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-07",
+  "task": "DOM-083",
+  "prefix": "DOM",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 2,
+  "escalation": null,
+  "error_type": "random",
+  "review": null,
+  "ci": null,
+  "evidence": "unit",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Tests were written first and failed to compile, then passed. Second attempt: inverse-distance weighting broke the row brightness rule near the click, so the mapping became edge interpolation; the error_type label is the author's judgement, the reviewer may reclassify. Core tests, format and analyze run locally; app flutter test and CI not run; anchor values are untuned and wait for the musical gate; Codex review pending."
+}
