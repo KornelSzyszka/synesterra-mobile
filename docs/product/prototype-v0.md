@@ -4,7 +4,7 @@ Status: decided by the coordinator on the Founder's brief of 2026-10-07 ("a work
 
 ## What the prototype is
 
-A phone app where a user can: shape an instrument on the pad ([instrument pad](instrument-pad.md)), build a **loop** from 2-4 layers (each with an instrument, a pitch and a beat pattern), see it as moving pictures, save loops and instruments in a **library**, chain loops into an **arrangement** and play it, and open a **Learn** tab that explains polyrhythm with live examples.
+A phone app where a user can: shape an instrument on the pad (shipped in #86, see [instrument pad](instrument-pad.md); the docs follow-up is #87), build a **loop** from 2-4 layers (each with an instrument, a pitch and a beat pattern), see it as moving pictures, save loops and instruments in a **library**, chain loops into an **arrangement** and play it, and open a **Learn** tab that explains polyrhythm with live examples.
 
 It is a prototype: the audio path is the ADR 0002 phase-1 engine (`flutter_soloud` behind the ports) and its timing is not yet measured on a device (issue #43, gates G2-G10). Do not claim timing quality. Nothing is published.
 
@@ -14,18 +14,19 @@ Start screen: **Editor**, **Library**, **Learn** (Learn is new; the Founder aske
 
 ## Models
 
-- **Loop** = one library item: `id`, `name`, and a `SessionDocument` v3 (scenes A/B with 2-4 layers; the prototype edits and plays scene A and keeps B equal to A in structure, as the document requires). A loop never embeds instruments; layers reference them by `instrumentId` and `pitch`.
+- **Loop** = one library item: `id`, `name`, and a `SessionDocument` v3. The document needs scenes A and B with the same ordered layer ids (2-4 layers). The prototype edits scene A and **writes every edit to both scenes** (B is always a copy of A), so topology edits (add or remove a layer) are one atomic change to both and can never diverge. A loop never embeds instruments; layers reference them by `instrumentId` and `pitch`.
+- **Cycle.** A loop has one cycle length, `transport.practiceCycleBeats` (an integer 1..16 quarter-note beats, default 4), and every layer's `pattern.durationBeats` equals it. The user-facing "hits per cycle" of a layer is its number of steps (1..16, evenly spaced; 3:2 is a layer with 3 steps next to one with 2 steps in the same cycle). The same cycle is the unit of arrangement repeats, structural restarts and the visualizations. A layer's step count must keep the document's minimum step spacing (1/16 beat), so the Loop panel limits the steps by the cycle length.
 - **Instrument** library items already exist. The three factory instruments are always available; a missing instrument id is shown as "missing sound" and plays silence (no crash).
-- **Arrangement** (new, pure Dart in the core): `id`, `name`, ordered `sections`, each `{loopId, repeats}` with `repeats` 1..32 and 1..16 sections. Playing it plays each loop for `repeats` cycles of its practice cycle, then the next; a change from one section to the next happens on a cycle boundary. An option "repeat all" restarts at the first section. A section that references a missing loop is skipped and marked.
+- **Arrangement** (new, pure Dart in the core): `id`, `name`, ordered `sections`, each `{loopId, repeats}` with `repeats` 1..32 and 1..16 sections. Playing it plays each loop for `repeats` cycles of its practice cycle, then the next; a change from one section to the next happens on a cycle boundary. An option "repeat all" restarts at the first section. A section that references a missing loop is skipped and marked. If no playable section remains (all missing), Play is disabled and the panel says why; with "repeat all" the sequencer never spins on an empty list.
 - Persistence: one JSON file per item in the app's documents directory, strict validation on read (as the instrument store does), never rewritten until the user saves.
 
 ## Loop panel
 
-Per layer: on/off, instrument (picker over the library with the mist as thumbnail), pitch (note picker C1..B7, default A4), number of beats in the cycle (1..16, pattern is evenly spaced steps with tap-to-toggle steps and accents), volume. Global: tempo (20..300 BPM), Play/Stop. Tempo and volume apply immediately; structural changes (steps, instrument, pitch, adding or removing a layer) restart from the start of the cycle (generation rule in [change safety](../agents/change-safety.md)): stale events never sound. Layer identity is its number plus its colour, never colour alone.
+Per layer: on/off, instrument (picker over the library with the mist as thumbnail), pitch (note picker C1..B7, default A4), number of beats in the cycle (1..16, pattern is evenly spaced steps with tap-to-toggle steps and accents), volume. Global: tempo (20..300 BPM), Play/Stop. Tempo and volume apply immediately; structural changes (steps, instrument, pitch, adding or removing a layer) are applied to scenes A and B together and restart from the start of the cycle: the generation is incremented, pending events are cancelled, the planner replans (generation rule in [change safety](../agents/change-safety.md)); stale events never sound. Layer identity is its number plus its colour, never colour alone.
 
 ## Visualizations
 
-Three views of the same loop, switchable, all driven by the transport position that the playback side exposes (never by a UI timer, and they never drive transport):
+Three views of the same loop, switchable (the choice is UI state; Polygons is transient and is **not** stored in the document, whose `presentation.visualMode` stays `circle` or `timeline`), all driven by the transport position that the playback side exposes (never by a UI timer, and they never drive transport):
 
 1. **Circle**: one ring per layer, a dot per enabled step, a rotating playhead; a hit pulses the dot.
 2. **Timeline**: one row per layer across the cycle, a moving playhead line, steps as blocks.
@@ -33,9 +34,11 @@ Three views of the same loop, switchable, all driven by the transport position t
 
 Arrangement view: a strip of sections with the current section and cycle progress highlighted. Instrument mist, figure and wave already exist. Painters use `CustomPainter` with `RepaintBoundary`.
 
+**Position contract.** The visualization task defines `PositionSource` (a `ValueListenable` of `{playing, cyclePosition 0..1, cycleIndex, generation}`) and a fake. The playback task exposes its own `PlaybackPosition` and does not import UI code (`data/` never imports the UI). The Loop panel task writes the adapter between the two.
+
 ## Learn tab
 
-A list of short lessons, each: a title, 2-4 plain sentences, a live visualization (the same painters, running on a built-in loop) and an optional "Try it" button that opens the Loop panel with that loop loaded. Content lives in code as data (`lib/features/learn/`), English first (localization is issue #25). Lessons for v0: What a pulse and a cycle are; Two against three (3:2); Four against five (5:4); Layers and instruments; Shaping a sound (the pad); Building and saving a loop; Chaining loops (arrangement).
+A list of short lessons, each: a title, 2-4 plain sentences, a live visualization (the same painters, running on a built-in loop) and an optional "Try it" button that opens the Loop panel with that loop loaded. The live visualization runs on a built-in loop with a fake position source (no audio); "Try it" needs the Loop panel, so the Learn task comes after it. Content lives in code as data (`lib/features/learn/`), English first (localization is issue #25). Lessons for v0: What a pulse and a cycle are; Two against three (3:2); Four against five (5:4); Layers and instruments; Shaping a sound (the pad); Building and saving a loop; Chaining loops (arrangement).
 
 ## Out of scope for v0
 
@@ -47,8 +50,8 @@ True sustain and the drone, noise and pitch-drop instruments, export/import file
 2. Core: `Arrangement` model, JSON, validation, section sequencing (`DOM`).
 3. Data: loop and arrangement repositories (file and in-memory) and the Library tabs (`MOB`/`UX`).
 4. Audio: a playback repository that turns a `SessionDocument` into sound through `EventPlanner`, the scheduler and the SoLoud sink, with instrument buffers rendered per instrument and pitch, and that exposes the transport position (`AUD`, class L).
-5. UI: visualization painters over a position source (`UX`), parallel to 4.
-6. UI: Loop panel and transport (`UX`), after 3 and 4.
-7. UI: Learn tab (`UX`), after 5.
+5. UI: visualization painters, `PositionSource` and a fake (`UX`), parallel to 4; no dependency on 4.
+6. UI: Loop panel, transport and the `PositionSource` adapter (`UX`), after 3, 4 and 5.
+7. UI: Learn tab (`UX`), after 5 and 6.
 8. UI: Arrangement panel and playback (`UX`), after 2, 3, 4 and 6.
 9. Start screen entry, integration and a phone hand-off (`QA`).
