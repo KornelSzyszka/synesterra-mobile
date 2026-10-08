@@ -40,4 +40,7 @@ between Dart versions), that the colours equal the Forest tokens in
 `synesterra_theme.dart`, the lobe count and the safe zone.
 
 The generator cannot import `figure_spec.dart` (it needs `dart:ui` and an `Instrument`),
-so it repeats the harmonic sum; keep the formula in sync if the figure maths changes.
+so it repeats the harmonic sum. A drift test builds an `Instrument` from the icon's
+harmonics and compares `buildFigure` with the generator's curve to 1e-9, so a change
+to the app's figure maths fails the test until the icon is regenerated. Another test
+asserts the manifest label.

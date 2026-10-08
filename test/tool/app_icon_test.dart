@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:synesterra/shared/instrument_figure/figure_spec.dart';
+import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../tool/app_icon.dart';
 
@@ -75,5 +77,32 @@ void main() {
         lessThanOrEqualTo(safeRadiusDp),
       );
     }
+  });
+
+  test('the icon curve matches the app figure maths (drift guard)', () {
+    final top = iconHarmonics.keys.reduce(math.max);
+    final instrument = Instrument(
+      id: 'icon',
+      name: 'Icon',
+      harmonics: [for (var n = 1; n <= top; n++) iconHarmonics[n] ?? 0.0],
+      attackMs: 5,
+      decayMs: 200,
+    );
+    const segments = 360;
+    final app = buildFigure(instrument, fundamentalHz: 110, points: segments);
+    final icon = figureCurve(segments: segments);
+    expect(icon.length, segments);
+    for (var i = 0; i < segments; i++) {
+      // The icon rotates the figure by -90 degrees: (x, y) -> (y, -x).
+      expect(icon[i].x, closeTo(app[i].dy, 1e-9), reason: 'x at $i');
+      expect(icon[i].y, closeTo(-app[i].dx, 1e-9), reason: 'y at $i');
+    }
+  });
+
+  test('the manifest label is Synesterra', () {
+    final manifest = File('android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
+    final label = RegExp(r'android:label="([^"]*)"').firstMatch(manifest);
+    expect(label!.group(1), 'Synesterra');
   });
 }
