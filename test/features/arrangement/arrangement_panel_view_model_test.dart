@@ -95,6 +95,25 @@ void main() {
       ]);
     });
 
+    test('any edit counts as unsaved, including only the name', () async {
+      final vm = model();
+      expect(vm.hasUnsavedChanges, isFalse);
+      vm.setName('Song');
+      expect(vm.hasUnsavedChanges, isTrue);
+      vm.setName(ArrangementPanelViewModel.newName);
+      expect(vm.hasUnsavedChanges, isFalse);
+
+      final stored = arrangementOf('a1', 'Song', [('mine', 2)]);
+      final opened = model(stored);
+      opened.setName('Song 2');
+      expect(opened.hasUnsavedChanges, isTrue);
+      opened.setName('Song');
+      expect(opened.hasUnsavedChanges, isFalse);
+      // Repeat all is not stored, so it is not an unsaved change.
+      opened.setRepeatAll(true);
+      expect(opened.hasUnsavedChanges, isFalse);
+    });
+
     test('an invalid name blocks saving with a plain reason', () {
       final vm = model()..addSection('mine');
       vm.setName('   ');

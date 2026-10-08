@@ -19,6 +19,7 @@ Future<void> _pumpApp(WidgetTester tester) async {
 void main() {
   sharedPlaybackTests();
   arrangementLeaveTests();
+  arrangementNameLeaveTests();
 
   testWidgets('start screen offers the Editor, Library and Learn entries', (
     tester,
@@ -255,6 +256,36 @@ void arrangementLeaveTests() {
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(find.text('Unsaved changes'), findsNothing);
+    expect(find.byKey(const Key('home-editor')), findsOneWidget);
+  });
+}
+
+void arrangementNameLeaveTests() {
+  testWidgets('a renamed new arrangement without sections still asks', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      SynesterraApp(
+        instrumentLibrary: InMemoryInstrumentLibraryRepository(),
+        instrumentAudition: NoopInstrumentAuditionRepository(),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('home-editor')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('editor-tab-arrangement')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('arrangement-name')), 'Song');
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Save this arrangement before leaving?'), findsOneWidget);
+    // Nothing to save yet (no section), so Save is off; Discard leaves.
+    expect(
+      tester.widget<TextButton>(find.byKey(const Key('leave-save'))).onPressed,
+      isNull,
+    );
+    await tester.tap(find.byKey(const Key('leave-discard')));
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('home-editor')), findsOneWidget);
   });
 }
