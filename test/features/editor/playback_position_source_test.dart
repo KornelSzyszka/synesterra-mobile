@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/data/repositories/playback_repository.dart';
 import 'package:synesterra/features/editor/playback_position_source.dart';
 import 'package:synesterra/shared/loop_view/position_source.dart';
-import 'package:synesterra_core/synesterra_core.dart';
 
 /// Only the position side of a playback repository, under test control.
 class PositionOnlyPlayback implements PlaybackRepository {

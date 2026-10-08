@@ -25,14 +25,12 @@ class LoopEditorViewModel extends ChangeNotifier {
   /// the user's loops with [existing] true keeps its id and is saved in
   /// place.
   LoopEditorViewModel({
-    required LoopLibraryRepository library,
-    required InstrumentLibraryRepository instruments,
-    required PlaybackRepository playback,
+    required this._library,
+    required this._instruments,
+    required this._playback,
     Loop? loop,
     bool existing = false,
-  }) : _library = library,
-       _instruments = instruments,
-       _playback = playback {
+  }) {
     _load(loop ?? factoryLoops.first, existing: existing);
     _instruments.snapshot.addListener(notifyListeners);
     _playback.status.addListener(_onStatus);
@@ -191,8 +189,9 @@ class LoopEditorViewModel extends ChangeNotifier {
   }
 
   void setCycleBeats(int beats) {
-    if (beats < edits.minLoopCycleBeats || beats > edits.maxLoopCycleBeats)
+    if (beats < edits.minLoopCycleBeats || beats > edits.maxLoopCycleBeats) {
       return;
+    }
     _apply(edits.setCycleBeats(_document, beats));
   }
 
