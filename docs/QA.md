@@ -313,7 +313,7 @@ Or build, install and start in one step: `flutter devices`, then `flutter run -d
 
 Notes for this Windows host:
 
-- The Android SDK is reached through directory junctions on `D:`. If `adb` is not on `PATH`, call it from the SDK's `platform-tools` folder (`flutter doctor -v` prints the SDK path).
+- If `adb` is not on `PATH`, call it from the SDK's `platform-tools` folder; take the SDK path from `flutter doctor -v` or `android/local.properties`, not from an assumption about where the SDK lives.
 - JDK 17 or 21 only (see [testing](testing.md)).
 - `D:\SynesterraBuilds\synesterra-pad-debug.apk` may exist, but it is the older pad-only build from before the loop, arrangement and Learn work. Do not install it for this review; build a fresh APK from the commit under review and write that commit hash in the result.
 - Use the phone, not the agent emulator `emulator-5560`, for anything about sound or feel. Never touch the Founder's emulator `emulator-5554`.
@@ -326,7 +326,7 @@ These checks ran on the host. They prove the UI flows and the wiring, nothing ab
 | Check | Level | What it shows |
 |---|---|---|
 | `test/flows/prototype_flows_test.dart` (4 flows, below) | `widget` | The real app shell, view models, planner, scheduler and `EnginePlaybackRepository` work together; only the audio engine is a fake with a test-owned clock. |
-| `flutter test` (full suite) | `unit` / `widget` | Details per module. |
+| `flutter test` (narrow and scratch runs) | `unit` / `widget` | The full suite does **not** run in the worktree on this host: `flutter_soloud` needs the MSVC C++ toolchain. It ran only in a scratch copy without that plugin (619 passed; the 2 architecture tests that scan for the plugin failed there because the copy removed their fixture). CI on Linux is the full-suite evidence. |
 | `dart format`, `flutter analyze` | `static` | Types and lint. |
 | `flutter build apk --debug` | build | The APK builds; no agent installed or ran it. |
 
