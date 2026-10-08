@@ -60,6 +60,9 @@ class ArrangementPanelViewModel extends ChangeNotifier {
 
   /// This panel's playback ended on an engine error.
   bool _failed = false;
+
+  /// The sections of the last sequence this panel sent to playback.
+  List<PlaybackSection> _sent = const [];
   bool _saving = false;
   String? _saveError;
   bool _disposed = false;
@@ -221,6 +224,7 @@ class ArrangementPanelViewModel extends ChangeNotifier {
     final sections = playableSections;
     if (sections.isEmpty) return;
     _failed = false;
+    _sent = sections;
     await _playback.playSequence(sections, repeatAll: _repeatAll, owner: this);
   }
 
@@ -237,9 +241,31 @@ class ArrangementPanelViewModel extends ChangeNotifier {
     unawaited(canPlay ? play() : stop());
   }
 
+  /// A loop deleted (or changed) in the library while this panel plays: the
+  /// running sequence is replaced by the sections that can still play,
+  /// with their original indexes, so a deleted loop is never heard again.
+  /// It restarts from the first playable section, like an edit. A change
+  /// that leaves the playable sections as they were does nothing.
   void _onLoopsChanged() {
     notifyListeners();
-    if (isPlaying && !canPlay) unawaited(stop());
+    if (!isPlaying) return;
+    if (!canPlay) {
+      unawaited(stop());
+    } else if (!_samePlayback(playableSections, _sent)) {
+      unawaited(play());
+    }
+  }
+
+  static bool _samePlayback(List<PlaybackSection> a, List<PlaybackSection> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].originalIndex != b[i].originalIndex ||
+          a[i].repeats != b[i].repeats ||
+          a[i].document != b[i].document) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void _onStatus() {

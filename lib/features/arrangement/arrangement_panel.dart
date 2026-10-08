@@ -27,6 +27,7 @@ class ArrangementPanel extends StatefulWidget {
     required this.position,
     this.initial,
     this.onSaved,
+    this.onModel,
   });
 
   final LoopLibraryRepository loops;
@@ -42,6 +43,10 @@ class ArrangementPanel extends StatefulWidget {
 
   /// Called after every successful save with what was stored.
   final ValueChanged<Arrangement>? onSaved;
+
+  /// Called with the panel's view model once it exists and with null when
+  /// the panel goes away, so the host can protect unsaved work on exit.
+  final ValueChanged<ArrangementPanelViewModel?>? onModel;
 
   @override
   State<ArrangementPanel> createState() => _ArrangementPanelState();
@@ -62,6 +67,7 @@ class _ArrangementPanelState extends State<ArrangementPanel> {
   void initState() {
     super.initState();
     _model.addListener(_syncName);
+    widget.onModel?.call(_model);
   }
 
   /// Opening another arrangement replaces the name field's text.
@@ -71,6 +77,7 @@ class _ArrangementPanelState extends State<ArrangementPanel> {
 
   @override
   void dispose() {
+    widget.onModel?.call(null);
     _model.removeListener(_syncName);
     _model.dispose();
     _name.dispose();

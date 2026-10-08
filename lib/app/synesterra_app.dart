@@ -90,6 +90,17 @@ class _SynesterraAppState extends State<SynesterraApp> {
                   playback: _playback,
                   position: shell.position,
                   initial: arrangement,
+                  onModel: (model) => shell.guardPanel(
+                    model == null
+                        ? null
+                        : EditorPanelGuard(
+                            what: 'this arrangement',
+                            changes: model,
+                            dirty: () => model.hasUnsavedChanges,
+                            canSave: () => model.canSave,
+                            save: () async => await model.save() != null,
+                          ),
+                  ),
                 ),
               ),
             ),
