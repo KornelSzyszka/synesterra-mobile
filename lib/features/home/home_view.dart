@@ -4,12 +4,13 @@ import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/palette_menu_button.dart';
 import '../../shared/theme/design_scale.dart';
 
-/// The first screen: two entries and nothing else for now.
+/// The first screen: Editor, Library and Learn.
 class HomeView extends StatelessWidget {
   const HomeView({
     super.key,
     required this.onOpenEditor,
     required this.onOpenLibrary,
+    required this.onOpenLearn,
     this.onOpenAudioSpike,
     this.palette = SynesterraPalette.forest,
     this.onPaletteChanged,
@@ -17,6 +18,7 @@ class HomeView extends StatelessWidget {
 
   final VoidCallback onOpenEditor;
   final VoidCallback onOpenLibrary;
+  final VoidCallback onOpenLearn;
   final VoidCallback? onOpenAudioSpike;
   final SynesterraPalette palette;
   final ValueChanged<SynesterraPalette>? onPaletteChanged;
@@ -61,6 +63,14 @@ class HomeView extends StatelessWidget {
             title: 'Library',
             description: 'Your saved instruments, loops and arrangements.',
             onTap: onOpenLibrary,
+          ),
+          const SizedBox(height: Space.lg),
+          _EntryCard(
+            key: const Key('home-learn'),
+            icon: Icons.school_outlined,
+            title: 'Learn',
+            description: 'Short lessons on rhythm, with live pictures.',
+            onTap: onOpenLearn,
           ),
           if (onOpenAudioSpike != null) ...[
             const SizedBox(height: 16),

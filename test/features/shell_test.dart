@@ -14,7 +14,7 @@ Future<void> _pumpApp(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('start screen offers exactly the Editor and Library entries', (
+  testWidgets('start screen offers the Editor, Library and Learn entries', (
     tester,
   ) async {
     await _pumpApp(tester);
@@ -23,12 +23,14 @@ void main() {
     expect(find.byKey(const Key('home-library')), findsOneWidget);
     expect(find.text('Editor'), findsOneWidget);
     expect(find.text('Library'), findsOneWidget);
+    expect(find.byKey(const Key('home-learn')), findsOneWidget);
+    expect(find.text('Learn'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(ListView),
         matching: find.byType(InkWell),
       ),
-      findsNWidgets(2),
+      findsNWidgets(3),
     );
   });
 
@@ -37,7 +39,7 @@ void main() {
   ) async {
     await _pumpApp(tester);
 
-    for (final key in const ['home-editor', 'home-library']) {
+    for (final key in const ['home-editor', 'home-library', 'home-learn']) {
       expect(
         tester.getSize(find.byKey(Key(key))).height,
         greaterThanOrEqualTo(48),
@@ -45,6 +47,28 @@ void main() {
     }
     expect(find.bySemanticsLabel(RegExp('^Editor\\.')), findsOneWidget);
     expect(find.bySemanticsLabel(RegExp('^Library\\.')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('^Learn\\.')), findsOneWidget);
+  });
+
+  testWidgets('Learn Try it opens the Loop panel on an unsaved copy', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await _pumpApp(tester);
+    await tester.tap(find.byKey(const Key('home-learn')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('lesson-two-against-three')));
+    // The tutorial clock ticks while a lesson is open, so nothing settles.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const Key('lesson-try-it')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byKey(const Key('loop-play')), findsOneWidget);
+    expect(find.text('Three against two copy'), findsOneWidget);
   });
 
   testWidgets('Editor has Instrument, Loop and Arrangement panels', (
