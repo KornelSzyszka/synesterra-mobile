@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-08",
+  "task": "QA-096",
+  "prefix": "QA",
+  "size": "M",
+  "risk": "none",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Four widget-level flow tests in test/flows/prototype_flows_test.dart on the real app shell, view models, scheduler and EnginePlaybackRepository with a fake engine and clock (integration_test not used: needs a device or emulator and a controllable clock). Tests were written against the finished product, so there was no red phase; meaningfulness was checked by three mutations (loop save no-op, sequence section index fixed at 0, Try it ignoring the lesson loop), each failed the matching flow and was reverted. docs/QA.md gained the phone hand-off, the checks that ran, a Founder listening and looking checklist and a known-issues list from the reviews of #97-#103. No product bug found by the flows. Full flutter test ran in a scratch copy without flutter_soloud (no MSVC): 619 passed; the 2 failures were architecture R5 tests that failed only because the scratch copy removed their fixture. dart format and flutter analyze clean and flutter build apk --debug built in the worktree. No emulator or device run; sound, timing and feel unverified. Review pending."
+}
