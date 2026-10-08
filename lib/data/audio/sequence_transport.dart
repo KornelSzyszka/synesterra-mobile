@@ -74,7 +74,13 @@ final class SequenceTransport implements PlaybackStateSource, BeatEventSource {
   final AudioClock _clock;
   List<TransportSection> _sections = const [];
   bool _repeatAll = false;
+
+  /// The retained section runs, oldest first. Runs heard to their end are
+  /// dropped ([_prune]), so a long "repeat all" stays bounded; a run keeps
+  /// its absolute [_Segment.index] (event ids stay unique), and
+  /// [_firstIndex] is the index of `_segments.first`.
   final List<_Segment> _segments = [];
+  int _firstIndex = 0;
   final Map<String, double> _gainOverrides = {};
   int _planSegment = 0;
   int? _plannedTo;
@@ -110,6 +116,7 @@ final class SequenceTransport implements PlaybackStateSource, BeatEventSource {
     _segments
       ..clear()
       ..add(_newSegment(0, 0, 0));
+    _firstIndex = 0;
     _tempoMap = TempoMap(bpm: bpm, anchorBeat: 0, anchorTime: anchorTime);
     _transport = PlaybackTransport.playing;
     _hardChange(0);
@@ -159,7 +166,7 @@ final class SequenceTransport implements PlaybackStateSource, BeatEventSource {
       generation: _generation,
       tempoMap: _tempoMap,
       continuousSince: _runSince,
-      planUntilBeat: isPlaying ? _segments[_planSegment].endTick : null,
+      planUntilBeat: isPlaying ? _segment(_planSegment).endTick : null,
     );
   }
 
@@ -172,21 +179,48 @@ final class SequenceTransport implements PlaybackStateSource, BeatEventSource {
         ? _tempoMap.beatAt(reading.renderTime + reading.minLead)
         : -1;
     while (true) {
-      final end = _segments[_planSegment].endTick;
-      if (end == null) return;
+      final end = _segment(_planSegment).endTick;
+      if (end == null) break;
       final reached = (_plannedTo ?? -1) >= end || earliestBeat >= end;
-      if (!reached) return;
+      if (!reached) break;
       final next = _segmentAfter(_planSegment);
-      if (next == null) return;
+      if (next == null) break;
       _planSegment = next.index;
       _generation++;
       _marks.add((next.startTick, _generation));
     }
+    if (reading.state == EngineState.running) _prune(_heardTick(reading));
   }
 
+  /// Forgets runs and generation marks that lie wholly before [heardTick]
+  /// and before the run being planned. The heard position only moves
+  /// forward within a run, and planning is ahead of it, so nothing reads
+  /// them again. A hard change rebuilds marks; segments survive it.
+  void _prune(int heardTick) {
+    while (_segments.length > 1 && _segments.first.index < _planSegment) {
+      final end = _segments.first.endTick;
+      if (end == null || end > heardTick) break;
+      _segments.removeAt(0);
+      _firstIndex++;
+    }
+    var keep = 0;
+    for (var i = 1; i < _marks.length; i++) {
+      if (_marks[i].$1 <= heardTick) keep = i;
+    }
+    if (keep > 0) _marks.removeRange(0, keep);
+  }
+
+  _Segment _segment(int index) => _segments[index - _firstIndex];
+
+  /// Retained section runs; for tests of the bound.
+  int get retainedSegments => _segments.length;
+
+  /// Retained generation marks; for tests of the bound.
+  int get retainedMarks => _marks.length;
+
   _Segment? _segmentAfter(int index) {
-    if (index + 1 < _segments.length) return _segments[index + 1];
-    final previous = _segments[index];
+    if (index + 1 - _firstIndex < _segments.length) return _segment(index + 1);
+    final previous = _segment(index);
     var sectionIndex = previous.sectionIndex + 1;
     if (sectionIndex >= _sections.length) {
       if (!_repeatAll) return null;
@@ -213,10 +247,10 @@ final class SequenceTransport implements PlaybackStateSource, BeatEventSource {
 
   /// The segment containing [tick], or the last created one.
   int _segmentIndexAt(int tick) {
-    for (var i = _segments.length - 1; i >= 0; i--) {
-      if (_segments[i].startTick <= tick) return i;
+    for (final segment in _segments.reversed) {
+      if (segment.startTick <= tick) return segment.index;
     }
-    return 0;
+    return _firstIndex;
   }
 
   @override
@@ -280,13 +314,13 @@ final class SequenceTransport implements PlaybackStateSource, BeatEventSource {
     // The section layout is fixed, so a read may run ahead of planning.
     var index = _segmentIndexAt(tick);
     while (true) {
-      final end = _segments[index].endTick;
+      final end = _segment(index).endTick;
       if (end == null || tick < end) break;
       final next = _segmentAfter(index);
       if (next == null) break;
       index = next.index;
     }
-    final segment = _segments[index];
+    final segment = _segment(index);
     final section = _sections[segment.sectionIndex];
     var local = tick - segment.startTick;
     final end = segment.endTick;

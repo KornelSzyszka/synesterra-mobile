@@ -39,28 +39,30 @@ class RecordingPlayback implements PlaybackRepository {
   PlaybackPosition readPosition() => _position.value;
 
   @override
-  Future<void> play(SessionDocument document) {
+  Future<void> play(SessionDocument document, {Object? owner}) {
     _section = null;
     played.add(document);
     commands.add('play');
-    return _inner.play(document);
+    return _inner.play(document, owner: owner);
   }
 
   @override
   Future<void> playSequence(
     List<PlaybackSection> sections, {
     required bool repeatAll,
+    Object? owner,
   }) {
     commands.add('sequence');
     _section = sections.isEmpty ? null : sections.first.originalIndex;
-    return _inner.playSequence(sections, repeatAll: repeatAll);
+    return _inner.playSequence(sections, repeatAll: repeatAll, owner: owner);
   }
 
   @override
-  Future<void> stop() {
-    _section = null;
+  Future<void> stop({Object? owner}) {
+    final current = _inner.status.value.owner;
+    if (owner == null || identical(owner, current)) _section = null;
     commands.add('stop');
-    return _inner.stop();
+    return _inner.stop(owner: owner);
   }
 
   @override

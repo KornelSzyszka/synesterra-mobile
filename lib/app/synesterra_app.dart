@@ -13,8 +13,8 @@ import '../data/repositories/playback_repository.dart';
 import '../data/repositories/audio_spike_repository.dart';
 import '../features/editor/editor_view.dart';
 import '../features/home/home_view.dart';
+import '../features/arrangement/arrangement_panel.dart';
 import '../features/learn/learn_view.dart';
-import '../features/library/library_item_placeholder_view.dart';
 import '../features/library/library_view.dart';
 import '../features/audio_spike/audio_spike_view.dart';
 import '../shared/theme/synesterra_theme.dart';
@@ -67,6 +67,7 @@ class _SynesterraAppState extends State<SynesterraApp> {
             bool existing = false,
             Loop? loop,
             bool loopExisting = false,
+            Arrangement? arrangement,
             EditorTab tab = EditorTab.instrument,
           }) => Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -80,6 +81,27 @@ class _SynesterraAppState extends State<SynesterraApp> {
                 initialLoop: loop,
                 loopExisting: loopExisting,
                 initialTab: tab,
+                // The Arrangement panel is its own feature (R4), so it is built
+                // here; it shares the one playback repository and the
+                // Editor's position adapter with the Loop panel.
+                arrangementPanel: (context, shell) => ArrangementPanel(
+                  loops: _loops,
+                  arrangements: _arrangements,
+                  playback: _playback,
+                  position: shell.position,
+                  initial: arrangement,
+                  onModel: (model) => shell.guardPanel(
+                    model == null
+                        ? null
+                        : EditorPanelGuard(
+                            what: 'this arrangement',
+                            changes: model,
+                            dirty: () => model.hasUnsavedChanges,
+                            canSave: () => model.canSave,
+                            save: () async => await model.save() != null,
+                          ),
+                  ),
+                ),
               ),
             ),
           );
@@ -89,17 +111,6 @@ class _SynesterraAppState extends State<SynesterraApp> {
             loopExisting: existing,
             tab: EditorTab.loop,
           );
-          // Until the Arrangement panel exists, opening an arrangement from
-          // the Library shows a placeholder.
-          void openPlaceholder(String title, String message) =>
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => LibraryItemPlaceholderView(
-                    title: title,
-                    message: message,
-                  ),
-                ),
-              );
           return HomeView(
             palette: _palette,
             onPaletteChanged: (palette) => setState(() => _palette = palette),
@@ -113,10 +124,9 @@ class _SynesterraAppState extends State<SynesterraApp> {
                   onOpenInstrument: (instrument, existing) =>
                       openEditor(instrument: instrument, existing: existing),
                   onOpenLoop: openLoop,
-                  onOpenArrangement: (arrangement) => openPlaceholder(
-                    arrangement.name,
-                    'The Arrangement panel is not built yet. '
-                    'This arrangement is kept in your library.',
+                  onOpenArrangement: (arrangement) => openEditor(
+                    arrangement: arrangement,
+                    tab: EditorTab.arrangement,
                   ),
                 ),
               ),

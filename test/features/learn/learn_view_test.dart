@@ -17,7 +17,7 @@ class _RecordingPlayback extends NoopPlaybackRepository {
   bool failWithStatus = false;
 
   @override
-  Future<void> play(SessionDocument document) async {
+  Future<void> play(SessionDocument document, {Object? owner}) async {
     calls.add('play');
     if (fail) throw StateError('no engine');
     if (failWithStatus) {
@@ -27,13 +27,13 @@ class _RecordingPlayback extends NoopPlaybackRepository {
       );
       return;
     }
-    await super.play(document);
+    await super.play(document, owner: owner);
   }
 
   @override
-  Future<void> stop() async {
+  Future<void> stop({Object? owner}) async {
     calls.add('stop');
-    await super.stop();
+    await super.stop(owner: owner);
   }
 }
 

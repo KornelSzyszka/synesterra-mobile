@@ -41,4 +41,4 @@ The result is `SequenceAt(sectionIndex, cycleInSection)` or `SequenceDone`. Both
 
 ## Not here
 
-Storage (one JSON file per item), the loop lookup that feeds `isSkipped`, the `playSequence` bridge and the arrangement panel belong to later tasks of prototype v0.
+Storage is `ArrangementLibraryRepository` (`lib/data/repositories/`), playback is `PlaybackRepository.playSequence` ([playback](playback.md)), and the Editor's Arrangement panel is `lib/features/arrangement/`: it looks loops up in the loop library (factory loops included), marks and skips missing ones, passes the original section index to `playSequence`, and feeds `ArrangementStrip` from the Editor's shared position. A loop deleted from the library while the panel plays replaces the running sequence with the sections that can still play (same original indexes), and the Editor asks before an unsaved arrangement is dropped on exit (`EditorShell.guardPanel`). "Repeat all" is panel state; the JSON v1 has no field for it.

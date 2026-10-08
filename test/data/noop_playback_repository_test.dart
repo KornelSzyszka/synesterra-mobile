@@ -25,4 +25,18 @@ void main() {
       greaterThan(playing.generation),
     );
   });
+
+  test('stops only the owner it is given', () async {
+    final repository = NoopPlaybackRepository();
+    addTearDown(repository.dispose);
+    final a = Object();
+    final b = Object();
+    await repository.play(threeTwo(), owner: a);
+    expect(repository.status.value.owner, same(a));
+    await repository.stop(owner: b);
+    expect(repository.status.value.state, PlaybackState.playing);
+    await repository.stop(owner: a);
+    expect(repository.status.value.state, PlaybackState.stopped);
+    expect(repository.status.value.owner, isNull);
+  });
 }

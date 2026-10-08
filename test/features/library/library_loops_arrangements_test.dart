@@ -363,8 +363,16 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('arrangement-tile-x')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('library-item-placeholder')), findsOneWidget);
-      expect(find.text('Song'), findsOneWidget);
+      // The Editor opens on the Arrangement panel with that arrangement.
+      expect(find.byKey(const Key('arrangement-panel')), findsOneWidget);
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('arrangement-name')))
+            .controller!
+            .text,
+        'Song',
+      );
+      expect(find.byKey(const Key('section-1')), findsOneWidget);
     });
   });
 }

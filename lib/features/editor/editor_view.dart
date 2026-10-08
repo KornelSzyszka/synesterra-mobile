@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
@@ -29,6 +31,34 @@ abstract interface class EditorShell {
   /// edits one of the user's loops in place; false edits a copy. When the
   /// loop being edited has unsaved changes, the user is asked first.
   Future<void> openLoop(Loop loop, {required bool existing});
+
+  /// Lets a panel built outside take part in the exit protection: leaving
+  /// the Editor while [EditorPanelGuard.dirty] holds asks first, the same
+  /// way as for the instrument and the loop. Null removes the guard.
+  void guardPanel(EditorPanelGuard? guard);
+}
+
+/// Unsaved work of a panel built outside the Editor (see
+/// [EditorShell.guardPanel]).
+final class EditorPanelGuard {
+  const EditorPanelGuard({
+    required this.what,
+    required this.changes,
+    required this.dirty,
+    required this.canSave,
+    required this.save,
+  });
+
+  /// How the leave dialog names it, such as "this arrangement".
+  final String what;
+
+  /// Notifies when [dirty] or [canSave] may have changed.
+  final Listenable changes;
+  final bool Function() dirty;
+  final bool Function() canSave;
+
+  /// Saves; true when it was stored.
+  final Future<bool> Function() save;
 }
 
 typedef EditorPanelBuilder = Widget Function(
@@ -113,12 +143,21 @@ class _EditorViewState extends State<EditorView>
   @override
   void initState() {
     super.initState();
-    _lifecycle = AppLifecycleListener(onHide: _loop.appHidden);
+    _lifecycle = AppLifecycleListener(onHide: _appHidden);
+  }
+
+  /// Stops whatever plays, the loop or an arrangement started in the
+  /// Arrangement tab.
+  void _appHidden() {
+    _loop.appHidden();
+    unawaited(widget.playback.stop());
   }
 
   @override
   void dispose() {
     _lifecycle.dispose();
+    _guard?.changes.removeListener(_onGuard);
+    _guardChanges.dispose();
     _tabs.dispose();
     _loop.dispose();
     _position.dispose();
@@ -136,18 +175,40 @@ class _EditorViewState extends State<EditorView>
     _tabs.animateTo(EditorTab.loop.index);
   }
 
-  bool get _dirty => _instrument.dirty || _loop.dirty;
+  EditorPanelGuard? _guard;
+  final _guardChanges = ValueNotifier(0);
+
+  void _onGuard() => _guardChanges.value++;
+
+  @override
+  void guardPanel(EditorPanelGuard? guard) {
+    _guard?.changes.removeListener(_onGuard);
+    _guard = guard;
+    guard?.changes.addListener(_onGuard);
+  }
+
+  bool get _panelDirty => _guard?.dirty() ?? false;
+
+  bool get _dirty => _instrument.dirty || _loop.dirty || _panelDirty;
 
   /// Leaving with unsaved changes asks first; the safe answer is Cancel.
   Future<void> _confirmLeave() async {
     final navigator = Navigator.of(context);
     final instrument = _instrument.dirty;
     final loop = _loop.dirty;
-    final what = instrument && loop
-        ? 'this instrument and this loop'
-        : (instrument ? 'this instrument' : 'this loop');
+    final guard = _panelDirty ? _guard : null;
+    final parts = [
+      if (instrument) 'this instrument',
+      if (loop) 'this loop',
+      ?guard?.what,
+    ];
+    final what = parts.length == 1
+        ? parts.single
+        : '${parts.sublist(0, parts.length - 1).join(', ')} and ${parts.last}';
     final canSave =
-        (!instrument || _instrument.canSave) && (!loop || _loop.canSave);
+        (!instrument || _instrument.canSave) &&
+        (!loop || _loop.canSave) &&
+        (guard == null || guard.canSave());
     final choice = await showDialog<_LeaveChoice>(
       context: context,
       builder: (context) => AlertDialog(
@@ -181,7 +242,8 @@ class _EditorViewState extends State<EditorView>
       case _LeaveChoice.save:
         final savedInstrument = !instrument || await _instrument.save();
         final savedLoop = !loop || await _loop.save();
-        if (savedInstrument && savedLoop) navigator.pop();
+        final savedPanel = guard == null || await guard.save();
+        if (savedInstrument && savedLoop && savedPanel) navigator.pop();
       case _LeaveChoice.cancel || null:
         break;
     }
@@ -190,7 +252,7 @@ class _EditorViewState extends State<EditorView>
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([_instrument, _loop]),
+      listenable: Listenable.merge([_instrument, _loop, _guardChanges]),
       builder: (context, _) => PopScope(
         canPop: !_dirty,
         onPopInvokedWithResult: (didPop, _) {
