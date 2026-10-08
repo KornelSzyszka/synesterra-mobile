@@ -4,9 +4,12 @@ import 'package:synesterra_core/synesterra_core.dart';
 import '../data/repositories/arrangement_library_repository.dart';
 import '../data/repositories/impl/in_memory_arrangement_library_repository.dart';
 import '../data/repositories/impl/in_memory_loop_library_repository.dart';
+import '../data/repositories/impl/noop_playback_repository.dart';
 import '../data/repositories/instrument_audition_repository.dart';
 import '../data/repositories/instrument_library_repository.dart';
+import '../data/repositories/loop.dart';
 import '../data/repositories/loop_library_repository.dart';
+import '../data/repositories/playback_repository.dart';
 import '../data/repositories/audio_spike_repository.dart';
 import '../features/editor/editor_view.dart';
 import '../features/home/home_view.dart';
@@ -23,6 +26,7 @@ class SynesterraApp extends StatefulWidget {
     this.audioSpikeRepositoryFactory,
     this.loopLibrary,
     this.arrangementLibrary,
+    this.playback,
   });
 
   final InstrumentLibraryRepository instrumentLibrary;
@@ -34,6 +38,9 @@ class SynesterraApp extends StatefulWidget {
   final ArrangementLibraryRepository? arrangementLibrary;
   final AudioSpikeRepository Function()? audioSpikeRepositoryFactory;
 
+  /// The bootstrap passes the engine; when omitted, a silent stand-in.
+  final PlaybackRepository? playback;
+
   @override
   State<SynesterraApp> createState() => _SynesterraAppState();
 }
@@ -44,6 +51,8 @@ class _SynesterraAppState extends State<SynesterraApp> {
       widget.loopLibrary ?? InMemoryLoopLibraryRepository();
   late final ArrangementLibraryRepository _arrangements =
       widget.arrangementLibrary ?? InMemoryArrangementLibraryRepository();
+  late final PlaybackRepository _playback =
+      widget.playback ?? NoopPlaybackRepository();
 
   @override
   Widget build(BuildContext context) {
@@ -52,18 +61,34 @@ class _SynesterraAppState extends State<SynesterraApp> {
       theme: synesterraTheme(_palette),
       home: Builder(
         builder: (context) {
-          void openEditor([Instrument? instrument, bool existing = false]) =>
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => EditorView(
-                    instrumentLibrary: widget.instrumentLibrary,
-                    instrumentAudition: widget.instrumentAudition,
-                    initialInstrument: instrument,
-                    editsExisting: existing,
-                  ),
-                ),
-              );
-          // Until the Loop and Arrangement panels exist, opening an item from
+          void openEditor({
+            Instrument? instrument,
+            bool existing = false,
+            Loop? loop,
+            bool loopExisting = false,
+            EditorTab tab = EditorTab.instrument,
+          }) => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EditorView(
+                instrumentLibrary: widget.instrumentLibrary,
+                instrumentAudition: widget.instrumentAudition,
+                loopLibrary: _loops,
+                playback: _playback,
+                initialInstrument: instrument,
+                editsExisting: existing,
+                initialLoop: loop,
+                loopExisting: loopExisting,
+                initialTab: tab,
+              ),
+            ),
+          );
+          // Opens the Loop panel with [loop]; Learn's "Try it" can use it too.
+          void openLoop(Loop loop, bool existing) => openEditor(
+            loop: loop,
+            loopExisting: existing,
+            tab: EditorTab.loop,
+          );
+          // Until the Arrangement panel exists, opening an arrangement from
           // the Library shows a placeholder.
           void openPlaceholder(String title, String message) =>
               Navigator.of(context).push(
@@ -84,12 +109,9 @@ class _SynesterraAppState extends State<SynesterraApp> {
                   instrumentLibrary: widget.instrumentLibrary,
                   loopLibrary: _loops,
                   arrangementLibrary: _arrangements,
-                  onOpenInstrument: openEditor,
-                  onOpenLoop: (loop, _) => openPlaceholder(
-                    loop.name,
-                    'The Loop panel is not built yet. '
-                    'This loop is kept in your library.',
-                  ),
+                  onOpenInstrument: (instrument, existing) =>
+                      openEditor(instrument: instrument, existing: existing),
+                  onOpenLoop: openLoop,
                   onOpenArrangement: (arrangement) => openPlaceholder(
                     arrangement.name,
                     'The Arrangement panel is not built yet. '

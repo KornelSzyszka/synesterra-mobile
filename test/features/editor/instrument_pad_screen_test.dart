@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:synesterra/data/repositories/impl/in_memory_loop_library_repository.dart';
+import 'package:synesterra/data/repositories/impl/noop_playback_repository.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
 import 'package:synesterra/features/editor/editor_view.dart';
 import 'package:synesterra/features/editor/envelope_editor.dart';
@@ -39,6 +41,8 @@ Future<void> open(
       home: EditorView(
         instrumentLibrary: library,
         instrumentAudition: audition,
+        loopLibrary: InMemoryLoopLibraryRepository(),
+        playback: NoopPlaybackRepository(),
         initialInstrument: instrument,
         editsExisting: existing,
       ),
