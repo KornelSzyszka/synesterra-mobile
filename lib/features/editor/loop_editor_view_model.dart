@@ -55,7 +55,14 @@ class LoopEditorViewModel extends ChangeNotifier {
 
   void _load(Loop source, {required bool existing}) {
     final keep = existing && !isFactoryId(source.id);
-    final loop = keep ? source : source.copyAsNew();
+    final copy = keep ? source : source.copyAsNew();
+    // The panel edits scene A and writes B as its copy. A stored loop whose
+    // B differs (valid for the parser) is aligned here, so the picture, the
+    // controls and playback all show the same scene. The file changes only
+    // on the next save.
+    final loop = copy.copyWith(
+      document: edits.withTitle(copy.document, copy.document.title),
+    );
     _baseline = loop;
     _document = loop.document;
     _name = loop.name;
@@ -103,14 +110,18 @@ class LoopEditorViewModel extends ChangeNotifier {
       name: name,
       document: edits.withTitle(_document, name),
     );
+    final documentAtSave = _document;
     _saving = true;
     _saveError = null;
     notifyListeners();
     try {
       await _library.save(saved);
       _baseline = saved;
-      _document = saved.document;
-      _name = name;
+      // Edits made during the write are kept; they then differ from the
+      // saved baseline, so the loop shows as changed and can be saved again.
+      _document = _document == documentAtSave
+          ? saved.document
+          : edits.withTitle(_document, name);
       _persisted = true;
       return true;
     } catch (_) {

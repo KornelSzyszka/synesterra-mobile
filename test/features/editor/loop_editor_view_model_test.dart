@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_loop_library_repository.dart';
@@ -22,6 +24,51 @@ Loop mine(String id, {String name = 'Mine'}) => Loop(
     ],
   ),
 );
+
+/// A library whose save waits until the test lets it finish.
+class SlowLoops extends InMemoryLoopLibraryRepository {
+  final gate = Completer<void>();
+
+  @override
+  Future<void> save(Loop loop) async {
+    await gate.future;
+    await super.save(loop);
+  }
+}
+
+/// [loop] with scene B different from scene A (valid for the parser).
+Loop diverged(Loop loop) {
+  final d = loop.document;
+  final a = d.scenes[0];
+  final b = Scene(
+    id: 'B',
+    layers: [
+      for (final layer in a.layers)
+        RhythmLayer(
+          id: layer.id,
+          instrumentId: 'factory-bell',
+          pitch: 40,
+          pattern: layer.pattern,
+          phaseSteps: 0,
+          swing: layer.swing,
+          mix: layer.mix,
+        ),
+    ],
+    masterGain: 0.3,
+    drone: a.drone,
+  );
+  return loop.copyWith(
+    document: SessionDocument(
+      title: d.title,
+      transport: d.transport,
+      referenceClick: d.referenceClick,
+      randomSeed: d.randomSeed,
+      scenes: [a, b],
+      defaultSceneId: 'B',
+      presentation: d.presentation,
+    ),
+  );
+}
 
 void main() {
   late InMemoryLoopLibraryRepository loops;
@@ -138,6 +185,43 @@ void main() {
       expect(vm.dirty, isFalse);
       expect(vm.persisted, isTrue);
       expect(vm.canSave, isFalse);
+    });
+
+    test('an edit made while saving is kept and stays unsaved', () async {
+      final slow = SlowLoops();
+      loops = slow;
+      final vm = create();
+      final saving = vm.save();
+      vm.toggleStep(0, 1);
+      final edited = vm.document;
+      slow.gate.complete();
+      expect(await saving, isTrue);
+      expect(
+        loopLayer(vm.document, 0).pattern.steps,
+        loopLayer(edited, 0).pattern.steps,
+      );
+      expect(vm.dirty, isTrue);
+      expect(vm.canSave, isTrue);
+      expect(
+        loopLayer(slow.snapshot.value.items.single.document, 0).pattern.steps,
+        isNot(loopLayer(edited, 0).pattern.steps),
+      );
+    });
+
+    test('a stored loop whose scene B differs opens with B a copy of A', () {
+      final source = diverged(mine('m3'));
+      expect(
+        source.document.scenes[1].layers,
+        isNot(source.document.scenes[0].layers),
+      );
+      final vm = create(loop: source, existing: true);
+      final d = vm.document;
+      expect(d.scenes[1].layers, d.scenes[0].layers);
+      expect(d.scenes[1].masterGain, d.scenes[0].masterGain);
+      expect(loopLayer(d, 0).instrumentId, 'factory-wood');
+      expect(vm.dirty, isFalse);
+      vm.open(diverged(mine('m4')), existing: false);
+      expect(vm.document.scenes[1].layers, vm.document.scenes[0].layers);
     });
 
     test('an invalid name cannot be saved', () async {
@@ -266,6 +350,38 @@ void main() {
       expect(after.generation, greaterThan(before.generation));
       expect(after.cyclePosition, closeTo(before.cyclePosition, 0.02));
       expect(h.repository.status.value.bpm, 60);
+    });
+
+    test('a volume drag (many changes) never restarts and reaches the '
+        'next hits', () async {
+      final before = now();
+      for (var i = 0; i < 20; i++) {
+        vm.setLayerVolume(0, 0.8 - i * 0.03);
+      }
+      await pumpEventQueue();
+      h.runTo(2100000);
+      expect(now().generation, before.generation);
+      expect(now().cycleIndex, 1, reason: 'kept running into cycle 2');
+      final layerOneGains = [
+        for (final e in h.sink.scheduled)
+          if (e.event.sound == 'playback-0' &&
+              e.event.at.microseconds > 1300000)
+            e.event.gain,
+      ];
+      expect(layerOneGains, isNotEmpty);
+      // 0.23 layer gain instead of 0.8: the new volume is used.
+      expect(layerOneGains.every((g) => g < 0.2), isTrue);
+    });
+
+    test('holding tempo + (many changes) keeps the phase', () async {
+      final before = now();
+      for (var bpm = 121; bpm <= 130; bpm++) {
+        vm.setTempo(bpm);
+      }
+      await pumpEventQueue();
+      expect(now().cyclePosition, closeTo(before.cyclePosition, 0.02));
+      expect(now().cycleIndex, before.cycleIndex);
+      expect(h.repository.status.value.bpm, 130);
     });
 
     test('a structural edit restarts from the cycle start', () async {
