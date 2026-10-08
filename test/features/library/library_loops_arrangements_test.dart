@@ -334,9 +334,8 @@ void main() {
   });
 
   group('app shell', () {
-    testWidgets('opening a loop or an arrangement shows a placeholder', (
-      tester,
-    ) async {
+    testWidgets('a loop opens in the Loop panel; an arrangement still shows '
+        'a placeholder', (tester) async {
       await tester.pumpWidget(
         SynesterraApp(
           instrumentLibrary: InMemoryInstrumentLibraryRepository(),
@@ -354,8 +353,9 @@ void main() {
 
       await tester.tap(find.byKey(const Key('loop-tile-factory-loop-3-2')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('library-item-placeholder')), findsOneWidget);
-      expect(find.text('Three against two'), findsOneWidget);
+      // A factory loop is read-only, so the panel edits a copy of it.
+      expect(find.byKey(const Key('loop-play')), findsOneWidget);
+      expect(find.text('Three against two copy'), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
 

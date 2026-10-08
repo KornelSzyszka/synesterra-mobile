@@ -4,7 +4,9 @@ import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../data/audio/soloud_audition_engine.dart';
+import '../data/audio/soloud_plugin_binding.dart';
 import '../data/repositories/impl/engine_instrument_audition_repository.dart';
+import '../data/repositories/impl/engine_playback_repository.dart';
 import '../data/repositories/impl/file_arrangement_library_repository.dart';
 import '../data/repositories/impl/file_instrument_library_repository.dart';
 import '../data/repositories/impl/file_loop_library_repository.dart';
@@ -38,6 +40,12 @@ Future<Widget> createApp() async {
     // The engine starts on the first audition, never at launch.
     instrumentAudition: EngineInstrumentAuditionRepository(
       SoloudAuditionEngine(),
+    ),
+    // Shared by the Loop and Arrangement panels; nothing starts before the
+    // first Play.
+    playback: EnginePlaybackRepository(
+      engine: flutterSoloudPlaybackEngine(),
+      instruments: library,
     ),
   );
 }

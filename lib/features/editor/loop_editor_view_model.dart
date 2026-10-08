@@ -130,6 +130,9 @@ class LoopEditorViewModel extends ChangeNotifier {
     if (playing) _send();
   }
 
+  /// The user's saved loops, for opening another one.
+  List<Loop> get savedLoops => _library.snapshot.value.items;
+
   // Layers.
 
   int get layerCount => edits.loopLayerCount(_document);

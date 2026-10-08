@@ -3,25 +3,61 @@ import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../data/repositories/instrument_audition_repository.dart';
 import '../../data/repositories/instrument_library_repository.dart';
-import '../../shared/theme/synesterra_theme.dart';
-import '../../shared/widgets/design_components.dart';
+import '../../data/repositories/loop.dart';
+import '../../data/repositories/loop_library_repository.dart';
+import '../../data/repositories/playback_repository.dart';
+import '../../shared/loop_view/position_source.dart';
+import 'arrangement_tab_placeholder.dart';
 import 'instrument_editor_view_model.dart';
 import 'instrument_panel.dart';
-import '../../shared/theme/design_scale.dart';
+import 'loop_editor_view_model.dart';
+import 'loop_panel.dart';
+import 'playback_position_source.dart';
 
-/// Editor with three panels. Instrument is real; Loop and Arrangement are
-/// placeholders until their turn.
+/// The Editor's panels, in tab order.
+enum EditorTab { instrument, loop, arrangement }
+
+/// What the Editor offers a panel built outside this feature. A feature never
+/// imports another one (R4), so `lib/app/` builds such a panel and passes it
+/// in through an [EditorPanelBuilder].
+abstract interface class EditorShell {
+  /// The transport position of the shared playback repository, for loop
+  /// views. Read-only: it never drives transport.
+  PositionSource get position;
+
+  /// Loads [loop] into the Loop panel and shows that panel. [existing] true
+  /// edits one of the user's loops in place; false edits a copy. When the
+  /// loop being edited has unsaved changes, the user is asked first.
+  Future<void> openLoop(Loop loop, {required bool existing});
+}
+
+typedef EditorPanelBuilder = Widget Function(
+  BuildContext context,
+  EditorShell shell,
+);
+
+/// Editor with three panels: Instrument, Loop and Arrangement.
 class EditorView extends StatefulWidget {
   const EditorView({
     super.key,
     required this.instrumentLibrary,
     required this.instrumentAudition,
+    required this.loopLibrary,
+    required this.playback,
     this.initialInstrument,
     this.editsExisting = false,
+    this.initialLoop,
+    this.loopExisting = false,
+    this.initialTab = EditorTab.instrument,
+    this.arrangementPanel,
   });
 
   final InstrumentLibraryRepository instrumentLibrary;
   final InstrumentAuditionRepository instrumentAudition;
+  final LoopLibraryRepository loopLibrary;
+
+  /// Shared by the Loop and Arrangement panels.
+  final PlaybackRepository playback;
 
   /// Null starts a new instrument.
   final Instrument? initialInstrument;
@@ -30,32 +66,93 @@ class EditorView extends StatefulWidget {
   /// place; false makes a copy (a factory preset).
   final bool editsExisting;
 
+  /// Null starts the Loop panel from a copy of the first factory loop.
+  final Loop? initialLoop;
+
+  /// True when [initialLoop] is one of the user's loops, edited in place;
+  /// false edits a copy (a factory loop, a lesson's loop).
+  final bool loopExisting;
+
+  final EditorTab initialTab;
+
+  /// Builds the Arrangement tab; null shows [ArrangementTabPlaceholder].
+  final EditorPanelBuilder? arrangementPanel;
+
   @override
   State<EditorView> createState() => _EditorViewState();
 }
 
-class _EditorViewState extends State<EditorView> {
+class _EditorViewState extends State<EditorView>
+    with SingleTickerProviderStateMixin
+    implements EditorShell {
   late final InstrumentEditorViewModel _instrument = InstrumentEditorViewModel(
     repository: widget.instrumentLibrary,
     audition: widget.instrumentAudition,
     instrument: widget.initialInstrument,
     existing: widget.editsExisting,
   );
+  late final LoopEditorViewModel _loop = LoopEditorViewModel(
+    library: widget.loopLibrary,
+    instruments: widget.instrumentLibrary,
+    playback: widget.playback,
+    loop: widget.initialLoop,
+    existing: widget.loopExisting,
+  );
+  late final PlaybackPositionSource _position = PlaybackPositionSource(
+    widget.playback,
+  );
+  late final TabController _tabs = TabController(
+    length: EditorTab.values.length,
+    initialIndex: widget.initialTab.index,
+    vsync: this,
+  );
+
+  /// Nothing keeps playing when the app goes to the background.
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(onHide: _loop.appHidden);
+  }
 
   @override
   void dispose() {
+    _lifecycle.dispose();
+    _tabs.dispose();
+    _loop.dispose();
+    _position.dispose();
     _instrument.dispose();
     super.dispose();
   }
 
+  @override
+  PositionSource get position => _position;
+
+  @override
+  Future<void> openLoop(Loop loop, {required bool existing}) async {
+    if (_loop.dirty && !await confirmDiscardLoop(context)) return;
+    _loop.open(loop, existing: existing);
+    _tabs.animateTo(EditorTab.loop.index);
+  }
+
+  bool get _dirty => _instrument.dirty || _loop.dirty;
+
   /// Leaving with unsaved changes asks first; the safe answer is Cancel.
   Future<void> _confirmLeave() async {
     final navigator = Navigator.of(context);
+    final instrument = _instrument.dirty;
+    final loop = _loop.dirty;
+    final what = instrument && loop
+        ? 'this instrument and this loop'
+        : (instrument ? 'this instrument' : 'this loop');
+    final canSave =
+        (!instrument || _instrument.canSave) && (!loop || _loop.canSave);
     final choice = await showDialog<_LeaveChoice>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Unsaved changes'),
-        content: const Text('Save this instrument before leaving?'),
+        content: Text('Save $what before leaving?'),
         actions: [
           TextButton(
             key: const Key('leave-discard'),
@@ -70,7 +167,7 @@ class _EditorViewState extends State<EditorView> {
           ),
           TextButton(
             key: const Key('leave-save'),
-            onPressed: _instrument.canSave
+            onPressed: canSave
                 ? () => Navigator.pop(context, _LeaveChoice.save)
                 : null,
             child: const Text('Save'),
@@ -82,7 +179,9 @@ class _EditorViewState extends State<EditorView> {
       case _LeaveChoice.discard:
         navigator.pop();
       case _LeaveChoice.save:
-        if (await _instrument.save()) navigator.pop();
+        final savedInstrument = !instrument || await _instrument.save();
+        final savedLoop = !loop || await _loop.save();
+        if (savedInstrument && savedLoop) navigator.pop();
       case _LeaveChoice.cancel || null:
         break;
     }
@@ -91,44 +190,39 @@ class _EditorViewState extends State<EditorView> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _instrument,
+      listenable: Listenable.merge([_instrument, _loop]),
       builder: (context, _) => PopScope(
-        canPop: !_instrument.dirty,
+        canPop: !_dirty,
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) _confirmLeave();
         },
-        child: DefaultTabController(
-          length: 3,
-          child: Scaffold(
-            appBar: AppBar(
-              title: const Text('Editor'),
-              bottom: const TabBar(
-                tabs: [
-                  Tab(key: Key('editor-tab-instrument'), text: 'Instrument'),
-                  Tab(key: Key('editor-tab-loop'), text: 'Loop'),
-                  Tab(key: Key('editor-tab-arrangement'), text: 'Arrangement'),
-                ],
-              ),
-            ),
-            body: TabBarView(
-              children: [
-                _KeepAlive(child: InstrumentPanel(viewModel: _instrument)),
-                const _KeepAlive(
-                  child: _PlaceholderPanel(
-                    icon: Icons.blur_circular,
-                    title: 'Loop',
-                    text: 'Layers with an instrument each. Planned.',
-                  ),
-                ),
-                const _KeepAlive(
-                  child: _PlaceholderPanel(
-                    icon: Icons.view_timeline_outlined,
-                    title: 'Arrangement',
-                    text: 'Chain loops into a backing track. Planned.',
-                  ),
-                ),
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Editor'),
+            bottom: TabBar(
+              controller: _tabs,
+              tabs: const [
+                Tab(key: Key('editor-tab-instrument'), text: 'Instrument'),
+                Tab(key: Key('editor-tab-loop'), text: 'Loop'),
+                Tab(key: Key('editor-tab-arrangement'), text: 'Arrangement'),
               ],
             ),
+          ),
+          body: TabBarView(
+            controller: _tabs,
+            children: [
+              _KeepAlive(child: InstrumentPanel(viewModel: _instrument)),
+              _KeepAlive(
+                child: LoopPanel(viewModel: _loop, position: _position),
+              ),
+              _KeepAlive(
+                child: Builder(
+                  builder: (context) =>
+                      widget.arrangementPanel?.call(context, this) ??
+                      const ArrangementTabPlaceholder(),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -157,44 +251,5 @@ class _KeepAliveState extends State<_KeepAlive>
   Widget build(BuildContext context) {
     super.build(context);
     return widget.child;
-  }
-}
-
-class _PlaceholderPanel extends StatelessWidget {
-  const _PlaceholderPanel({
-    required this.icon,
-    required this.title,
-    required this.text,
-  });
-
-  final IconData icon;
-  final String title;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
-    return Padding(
-      padding: const EdgeInsets.all(Space.lg),
-      child: DesignPanel(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionLabel(title),
-            const SizedBox(height: Space.md),
-            Row(
-              children: [
-                Icon(icon, color: tokens.accent),
-                const SizedBox(width: Space.md),
-                Expanded(
-                  child: Text(text, style: TextStyle(color: tokens.muted)),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

@@ -60,10 +60,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('editor-tab-loop')));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Layers with an instrument each. Planned.'),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('loop-play')), findsOneWidget);
+    expect(find.text('Three against two copy'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('editor-tab-arrangement')));
     await tester.pumpAndSettle();
