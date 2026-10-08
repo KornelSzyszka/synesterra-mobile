@@ -13,6 +13,7 @@ import '../data/repositories/playback_repository.dart';
 import '../data/repositories/audio_spike_repository.dart';
 import '../features/editor/editor_view.dart';
 import '../features/home/home_view.dart';
+import '../features/learn/learn_view.dart';
 import '../features/library/library_item_placeholder_view.dart';
 import '../features/library/library_view.dart';
 import '../features/audio_spike/audio_spike_view.dart';
@@ -117,6 +118,15 @@ class _SynesterraAppState extends State<SynesterraApp> {
                     'The Arrangement panel is not built yet. '
                     'This arrangement is kept in your library.',
                   ),
+                ),
+              ),
+            ),
+            onOpenLearn: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => LearnView(
+                  playback: _playback,
+                  // A lesson's loop opens in the Loop panel as an unsaved copy.
+                  onTryIt: (loop) => openLoop(loop, false),
                 ),
               ),
             ),

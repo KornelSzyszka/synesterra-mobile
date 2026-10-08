@@ -1,0 +1,8 @@
+# Learn
+
+`lib/features/learn/` is the Learn tab of prototype v0: seven short lessons (see [prototype v0](../product/prototype-v0.md)).
+
+- **Content is data**: `learn_lessons.dart` holds `learnLessons`, each with 2-4 plain sentences, jargon terms with a one-line meaning, and optionally a built-in `Loop` (the factory loops, or loops built with `simpleLoopDocument`). Lessons without a loop have no picture and no "Try it". English only; localization is issue #25. Tests check the sentence count, that jargon is explained and that every loop passes the real parser.
+- **Picture**: `LessonPage` draws the loop with `LoopView` driven by a `TutorialClock` (one cycle at the loop's tempo, no audio, no transport). This is the one allowed UI-timer exception in [loop view](loop-view.md). The clock starts when the page opens (still under reduced motion until "Run picture") and is disposed with the page.
+- **Sound is optional**: a tap on the picture, or "Hear it", calls `PlaybackRepository.play` and restarts the picture; leaving the page stops the sound. A thrown error or an `error` status shows "Sound is not available on this device." The picture and the sound are not locked to each other: the clock does not follow the audio clock.
+- **Try it** calls `onTryIt(loop)`, supplied by `lib/app/` (a feature never imports another feature). The shell opens the Editor on the Loop tab with the loop as an unsaved copy (`loopExisting: false`).

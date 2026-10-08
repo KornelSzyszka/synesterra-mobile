@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-08",
+  "task": "UX-094",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Learn tab; widget tests only (host workaround), not run on a phone or emulator; Codex review pending"
+}
