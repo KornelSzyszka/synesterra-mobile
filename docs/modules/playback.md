@@ -13,7 +13,7 @@ Turns a `SessionDocument` (scene A), or a sequence of them, into sound through t
 | `PlaybackEngine`, `SoloudPlaybackEngine` | `lib/data/audio/playback_engine.dart`, `soloud_playback_engine.dart` | The ports plus lifecycle, buffers and voice cap, built from the spike's `SoloudAudioClock` and `SoloudVoiceSink` |
 | `flutterSoloudPlaybackEngine()` | `lib/data/audio/soloud_plugin_binding.dart` | The only file with plugin types |
 
-Composition for the UI task: `EnginePlaybackRepository(engine: flutterSoloudPlaybackEngine(), instruments: <InstrumentLibraryRepository>)`. It is not wired into `SynesterraApp` yet, because no view uses it; the Loop panel task adds it. Nothing starts the engine before the first Play.
+Composition for the UI task: `EnginePlaybackRepository(engine: flutterSoloudPlaybackEngine(), instruments: <InstrumentLibraryRepository>)`. `lib/app/bootstrap.dart` composes one instance and `SynesterraApp` passes it to the Editor, where the Loop and Arrangement panels share it. Nothing starts the engine before the first Play.
 
 ## Public API
 
@@ -22,9 +22,10 @@ abstract interface class PlaybackRepository {
   ValueListenable<PlaybackStatus> get status;
   ValueListenable<PlaybackPosition> get position; // refreshed every ~25 ms
   PlaybackPosition readPosition();                // fresh clock reading
-  Future<void> play(SessionDocument document);
-  Future<void> playSequence(List<PlaybackSection> sections, {required bool repeatAll});
-  Future<void> stop();
+  Future<void> play(SessionDocument document, {Object? owner});
+  Future<void> playSequence(List<PlaybackSection> sections,
+                            {required bool repeatAll, Object? owner});
+  Future<void> stop({Object? owner});            // with an owner: only its own playback
   void setTempo(int bpm);                         // 20..300, while playing
   void setLayerGain(String layerId, double gain); // 0..1
   Future<void> dispose();
@@ -35,10 +36,15 @@ PlaybackSection  {int originalIndex, SessionDocument document, int repeats /* 1.
 PlaybackStatus   {PlaybackState state /* stopped | preparing | playing */,
                   PlaybackStopReason stopReason /* user | emptySequence | finished | error */,
                   int? bpm, Set<String> missingInstrumentIds, int? voiceLimit,
-                  bool voiceLimitSaturated, String? error}
+                  bool voiceLimitSaturated, String? error,
+                  Object? owner /* who started the current playback */}
 ```
 
 The data layer never imports UI code. The Loop panel task writes the adapter from `PlaybackPosition` to the visualizations' `PositionSource`; for smooth animation it calls `readPosition()` once per frame (the value comes from the audio clock, the frame only decides when to read it).
+
+## Owner
+
+Several panels share one repository. `play` and `playSequence` take an optional `owner` (the caller, usually its view model). `PlaybackStatus.owner` names the owner of the current playback, compared by identity, and is null when stopped. A command by another owner takes the transport over; a same-structure `play` keeps the sound and only changes the owner. `stop(owner: x)` does nothing unless `x` owns the current playback, so a panel that is edited, disposed or hidden never stops playback another panel started. A panel shows Stop only while `status.owner` is itself. `stop()` without an owner stops anything; the Editor uses it when the app is hidden.
 
 ## Changes while playing
 
@@ -65,6 +71,8 @@ Scene B is ignored (the prototype writes A and B together). The drone is not pla
 **Section boundary = generation handover.** A section switch increments the generation, but a cancel at that moment would cut the previous section's hits that are already queued up to 200 ms ahead. So `PlaybackScheduler` gained two optional snapshot fields: `planUntilBeat` stops planning at the section end, and `continuousSince` marks generations of one continuous run. When planning reaches the boundary (or the clock passed it after a stall), the transport moves to the next section with a new generation; the scheduler sees that the previous generation belongs to the same run and continues planning from the boundary **without** `cancelFrom`. Every event of a section therefore carries that section's generation, and nothing older is cancelled because nothing older lies after the boundary. Start, stop, tempo and structural changes still start a new run and cancel. Existing callers (the spike) pass neither field and keep the old rule.
 
 `PlaybackPosition.generation` is the generation of the section **being heard**: it increments when the boundary is heard, while the planner may already be on the next generation up to one horizon earlier. `sectionIndex` is the caller's `originalIndex`, and `cycleIndex` restarts at 0 in each section.
+
+**Bounded "repeat all".** Section runs are laid out lazily, one per pass. A run (and its generation mark) is forgotten once the heard position has passed its end and planning has moved beyond it, so a sequence on "repeat all" keeps only a few runs however long it plays (`test/data/audio/sequence_transport_test.dart`: 2000 passes, at most 4). Event ids stay unique because a run keeps its absolute index.
 
 ## How the position is derived
 
