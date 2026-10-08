@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
@@ -113,7 +115,14 @@ class _EditorViewState extends State<EditorView>
   @override
   void initState() {
     super.initState();
-    _lifecycle = AppLifecycleListener(onHide: _loop.appHidden);
+    _lifecycle = AppLifecycleListener(onHide: _appHidden);
+  }
+
+  /// Stops whatever plays, the loop or an arrangement started in the
+  /// Arrangement tab.
+  void _appHidden() {
+    _loop.appHidden();
+    unawaited(widget.playback.stop());
   }
 
   @override

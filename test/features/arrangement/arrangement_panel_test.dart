@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_arrangement_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_loop_library_repository.dart';
-import 'package:synesterra/data/repositories/playback_repository.dart';
 import 'package:synesterra/features/arrangement/arrangement_panel.dart';
+import 'package:synesterra/shared/loop_view/position_source.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
@@ -14,12 +14,14 @@ void main() {
   late InMemoryArrangementLibraryRepository arrangements;
   late RecordingPlayback playback;
   late List<Arrangement> saved;
+  late FakePositionSource source;
 
   setUp(() {
     loops = InMemoryLoopLibraryRepository([userLoop('mine', 'My loop')]);
     arrangements = InMemoryArrangementLibraryRepository();
     playback = RecordingPlayback();
     saved = [];
+    source = FakePositionSource();
   });
 
   Future<void> pumpPanel(WidgetTester tester, {Arrangement? initial}) async {
@@ -34,6 +36,7 @@ void main() {
             loops: loops,
             arrangements: arrangements,
             playback: playback,
+            position: source,
             initial: initial,
             onSaved: saved.add,
           ),
@@ -256,8 +259,7 @@ void main() {
       ]),
     );
     await tapKey(tester, 'arrangement-play');
-    playback.positionNotifier.value = PlaybackPosition(
-      playing: true,
+    source.set(
       cyclePosition: .5,
       cycleIndex: 1,
       generation: 9,

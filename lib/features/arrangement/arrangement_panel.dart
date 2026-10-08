@@ -7,11 +7,11 @@ import '../../data/repositories/loop.dart';
 import '../../data/repositories/loop_library_repository.dart';
 import '../../data/repositories/playback_repository.dart';
 import '../../shared/loop_view/arrangement_strip.dart';
+import '../../shared/loop_view/position_source.dart';
 import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import 'arrangement_panel_view_model.dart';
-import 'playback_position_source.dart';
 
 /// The Editor's Arrangement panel: chain loops from the library into
 /// sections, play them in order, save the arrangement to the library.
@@ -24,6 +24,7 @@ class ArrangementPanel extends StatefulWidget {
     required this.loops,
     required this.arrangements,
     required this.playback,
+    required this.position,
     this.initial,
     this.onSaved,
   });
@@ -31,6 +32,10 @@ class ArrangementPanel extends StatefulWidget {
   final LoopLibraryRepository loops;
   final ArrangementLibraryRepository arrangements;
   final PlaybackRepository playback;
+
+  /// The transport position of [playback] (the Editor shares one adapter
+  /// between its panels). It only feeds the strip; it never drives transport.
+  final PositionSource position;
 
   /// An arrangement opened from the library; null starts a new one.
   final Arrangement? initial;
@@ -42,17 +47,12 @@ class ArrangementPanel extends StatefulWidget {
   State<ArrangementPanel> createState() => _ArrangementPanelState();
 }
 
-class _ArrangementPanelState extends State<ArrangementPanel>
-    with SingleTickerProviderStateMixin {
+class _ArrangementPanelState extends State<ArrangementPanel> {
   late final ArrangementPanelViewModel _model = ArrangementPanelViewModel(
     loops: widget.loops,
     arrangements: widget.arrangements,
     playback: widget.playback,
     initial: widget.initial,
-  );
-  late final PlaybackPositionSource _position = PlaybackPositionSource(
-    widget.playback,
-    vsync: this,
   );
   late final TextEditingController _name = TextEditingController(
     text: _model.name,
@@ -73,7 +73,6 @@ class _ArrangementPanelState extends State<ArrangementPanel>
   void dispose() {
     _model.removeListener(_syncName);
     _model.dispose();
-    _position.dispose();
     _name.dispose();
     super.dispose();
   }
@@ -237,7 +236,7 @@ class _ArrangementPanelState extends State<ArrangementPanel>
                     const SizedBox(height: Space.md),
                     ArrangementStrip(
                       sections: model.stripSections,
-                      source: _position,
+                      source: widget.position,
                     ),
                   ],
                 ],
