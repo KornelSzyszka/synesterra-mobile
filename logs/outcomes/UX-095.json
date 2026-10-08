@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-08",
+  "task": "UX-095",
+  "prefix": "UX",
+  "size": "L",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-opus-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Arrangement panel in lib/features/arrangement/ (view model, PlaybackPosition adapter, panel widget); not yet reachable in the app: the Editor tab and the Library open action are a follow-up after the Loop panel (#93) merges, because that task owns lib/features/editor and lib/app. Tests written first and failed to compile (red), then 35 passed; three widget tests first timed out in pumpAndSettle because the strip reads the position every frame while playing (test helper changed, not the panel). Full flutter test (543) ran in a scratch copy with a hookless flutter_soloud (no MSVC on the Windows host); dart format, flutter analyze and flutter build apk --debug ran in the worktree. Interrupted once by a usage limit and resumed. No emulator or device run; sound, timing and the look on a phone are unverified. Review and CI pending."
+}
