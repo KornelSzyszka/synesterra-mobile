@@ -19,7 +19,11 @@ void main() {
 
   test('committed files match the generator output', () {
     buildTextFiles().forEach((path, text) {
-      expect(File(path).readAsStringSync(), text, reason: path);
+      expect(
+        File(path).readAsStringSync().replaceAll('\r\n', '\n'),
+        text,
+        reason: path,
+      );
     });
     buildImages().forEach((path, image) {
       final committed = decodePng(File(path).readAsBytesSync());
