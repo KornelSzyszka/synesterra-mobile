@@ -157,11 +157,12 @@ class ArrangementPanelViewModel extends ChangeNotifier {
 
   bool get canSave => saveBlockedReason == null && !_saving;
 
-  /// The draft differs from what is stored (a new arrangement with sections
-  /// counts as unsaved).
+  /// The draft differs from what is stored, or, for a new arrangement, from
+  /// the empty start ([newName], no sections): any edit to the name or the
+  /// sections counts. "Repeat all" is not stored, so it does not.
   bool get hasUnsavedChanges {
     final baseline = _baseline;
-    if (baseline == null) return _sections.isNotEmpty;
+    if (baseline == null) return _name != newName || _sections.isNotEmpty;
     return baseline.name != _name || !listEquals(baseline.sections, _sections);
   }
 
