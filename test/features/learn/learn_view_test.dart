@@ -5,6 +5,7 @@ import 'package:synesterra/data/repositories/loop.dart';
 import 'package:synesterra/data/repositories/playback_repository.dart';
 import 'package:synesterra/features/learn/learn_lessons.dart';
 import 'package:synesterra/features/learn/learn_view.dart';
+import 'package:synesterra/shared/loop_view/loop_view.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
@@ -12,10 +13,20 @@ class _RecordingPlayback extends NoopPlaybackRepository {
   final calls = <String>[];
   bool fail = false;
 
+  /// Like the real engine: play() resolves, and the status says it failed.
+  bool failWithStatus = false;
+
   @override
   Future<void> play(SessionDocument document) async {
     calls.add('play');
     if (fail) throw StateError('no engine');
+    if (failWithStatus) {
+      (status as ValueNotifier<PlaybackStatus>).value = PlaybackStatus(
+        stopReason: PlaybackStopReason.error,
+        error: 'no engine',
+      );
+      return;
+    }
     await super.play(document);
   }
 
@@ -136,15 +147,35 @@ void main() {
     expect(opened, [learnLessons[2].loop]);
   });
 
-  testWidgets('lessons without a loop have no picture and no Try it', (
+  testWidgets('every lesson renders a picture', (tester) async {
+    await _pump(tester, playback: NoopPlaybackRepository(), onTryIt: (_) {});
+    for (final lesson in learnLessons) {
+      await _open(tester, lesson.id);
+      expect(
+        find.byType(LoopView).evaluate().length +
+            find.byType(ArrangementStrip).evaluate().length,
+        1,
+        reason: lesson.id,
+      );
+      await tester.pageBack();
+      await _transition(tester);
+    }
+  });
+
+  testWidgets('the chaining lesson shows a strip whose section advances', (
     tester,
   ) async {
     await _pump(tester, playback: NoopPlaybackRepository(), onTryIt: (_) {});
-    await _open(tester, 'shaping-a-sound');
+    await _open(tester, 'chaining-loops');
 
-    expect(find.byKey(const Key('lesson-text')), findsOneWidget);
     expect(find.byKey(const Key('lesson-try-it')), findsNothing);
-    expect(find.byKey(const Key('loop-canvas')), findsNothing);
+    expect(find.byKey(const Key('lesson-hear')), findsNothing);
+    expect(find.bySemanticsLabel(RegExp(r'^Section 1 of 3')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    expect(
+      find.bySemanticsLabel(RegExp(r'^Section [23] of 3')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('the tutorial clock runs on the page and is gone after leaving', (
@@ -213,6 +244,20 @@ void main() {
     expect(find.text('Sound is not available on this device.'), findsOneWidget);
     expect(find.text('Hear it'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an error status without a throw shows the unavailable note', (
+    tester,
+  ) async {
+    final playback = _RecordingPlayback()..failWithStatus = true;
+    await _pump(tester, playback: playback, onTryIt: (_) {});
+    await _open(tester, 'two-against-three');
+
+    await tester.tap(find.byKey(const Key('lesson-hear')));
+    await tester.pump();
+    expect(find.text('Sound is not available on this device.'), findsOneWidget);
+    expect(find.text('Stop sound'), findsNothing);
+    expect(find.text('Hear it'), findsOneWidget);
   });
 
   testWidgets('leaving a lesson stops its sound', (tester) async {

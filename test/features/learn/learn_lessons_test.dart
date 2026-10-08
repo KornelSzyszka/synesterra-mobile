@@ -66,7 +66,7 @@ void main() {
 
   test('every lesson loop is a valid loop that survives the real parser', () {
     final withLoop = learnLessons.where((l) => l.loop != null).toList();
-    expect(withLoop, hasLength(5));
+    expect(withLoop, hasLength(6));
     for (final lesson in withLoop) {
       final loop = lesson.loop!;
       final parsed = Loop.fromJson(jsonDecode(jsonEncode(loop.toJson())));
@@ -86,9 +86,25 @@ void main() {
     expect(hits('layers-and-instruments'), hasLength(3));
   });
 
-  test('lessons without a picture have no loop', () {
-    for (final id in ['shaping-a-sound', 'chaining-loops']) {
-      expect(learnLessons.firstWhere((l) => l.id == id).loop, isNull);
+  test('every lesson has a picture: a loop or arrangement sections', () {
+    for (final lesson in learnLessons) {
+      expect(
+        lesson.loop != null || lesson.sections.isNotEmpty,
+        isTrue,
+        reason: lesson.id,
+      );
     }
+    final chaining = learnLessons.firstWhere((l) => l.id == 'chaining-loops');
+    expect(chaining.loop, isNull);
+    expect(chaining.sections.length, inInclusiveRange(2, 3));
+  });
+
+  test('the pad lesson loop uses three different instruments and pitches', () {
+    final loop = learnLessons
+        .firstWhere((l) => l.id == 'shaping-a-sound')
+        .loop!;
+    final layers = loop.document.scenes.first.layers;
+    expect(layers.map((l) => l.instrumentId).toSet(), hasLength(3));
+    expect(layers.map((l) => l.pitch).toSet(), hasLength(3));
   });
 }

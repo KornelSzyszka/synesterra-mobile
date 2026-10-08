@@ -20,6 +20,7 @@ class LearnLesson {
     required this.sentences,
     this.terms = const [],
     this.loop,
+    this.sections = const [],
     this.viewMode = LoopViewMode.circle,
   });
 
@@ -35,9 +36,13 @@ class LearnLesson {
   /// Jargon used in [sentences], each with a one-line explanation.
   final List<LearnTerm> terms;
 
-  /// The built-in loop the lesson draws and "Try it" opens. Null for a lesson
-  /// without a picture of a loop, which then has no "Try it".
+  /// The built-in loop the lesson draws, plays and "Try it" opens. Null for a
+  /// lesson that draws [sections] instead, which then has no sound or "Try it".
   final Loop? loop;
+
+  /// The sections of a small arrangement the lesson draws as a strip, when it
+  /// has no [loop]. A lesson has a [loop] or [sections], never neither.
+  final List<StripSection> sections;
 
   /// The view the picture opens in; the learner can switch.
   final LoopViewMode viewMode;
@@ -147,7 +152,7 @@ final List<LearnLesson> learnLessons = List.unmodifiable([
     ],
     loop: _factory('factory-loop-4-3-2'),
   ),
-  const LearnLesson(
+  LearnLesson(
     id: 'shaping-a-sound',
     title: 'Shaping a sound',
     teaser: 'One dot on the pad changes how an instrument sounds.',
@@ -157,6 +162,21 @@ final List<LearnLesson> learnLessons = List.unmodifiable([
       'Top is soft and airy, and bottom is hard and sharp.',
       'Open the Instrument panel in the Editor and drag the dot to hear it.',
     ],
+    terms: const [
+      LearnTerm('Instrument', 'A sound you can play, such as wood or bell.'),
+    ],
+    // The picture shows three different sounds playing together.
+    loop: _lessonLoop(
+      'lesson-shaping-a-sound',
+      'Three sounds',
+      bpm: 70,
+      cycleBeats: 4,
+      layers: const [
+        LoopLayerSpec(instrumentId: 'factory-wood', pitch: 57, hits: 4),
+        LoopLayerSpec(instrumentId: 'factory-sine', pitch: 69, hits: 3),
+        LoopLayerSpec(instrumentId: 'factory-bell', pitch: 81, hits: 2),
+      ],
+    ),
   ),
   LearnLesson(
     id: 'building-and-saving-a-loop',
@@ -183,7 +203,7 @@ final List<LearnLesson> learnLessons = List.unmodifiable([
       ],
     ),
   ),
-  const LearnLesson(
+  LearnLesson(
     id: 'chaining-loops',
     title: 'Chaining loops',
     teaser: 'Play your loops one after another.',
@@ -197,6 +217,11 @@ final List<LearnLesson> learnLessons = List.unmodifiable([
         'Arrangement',
         'A list of loops played in order, like the parts of a song.',
       ),
+    ],
+    sections: [
+      StripSection(label: 'Loop A', repeats: 2),
+      StripSection(label: 'Loop B', repeats: 2),
+      StripSection(label: 'Loop C', repeats: 1),
     ],
   ),
 ]);

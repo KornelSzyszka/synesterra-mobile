@@ -9,6 +9,7 @@ import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import 'learn_lessons.dart';
+import 'section_clock.dart';
 
 /// Opens the Loop panel on an unsaved copy of the lesson's loop.
 typedef TryLesson = void Function(Loop loop);
@@ -37,6 +38,7 @@ class LessonPage extends StatefulWidget {
 class _LessonPageState extends State<LessonPage>
     with SingleTickerProviderStateMixin {
   TutorialClock? _clock;
+  SectionClock? _sections;
   LoopViewState? _picture;
   bool _started = false;
   bool _running = false;
@@ -58,6 +60,13 @@ class _LessonPageState extends State<LessonPage>
         vsync: this,
         cycleDuration: Duration(microseconds: micros),
       );
+    } else if (widget.lesson.sections.isNotEmpty) {
+      // A small arrangement: two seconds a cycle is easy to follow.
+      final clock = _clock = TutorialClock(
+        vsync: this,
+        cycleDuration: const Duration(seconds: 2),
+      );
+      _sections = SectionClock(source: clock, sections: widget.lesson.sections);
     }
   }
 
@@ -74,6 +83,7 @@ class _LessonPageState extends State<LessonPage>
   @override
   void dispose() {
     if (_sound) widget.playback.stop();
+    _sections?.dispose();
     _clock?.dispose();
     super.dispose();
   }
@@ -186,26 +196,32 @@ class _LessonPageState extends State<LessonPage>
               key: const Key('lesson-picture'),
               excludeFromSemantics: true,
               onTap: _toggleSound,
-              child: LoopView(
-                state: _picture!,
-                source: clock,
-                initialMode: lesson.viewMode,
-              ),
+              child: _picture == null
+                  ? ArrangementStrip(
+                      sections: lesson.sections,
+                      source: _sections!,
+                    )
+                  : LoopView(
+                      state: _picture!,
+                      source: clock,
+                      initialMode: lesson.viewMode,
+                    ),
             ),
             const SizedBox(height: Space.lg),
             Wrap(
               spacing: Space.md,
               runSpacing: Space.md,
               children: [
-                OutlinedButton.icon(
-                  key: const Key('lesson-hear'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(48, 48),
+                if (_loop != null)
+                  OutlinedButton.icon(
+                    key: const Key('lesson-hear'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                    ),
+                    onPressed: _toggleSound,
+                    icon: Icon(_sound ? Icons.stop : Icons.volume_up_outlined),
+                    label: Text(_sound ? 'Stop sound' : 'Hear it'),
                   ),
-                  onPressed: _toggleSound,
-                  icon: Icon(_sound ? Icons.stop : Icons.volume_up_outlined),
-                  label: Text(_sound ? 'Stop sound' : 'Hear it'),
-                ),
                 OutlinedButton.icon(
                   key: const Key('lesson-motion'),
                   style: OutlinedButton.styleFrom(
@@ -218,11 +234,12 @@ class _LessonPageState extends State<LessonPage>
               ],
             ),
             const SizedBox(height: Space.xl),
-            GoldPrimaryButton(
-              key: const Key('lesson-try-it'),
-              label: 'Try it',
-              onPressed: _tryIt,
-            ),
+            if (_loop != null)
+              GoldPrimaryButton(
+                key: const Key('lesson-try-it'),
+                label: 'Try it',
+                onPressed: _tryIt,
+              ),
           ],
         ],
       ),
