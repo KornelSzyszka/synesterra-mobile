@@ -208,6 +208,32 @@ void main() {
       );
     });
 
+    test('a save that finishes after another loop was opened does not touch '
+        'the opened loop', () async {
+      final slow = SlowLoops();
+      loops = slow;
+      final vm = create();
+      final firstId = vm.loop.id;
+      final saving = vm.save();
+      vm.open(mine('m5', name: 'Other'), existing: true);
+      vm.toggleStep(0, 0);
+      slow.gate.complete();
+      expect(await saving, isTrue);
+      // The first loop is in the library under its own id.
+      expect(slow.snapshot.value.items.single.id, firstId);
+      // The opened loop keeps its identity, name, edits and unsaved state.
+      expect(vm.loop.id, 'm5');
+      expect(vm.name, 'Other');
+      expect(vm.dirty, isTrue);
+      expect(vm.saving, isFalse);
+      expect(vm.canSave, isTrue);
+      expect(await vm.save(), isTrue);
+      expect(slow.snapshot.value.items.map((l) => l.id).toSet(), {
+        firstId,
+        'm5',
+      });
+    });
+
     test('a stored loop whose scene B differs opens with B a copy of A', () {
       final source = diverged(mine('m3'));
       expect(

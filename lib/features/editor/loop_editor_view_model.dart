@@ -45,7 +45,14 @@ class LoopEditorViewModel extends ChangeNotifier {
   late SessionDocument _document;
   late String _name;
   late bool _persisted;
-  bool _saving = false;
+
+  /// Increments whenever another loop is loaded. A save belongs to the
+  /// session that started it; when it finishes after another loop was
+  /// opened, it must not mark or rename the loop now being edited.
+  int _session = 0;
+
+  /// The session whose save is running, if any.
+  int? _savingSession;
   String? _saveError;
 
   /// True from this panel's Play until Stop, or until something else (the
@@ -54,6 +61,7 @@ class LoopEditorViewModel extends ChangeNotifier {
   bool _disposed = false;
 
   void _load(Loop source, {required bool existing}) {
+    _session++;
     final keep = existing && !isFactoryId(source.id);
     final copy = keep ? source : source.copyAsNew();
     // The panel edits scene A and writes B as its copy. A stored loop whose
@@ -85,7 +93,7 @@ class LoopEditorViewModel extends ChangeNotifier {
 
   /// Saved in the library (a copy is not, until its first save).
   bool get persisted => _persisted;
-  bool get saving => _saving;
+  bool get saving => _savingSession == _session;
   String? get saveError => _saveError;
 
   /// There is something to lose when leaving.
@@ -93,7 +101,7 @@ class LoopEditorViewModel extends ChangeNotifier {
       _document != _baseline.document || _name.trim() != _baseline.name;
 
   /// A copy can be saved as it is; a saved loop only after a change.
-  bool get canSave => nameValid && !_saving && (dirty || !_persisted);
+  bool get canSave => nameValid && !saving && (dirty || !_persisted);
 
   void setName(String name) {
     if (name == _name) return;
@@ -111,11 +119,15 @@ class LoopEditorViewModel extends ChangeNotifier {
       document: edits.withTitle(_document, name),
     );
     final documentAtSave = _document;
-    _saving = true;
+    final session = _session;
+    _savingSession = session;
     _saveError = null;
     notifyListeners();
     try {
       await _library.save(saved);
+      // Another loop was opened meanwhile: the save stands for the loop
+      // that started it, and the open loop keeps its own identity.
+      if (session != _session) return true;
       _baseline = saved;
       // Edits made during the write are kept; they then differ from the
       // saved baseline, so the loop shows as changed and can be saved again.
@@ -125,10 +137,12 @@ class LoopEditorViewModel extends ChangeNotifier {
       _persisted = true;
       return true;
     } catch (_) {
-      _saveError = 'Could not save the loop. Try again.';
+      if (session == _session) {
+        _saveError = 'Could not save the loop. Try again.';
+      }
       return false;
     } finally {
-      _saving = false;
+      if (_savingSession == session) _savingSession = null;
       if (!_disposed) notifyListeners();
     }
   }
