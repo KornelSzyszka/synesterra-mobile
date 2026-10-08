@@ -316,23 +316,26 @@ void main() {
       },
     );
 
-    test('playback taken over by another owner is never stopped here', () async {
-      final vm = LoopEditorViewModel(
-        library: loops,
-        instruments: instruments,
-        playback: playback,
-      );
-      await vm.play();
-      final other = Object();
-      await playback.play(factoryLoops[1].document, owner: other);
-      expect(vm.playing, isFalse);
-      vm.toggleStep(0, 0);
-      vm.appHidden();
-      vm.dispose();
-      await pumpEventQueue();
-      expect(playback.status.value.owner, same(other));
-      expect(playback.status.value.state, PlaybackState.playing);
-    });
+    test(
+      'playback taken over by another owner is never stopped here',
+      () async {
+        final vm = LoopEditorViewModel(
+          library: loops,
+          instruments: instruments,
+          playback: playback,
+        );
+        await vm.play();
+        final other = Object();
+        await playback.play(factoryLoops[1].document, owner: other);
+        expect(vm.playing, isFalse);
+        vm.toggleStep(0, 0);
+        vm.appHidden();
+        vm.dispose();
+        await pumpEventQueue();
+        expect(playback.status.value.owner, same(other));
+        expect(playback.status.value.state, PlaybackState.playing);
+      },
+    );
 
     test('dispose stops the loop it plays', () async {
       final vm = LoopEditorViewModel(

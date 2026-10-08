@@ -227,25 +227,28 @@ void main() {
       expect(vm.isPlaying, isFalse);
     });
 
-    test('playback started by another panel is never stopped from here', () async {
-      final vm = model()..addSection('factory-loop-3-2');
-      await vm.play();
-      expect(playback.status.value.owner, same(vm));
-      final loopPanel = Object();
-      await playback.play(factoryLoops.first.document, owner: loopPanel);
-      expect(vm.isPlaying, isFalse);
+    test(
+      'playback started by another panel is never stopped from here',
+      () async {
+        final vm = model()..addSection('factory-loop-3-2');
+        await vm.play();
+        expect(playback.status.value.owner, same(vm));
+        final loopPanel = Object();
+        await playback.play(factoryLoops.first.document, owner: loopPanel);
+        expect(vm.isPlaying, isFalse);
 
-      // Edits, opening, a deleted loop and dispose leave it alone.
-      vm.setRepeats(0, 3);
-      vm.addSection('mine');
-      await loops.delete('mine');
-      vm.open(arrangementOf('a2', 'Other', [('factory-loop-5-4', 1)]));
-      vm.dispose();
-      await pumpEventQueue();
-      expect(playback.stops, 0);
-      expect(playback.sequences, hasLength(1));
-      expect(playback.status.value.owner, same(loopPanel));
-    });
+        // Edits, opening, a deleted loop and dispose leave it alone.
+        vm.setRepeats(0, 3);
+        vm.addSection('mine');
+        await loops.delete('mine');
+        vm.open(arrangementOf('a2', 'Other', [('factory-loop-5-4', 1)]));
+        vm.dispose();
+        await pumpEventQueue();
+        expect(playback.stops, 0);
+        expect(playback.sequences, hasLength(1));
+        expect(playback.status.value.owner, same(loopPanel));
+      },
+    );
 
     test('dispose stops a sequence this panel started', () async {
       final vm = model()..addSection('factory-loop-3-2');

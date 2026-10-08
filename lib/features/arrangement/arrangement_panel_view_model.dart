@@ -54,7 +54,12 @@ class ArrangementPanelViewModel extends ChangeNotifier {
   late List<ArrangementSection> _sections;
   Arrangement? _baseline;
   bool _repeatAll = false;
-  bool _sequenceActive = false;
+
+  /// This panel owned the playback at the last status change.
+  bool _wasOwner = false;
+
+  /// This panel's playback ended on an engine error.
+  bool _failed = false;
   bool _saving = false;
   String? _saveError;
   bool _disposed = false;
@@ -106,16 +111,19 @@ class ArrangementPanelViewModel extends ChangeNotifier {
 
   bool get canPlay => playBlockedReason == null;
 
-  /// True while a sequence started here is preparing or playing. A loop
-  /// played by another panel does not count.
-  bool get isPlaying =>
-      _sequenceActive && _playback.status.value.state != PlaybackState.stopped;
+  /// True while a sequence started here is preparing or playing: this
+  /// panel is the playback's owner. Playback started elsewhere (the Loop
+  /// panel) does not count and is never stopped from here.
+  bool get isPlaying {
+    final status = _playback.status.value;
+    return identical(status.owner, this) &&
+        status.state != PlaybackState.stopped;
+  }
 
   /// A short note about playback for the user, or null.
   String? get playbackNote {
     final status = _playback.status.value;
-    if (status.state == PlaybackState.stopped &&
-        status.stopReason == PlaybackStopReason.error) {
+    if (_failed) {
       return 'Playback stopped because of a problem.';
     }
     if (isPlaying && status.missingInstrumentIds.isNotEmpty) {
@@ -212,16 +220,13 @@ class ArrangementPanelViewModel extends ChangeNotifier {
   Future<void> play() async {
     final sections = playableSections;
     if (sections.isEmpty) return;
-    _sequenceActive = true;
-    notifyListeners();
-    await _playback.playSequence(sections, repeatAll: _repeatAll);
+    _failed = false;
+    await _playback.playSequence(sections, repeatAll: _repeatAll, owner: this);
   }
 
-  Future<void> stop() async {
-    _sequenceActive = false;
-    notifyListeners();
-    await _playback.stop();
-  }
+  /// Stops this panel's playback; playback another panel started is left
+  /// alone.
+  Future<void> stop() => _playback.stop(owner: this);
 
   /// A playing sequence follows the edit: it restarts from the first
   /// playable section with the new sections, or stops if none is left.
@@ -238,9 +243,13 @@ class ArrangementPanelViewModel extends ChangeNotifier {
   }
 
   void _onStatus() {
-    if (_playback.status.value.state == PlaybackState.stopped) {
-      _sequenceActive = false;
+    final status = _playback.status.value;
+    if (_wasOwner &&
+        status.state == PlaybackState.stopped &&
+        status.stopReason == PlaybackStopReason.error) {
+      _failed = true;
     }
+    _wasOwner = isPlaying;
     notifyListeners();
   }
 
@@ -300,9 +309,7 @@ class ArrangementPanelViewModel extends ChangeNotifier {
   }
 
   void _stopOwnSequence() {
-    if (!isPlaying) return;
-    _sequenceActive = false;
-    unawaited(_playback.stop());
+    if (isPlaying) unawaited(stop());
   }
 
   @override

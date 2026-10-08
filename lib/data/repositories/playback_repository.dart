@@ -125,6 +125,7 @@ final class PlaybackStatus {
     this.voiceLimit,
     this.voiceLimitSaturated = false,
     this.error,
+    this.owner,
   }) : missingInstrumentIds = Set.unmodifiable(missingInstrumentIds);
 
   final PlaybackState state;
@@ -147,6 +148,12 @@ final class PlaybackStatus {
   final bool voiceLimitSaturated;
 
   final String? error;
+
+  /// Who started the current playback: the `owner` given to
+  /// [PlaybackRepository.play] or [PlaybackRepository.playSequence],
+  /// compared by identity. Null when stopped or when no owner was given. A
+  /// panel shows itself as playing only while it is the owner.
+  final Object? owner;
 }
 
 /// Plays scene A of a [SessionDocument], or a sequence of them, through the
@@ -168,19 +175,26 @@ abstract interface class PlaybackRepository {
   /// restart); mix only (gain, pan, mute, solo, master gain) applies to the
   /// next planned events without a new generation; anything else restarts
   /// from the cycle start under a new generation.
-  Future<void> play(SessionDocument document);
+  ///
+  /// [owner] identifies the caller (see [PlaybackStatus.owner]); a call by
+  /// another owner takes the transport over.
+  Future<void> play(SessionDocument document, {Object? owner});
 
   /// Plays [sections] in order, each for its repeats of its practice cycle,
   /// switching on a cycle boundary. With [repeatAll] it wraps to the first
   /// section. An empty list stops with [PlaybackStopReason.emptySequence].
   /// The tempo is the first section's; [setTempo] changes it for all.
+  /// [owner] works as for [play].
   Future<void> playSequence(
     List<PlaybackSection> sections, {
     required bool repeatAll,
+    Object? owner,
   });
 
   /// Silences pending events (new generation) and resets the position.
-  Future<void> stop();
+  /// With an [owner] it does nothing unless that owner started the current
+  /// playback, so a panel never stops playback another panel started.
+  Future<void> stop({Object? owner});
 
   /// Changes the running tempo (20..300 BPM) and keeps the phase. Does
   /// nothing while stopped: playback takes its tempo from the document.

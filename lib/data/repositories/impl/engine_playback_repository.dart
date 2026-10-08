@@ -74,6 +74,9 @@ final class EnginePlaybackRepository implements PlaybackRepository {
   _VoiceDemand? _demand;
   bool _disposed = false;
 
+  /// Who started the current playback; see [PlaybackStatus.owner].
+  Object? _owner;
+
   /// Engine operations run one after another, in call order, so a stop or
   /// dispose can never be overtaken by an earlier start or buffer load.
   Future<void> _engineQueue = Future.value();
@@ -110,7 +113,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
   }
 
   @override
-  Future<void> play(SessionDocument document) async {
+  Future<void> play(SessionDocument document, {Object? owner}) async {
     _checkAlive();
     final current = _transport.sections;
     if (_transport.isPlaying &&
@@ -118,6 +121,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
         current.length == 1 &&
         _sameStructure(current.single.document, document)) {
       _request++; // a newer command supersedes a pending start
+      _takeOver(owner);
       final bpm = _bpmOf(document);
       if (!_sameMix(current.single.document, document)) {
         _transport.replaceSection(
@@ -134,6 +138,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
     await _start(
       [(document: document, originalIndex: null, repeats: null)],
       (repeatAll: false),
+      owner,
     );
   }
 
@@ -141,6 +146,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
   Future<void> playSequence(
     List<PlaybackSection> sections, {
     required bool repeatAll,
+    Object? owner,
   }) async {
     _checkAlive();
     if (sections.isEmpty) {
@@ -159,6 +165,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
           ),
       ],
       (repeatAll: repeatAll),
+      owner,
     );
   }
 
@@ -166,12 +173,16 @@ final class EnginePlaybackRepository implements PlaybackRepository {
     List<({SessionDocument document, int? originalIndex, int? repeats})>
     requested,
     ({bool repeatAll}) options,
+    Object? owner,
   ) async {
     final request = ++_request;
+    _owner = owner;
     // The old structure must not keep sounding while buffers are prepared.
     _halt();
     final bpm = _bpmOf(requested.first.document);
-    _publish(PlaybackStatus(state: PlaybackState.preparing, bpm: bpm));
+    _publish(
+      PlaybackStatus(state: PlaybackState.preparing, bpm: bpm, owner: owner),
+    );
     try {
       await _ifCurrent(request, _engine.start);
       final missing = <String>{};
@@ -226,6 +237,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
           missingInstrumentIds: missing,
           voiceLimit: cap.limit,
           voiceLimitSaturated: cap.saturated,
+          owner: owner,
         ),
       );
       _refresh();
@@ -236,6 +248,24 @@ final class EnginePlaybackRepository implements PlaybackRepository {
       if (request != _request || _disposed) return;
       await _fail(error);
     }
+  }
+
+  /// A same-structure [play] by another owner keeps the sound running but
+  /// hands the playback to [owner].
+  void _takeOver(Object? owner) {
+    if (identical(owner, _owner)) return;
+    _owner = owner;
+    final old = _status.value;
+    _publish(
+      PlaybackStatus(
+        state: old.state,
+        bpm: old.bpm,
+        missingInstrumentIds: old.missingInstrumentIds,
+        voiceLimit: old.voiceLimit,
+        voiceLimitSaturated: old.voiceLimitSaturated,
+        owner: owner,
+      ),
+    );
   }
 
   Future<void> _fail(Object error) async {
@@ -249,8 +279,9 @@ final class EnginePlaybackRepository implements PlaybackRepository {
   }
 
   @override
-  Future<void> stop() async {
+  Future<void> stop({Object? owner}) async {
     _checkAlive();
+    if (owner != null && !identical(owner, _owner)) return;
     await _stopWith(PlaybackStatus());
   }
 
@@ -260,6 +291,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
   /// the device is never left open.
   Future<void> _stopWith(PlaybackStatus status) async {
     _request++;
+    _owner = null;
     _halt();
     _publish(status);
     await _serial(_engine.stop);
@@ -303,6 +335,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
         missingInstrumentIds: old.missingInstrumentIds,
         voiceLimit: cap.limit,
         voiceLimitSaturated: cap.saturated,
+        owner: old.owner,
       ),
     );
     _refresh();

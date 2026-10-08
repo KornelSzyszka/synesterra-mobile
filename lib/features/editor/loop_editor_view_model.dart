@@ -34,7 +34,6 @@ class LoopEditorViewModel extends ChangeNotifier {
     _load(loop ?? factoryLoops.first, existing: existing);
     _instruments.snapshot.addListener(notifyListeners);
     _playback.status.addListener(_onStatus);
-    _playback.position.addListener(_onPosition);
   }
 
   final LoopLibraryRepository _library;
@@ -243,7 +242,10 @@ class LoopEditorViewModel extends ChangeNotifier {
   PlaybackStatus get _status => _playback.status.value;
 
   /// This panel's loop is playing or getting ready to.
-  bool get playing => _owned && _status.state != PlaybackState.stopped;
+  bool get playing =>
+      _owned &&
+      identical(_status.owner, this) &&
+      _status.state != PlaybackState.stopped;
 
   /// Sounds are being prepared; nothing is heard yet.
   bool get preparing => playing && _status.state == PlaybackState.preparing;
@@ -265,7 +267,7 @@ class LoopEditorViewModel extends ChangeNotifier {
   Future<void> stop() async {
     _owned = false;
     notifyListeners();
-    await _playback.stop();
+    await _playback.stop(owner: this);
   }
 
   Future<void> togglePlay() => playing ? stop() : play();
@@ -277,7 +279,7 @@ class LoopEditorViewModel extends ChangeNotifier {
 
   Future<void> _send() async {
     try {
-      await _playback.play(_document);
+      await _playback.play(_document, owner: this);
     } catch (_) {
       _owned = false;
       _failed = true;
@@ -286,23 +288,18 @@ class LoopEditorViewModel extends ChangeNotifier {
   }
 
   /// A status change is shown; a stop, by the user elsewhere, at the end or
-  /// on an error, ends this panel's playback. The repository may publish a
-  /// stopped position while it restarts, so only the status decides that.
+  /// on an error, ends this panel's playback, and so does playback that
+  /// another owner (the Arrangement panel) started. The repository may
+  /// publish a stopped position while it restarts, so only the status
+  /// decides that.
   void _onStatus() {
     if (_owned && _status.state == PlaybackState.stopped) {
       _owned = false;
       _failed = _status.stopReason == PlaybackStopReason.error;
+    } else if (_owned && !identical(_status.owner, this)) {
+      _owned = false;
     }
     notifyListeners();
-  }
-
-  /// A position inside a sequence means another panel took the transport.
-  /// Other position updates (every frame or so) need no rebuild here.
-  void _onPosition() {
-    if (_owned && _playback.position.value.sectionIndex != null) {
-      _owned = false;
-      notifyListeners();
-    }
   }
 
   @override
@@ -310,8 +307,7 @@ class LoopEditorViewModel extends ChangeNotifier {
     _disposed = true;
     _instruments.snapshot.removeListener(notifyListeners);
     _playback.status.removeListener(_onStatus);
-    _playback.position.removeListener(_onPosition);
-    if (_owned) unawaited(_playback.stop());
+    if (_owned) unawaited(_playback.stop(owner: this));
     super.dispose();
   }
 }
