@@ -24,15 +24,12 @@ class ArrangementPanelViewModel extends ChangeNotifier {
   /// [initial] is an arrangement opened from the library; it keeps its id, so
   /// saving replaces it. Null starts a new, empty arrangement.
   ArrangementPanelViewModel({
-    required LoopLibraryRepository loops,
-    required ArrangementLibraryRepository arrangements,
-    required PlaybackRepository playback,
+    required this._loops,
+    required this._arrangements,
+    required this._playback,
     Arrangement? initial,
     String Function()? newId,
-  }) : _loops = loops,
-       _arrangements = arrangements,
-       _playback = playback,
-       _newId = newId ?? (() => newLibraryId('arrangement')) {
+  }) : _newId = newId ?? (() => newLibraryId('arrangement')) {
     if (initial == null) {
       startNew();
     } else {
