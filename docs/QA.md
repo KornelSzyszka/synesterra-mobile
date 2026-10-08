@@ -293,3 +293,158 @@ Next action / owner: Founder identifies and brings phone; audio-platform and QA 
 ```
 
 C3 iOS: **not run — no signed install path; see #44**. No Android result decides the iOS engine.
+
+## Prototype v0 on a phone (QA-096)
+
+Scope: the Founder reviews [prototype v0](product/prototype-v0.md) on the physical Android phone. This section is a hand-off. The audio path is the ADR 0002 phase-1 engine and its timing is **not measured** (issue #43), so nothing below claims latency, jitter or sound quality. Three things are kept apart on purpose: [what ran](#what-ran-and-what-it-proves), [what to do on the phone](#flows-on-the-phone), and [what the Founder must listen and look for](#listening-and-looking-checklist-founder).
+
+### Build and install
+
+Debug APK, from the repository root:
+
+```powershell
+flutter pub get --enforce-lockfile
+flutter build apk --debug
+adb devices                                  # the phone must show as `device`
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+```
+
+Or build, install and start in one step: `flutter devices`, then `flutter run -d <device-id>`.
+
+Notes for this Windows host:
+
+- The Android SDK is reached through directory junctions on `D:`. If `adb` is not on `PATH`, call it from the SDK's `platform-tools` folder (`flutter doctor -v` prints the SDK path).
+- JDK 17 or 21 only (see [testing](testing.md)).
+- `D:\SynesterraBuilds\synesterra-pad-debug.apk` may exist, but it is the older pad-only build from before the loop, arrangement and Learn work. Do not install it for this review; build a fresh APK from the commit under review and write that commit hash in the result.
+- Use the phone, not the agent emulator `emulator-5560`, for anything about sound or feel. Never touch the Founder's emulator `emulator-5554`.
+- The app opens on the start screen and never plays by itself. The first sound comes from the first Play, a touch on the pad or a test sound.
+
+### What ran and what it proves
+
+These checks ran on the host. They prove the UI flows and the wiring, nothing about sound or feel.
+
+| Check | Level | What it shows |
+|---|---|---|
+| `test/flows/prototype_flows_test.dart` (4 flows, below) | `widget` | The real app shell, view models, planner, scheduler and `EnginePlaybackRepository` work together; only the audio engine is a fake with a test-owned clock. |
+| `flutter test` (full suite) | `unit` / `widget` | Details per module. |
+| `dart format`, `flutter analyze` | `static` | Types and lint. |
+| `flutter build apk --debug` | build | The APK builds; no agent installed or ran it. |
+
+Why not `integration_test/`: it needs a device or an emulator, and a flow that checks the engine needs a clock the test controls. A widget-level flow gives the same UI coverage without a device and is repeatable. The real `flutter_soloud` engine is not part of these flows.
+
+The flows, as tests:
+
+1. Create a loop (the Editor's Loop panel starts from a copy of the factory 3:2 loop), switch a step off, Play (the engine starts only then; the first cycle holds exactly the edited number of hits), Stop (engine stopped, nothing pending, silent), Save, go to Library > Loops, tap the loop (it opens in place with the saved step state and name).
+2. Arrangement: add 3:2 and 5:4 from the picker, Save, Play. The section index is 0, moves to 1 after the first section's repeats (timed on the fake clock), both layers of the second loop sound, the sequence ends by itself and the engine stops. The saved arrangement opens from Library > Arrangements.
+3. Learn: open "Four against five (5:4)", press Try it. The Loop panel shows that lesson's 5:4 loop as an unsaved copy (the library is still empty), and it plays 5 + 4 hits in the first cycle.
+4. Instrument: shape a sound on the pad, name it, Save (the lift sounds once, the saved harmonics are the ones under the finger), choose it as layer 1's sound in a loop, Play. The engine renders a buffer for exactly that sound and nothing is reported as a missing sound.
+
+Mutation check of the flow tests: with the loop save made a no-op, with the sequence reporting section 0 forever, and with Try it ignoring the lesson's loop, the matching flow failed each time (one mutation per run, then reverted).
+
+Not run by any agent: a device, an emulator, the real `flutter_soloud` engine under `flutter test` (its build hook needs MSVC, which this host lacks; the tests ran in a scratch copy without the plugin, see the PR), iOS.
+
+### Flows on the phone
+
+Each flow: steps, then the expected result. Anything else is a finding; write it in the result form.
+
+**Flow 1. Loop: create, play, save, reopen**
+
+1. Start screen > Editor > Loop tab. Expected: a loop "Three against two copy" with two layers, a picture, the text "Not in your library yet", Play at the bottom.
+2. Tap a middle step of the 3-step layer twice (on, strong, off). Expected: the picture and the step marks change.
+3. Tap Play. Expected: after a short moment the loop sounds, the playhead moves, the button reads Stop.
+4. Tap Stop. Expected: the sound ends, the playhead returns to the start, the button reads Play.
+5. Change the name, tap Save. Expected: "Saved".
+6. Back, Library > Loops tab. Expected: your loop is listed above the factory loops. Tap it. Expected: the Loop panel opens with the same name and the step you switched off.
+7. Close the app from the task switcher and open it again. Expected: the loop is still in Library > Loops.
+
+**Flow 2. Arrangement of two loops**
+
+1. Editor > Arrangement tab. Expected: "Add a loop to play." and Play disabled.
+2. Add a section and pick "Three against two", add another and pick "Five against four". Expected: two sections in the strip.
+3. Save, then Play. Expected: the first section is highlighted; after its repeats the highlight moves to the second; the sequence stops by itself at the end (with "Repeat all" on it starts over).
+4. Back, Library > Arrangements, tap the arrangement. Expected: it opens on the Arrangement tab with both sections.
+
+**Flow 3. Learn and Try it**
+
+1. Start screen > Learn > "Four against five (5:4)". Expected: 2-4 plain sentences and a moving picture, no sound.
+2. Tap Try it. Expected: the Loop panel opens with "Five against four copy" and the text "Not in your library yet"; Play works. Leaving after edits asks whether to save.
+
+**Flow 4. Shape an instrument and use it**
+
+1. Editor > Instrument tab. Touch and drag on the pad, then lift the finger. Expected: the picture changes under the finger and the sound plays once on lift.
+2. Type a name, Save. Expected: "Saved".
+3. Loop tab, tap a layer's sound, pick your instrument, Play. Expected: that layer uses your sound (not silence, not "missing sound").
+4. Library > Instruments lists it.
+
+### Listening and looking checklist (Founder)
+
+Nothing here has been checked by an agent. Write each answer as heard or seen on the phone, with the phone model and the route (speaker, wired, Bluetooth). If a line fails, say when it happens, not only that it does.
+
+Listening:
+
+- Play starts on the beat: the first hit comes right after a short fixed gap, not late and not early. Repeat 10 times, also with a layer whose first step is off.
+- Stop: the sound ends at once. Does it click or pop? Does anything ring after Stop? Stop while a loud, long hit is sounding, a few times.
+- 3:2 feels like three against two: the two layers stay together and steady for 2 minutes, without drifting or stumbling. Same for 5:4 and for the 4:3:2 factory loop.
+- Tempo changes while playing (tap tempo + / - repeatedly): the rhythm continues, with no burst of hits and no hole.
+- Editing while playing (steps, instrument, note): is the restart at the cycle start audible as a glitch, or clean?
+- Volume slider while playing: does the change arrive quickly or only after a moment? (Known: only new hits follow it.)
+- Arrangement: the change from one section to the next is on the beat, with no gap and no double hit. Which tempo does the second section play at? (See known issues.)
+- Pad: does the left-right and up-down range sound useful; does a lifted finger always produce a sound; are the corners usable, or too harsh or too quiet? Are the anchors ("warm drone", "airy pad", "bass", "guitar", "click") where you expect them?
+- The three factory instruments (wood, bell, sine) at the default pitches: balanced against each other? Any clipping or distortion with 3-4 layers?
+- Interruptions: an incoming call or notification, the screen lock, switching apps. Does sound stop safely, and does Play start cleanly afterwards?
+
+Looking:
+
+- Visualization smoothness: Circle, Timeline and Polygons stay smooth while playing, without stutter, jumps or lag behind the sound; the pulse on a hit matches what you hear.
+- Does the playhead restart cleanly at the cycle boundary (no jump back)?
+- Polygons: 3:2 shows a triangle and a line, 5:4 a pentagon and a square.
+- Lesson text: clear and short enough? Any word you had to guess? Does each picture show what the sentence says? Does Try it do what you expect?
+- Touch targets: can you hit the steps, the tempo and the transport buttons with a thumb without mistakes? Is the pad large enough?
+- The "Saved" message after saving an instrument: does it cover the Play button for a moment? (Seen in a widget test layout; unconfirmed on a real screen.)
+- Leaving the Editor with unsaved work asks first, and Save, Discard and Cancel behave.
+- Colours and text legible in the chosen palette, also in bright light.
+
+### Known issues (from the reviews of #97-#103)
+
+Known and accepted for the prototype, unless the Founder decides otherwise.
+
+Playback and audio ([playback](modules/playback.md), #100):
+
+- The whole sequence plays at the first section's tempo. The other sections' own tempos are not used, so "Five against four" (80 BPM) after "Three against two" (90 BPM) runs at 90.
+- A volume change affects only events planned after it; events already queued (up to the 200 ms horizon) keep the old gain.
+- A hard cancel (Stop, structure change, tempo change) cuts voices that are already sounding. That can click, and it deviates from ADR 0002 rule 4 in the playback path (the spike keeps the rule). Not measured on a device.
+- Timing of everything is unmeasured (issue #43, gates G2-G10).
+- Tests that use `flutter_soloud` need the plugin's native build hook, which needs MSVC. This Windows host has none, so `flutter test` fails here as is and agents run the suite in a scratch copy without the plugin. CI (Linux) runs them.
+
+Editor, Library and Learn (#98, #101-#103):
+
+- The Learn tab calls `stop()` without an owner, so it can stop playback that an Editor panel started, if both are active at once (coordinator note on #101).
+- "Repeat all" is not persisted: arrangement JSON v1 has no field for it, so it resets when the arrangement is reopened.
+- The pad position is not persisted: opening a saved instrument hides the dot until the next touch.
+- The pad anchors and the factory instruments are untuned (Founder `musical` gate, out of scope for v0).
+- File saves are atomic against a failed write, but there is no directory fsync after the rename, so a power loss right after Save could lose that save (the previous file stays intact; #98).
+- Tags, the test note and the presets were removed from the instrument panel when the pad arrived (#86). Issue #87 tracks it. [instrument pad](product/instrument-pad.md) and [instrument](modules/instrument.md) still say the pad UI is out of scope, which is outdated; #87 corrects them (this task did not change them).
+- Out of v0 by decision: true sustain and the drone, noise and pitch-drop instruments, export and import, sharing, free/pro, iOS, localization (#25), background playback.
+
+### Result form for a prototype v0 run
+
+```markdown
+# Prototype v0 phone run
+
+Date / tester:
+Commit / APK build time:
+Phone model / Android version:
+Audio route:
+Evidence level: device (listening and looking only; no timing numbers)
+
+| Flow | Done | As expected | Notes (what, when, how often) |
+|---|---|---|---|
+| 1 Loop: create, play, save, reopen | | | |
+| 2 Arrangement of two loops | | | |
+| 3 Learn and Try it | | | |
+| 4 Pad instrument in a loop | | | |
+
+Listening answers (one line per bullet above):
+Looking answers (one line per bullet above):
+New issues to file:
+```
