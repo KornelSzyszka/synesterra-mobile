@@ -440,5 +440,53 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test('the status names the owner of the current playback', () async {
+      final h = Harness();
+      addTearDown(h.repository.dispose);
+      final loopPanel = Object();
+      final arrangementPanel = Object();
+      await h.repository.play(threeTwo(), owner: loopPanel);
+      expect(h.repository.status.value.owner, same(loopPanel));
+      // A mix-only replay by the same owner keeps it; tempo keeps it too.
+      h.repository.setTempo(100);
+      expect(h.repository.status.value.owner, same(loopPanel));
+
+      await h.repository.playSequence(
+        sections(),
+        repeatAll: true,
+        owner: arrangementPanel,
+      );
+      expect(h.repository.status.value.owner, same(arrangementPanel));
+
+      // The loop panel's stop no longer reaches the arrangement's playback.
+      await h.repository.stop(owner: loopPanel);
+      expect(h.repository.status.value.state, PlaybackState.playing);
+      expect(h.repository.status.value.owner, same(arrangementPanel));
+
+      await h.repository.stop(owner: arrangementPanel);
+      expect(h.repository.status.value.state, PlaybackState.stopped);
+      expect(h.repository.status.value.owner, isNull);
+    });
+
+    test('a same-structure play by another owner takes ownership', () async {
+      final h = Harness();
+      addTearDown(h.repository.dispose);
+      final a = Object();
+      final b = Object();
+      await h.repository.play(threeTwo(), owner: a);
+      await h.repository.play(threeTwo(), owner: b);
+      expect(h.repository.status.value.owner, same(b));
+      await h.repository.stop(owner: a);
+      expect(h.repository.status.value.state, PlaybackState.playing);
+    });
+
+    test('stop without an owner stops any playback', () async {
+      final h = Harness();
+      addTearDown(h.repository.dispose);
+      await h.repository.play(threeTwo(), owner: Object());
+      await h.repository.stop();
+      expect(h.repository.status.value.state, PlaybackState.stopped);
+    });
   });
 }
