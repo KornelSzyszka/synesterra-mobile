@@ -203,6 +203,66 @@ void main() {
       },
     );
 
+    test('deleting one of several loops while playing drops it from the '
+        'running sequence, keeping original indexes', () async {
+      await loops.save(userLoop('other', 'Other loop'));
+      final vm = model()
+        ..addSection('mine')
+        ..addSection('factory-loop-3-2')
+        ..addSection('other');
+      await vm.play();
+      expect(playback.sequences.single.$1.map((s) => s.originalIndex), [
+        0,
+        1,
+        2,
+      ]);
+      await loops.delete('other');
+      await pumpEventQueue();
+      expect(playback.sequences, hasLength(2));
+      expect(playback.sequences.last.$1.map((s) => s.originalIndex), [0, 1]);
+      expect(vm.isPlaying, isTrue);
+    });
+
+    test('deleting the loop that is playing replays without it', () async {
+      final vm = model()
+        ..addSection('mine')
+        ..addSection('factory-loop-3-2');
+      await vm.play();
+      // The sequence is on section 0 ('mine').
+      expect(playback.position.value.sectionIndex, 0);
+      await loops.delete('mine');
+      await pumpEventQueue();
+      expect(playback.sequences.last.$1.map((s) => s.originalIndex), [1]);
+      expect(
+        playback.sequences.last.$1.single.document,
+        factoryLoops.first.document,
+      );
+    });
+
+    test('a library change that does not touch the sections keeps playing '
+        'without a restart', () async {
+      final vm = model()..addSection('factory-loop-3-2');
+      await vm.play();
+      await loops.save(userLoop('unrelated', 'Unrelated'));
+      await pumpEventQueue();
+      expect(playback.sequences, hasLength(1));
+    });
+
+    test(
+      'a loop deleted while another panel plays changes nothing there',
+      () async {
+        final vm = model()
+          ..addSection('mine')
+          ..addSection('factory-loop-3-2');
+        await vm.play();
+        await playback.play(factoryLoops[1].document, owner: Object());
+        await loops.delete('mine');
+        await pumpEventQueue();
+        expect(playback.sequences, hasLength(1));
+        expect(playback.stops, 0);
+      },
+    );
+
     test('removing the last playable section while playing stops', () async {
       final vm = model()..addSection('factory-loop-3-2');
       await vm.play();

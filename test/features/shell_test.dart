@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/app/synesterra_app.dart';
+import 'package:synesterra/data/repositories/impl/in_memory_arrangement_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
 import 'package:synesterra/data/repositories/impl/noop_playback_repository.dart';
@@ -17,6 +18,7 @@ Future<void> _pumpApp(WidgetTester tester) async {
 
 void main() {
   sharedPlaybackTests();
+  arrangementLeaveTests();
 
   testWidgets('start screen offers the Editor, Library and Learn entries', (
     tester,
@@ -195,5 +197,64 @@ void sharedPlaybackTests() {
     await _tap(tester, 'editor-tab-loop');
     await _tap(tester, 'loop-play');
     expect(playback.status.value.state, PlaybackState.stopped);
+  });
+}
+
+void arrangementLeaveTests() {
+  Future<InMemoryArrangementLibraryRepository> openWithDraft(
+    WidgetTester tester,
+  ) async {
+    final arrangements = InMemoryArrangementLibraryRepository();
+    await tester.pumpWidget(
+      SynesterraApp(
+        instrumentLibrary: InMemoryInstrumentLibraryRepository(),
+        instrumentAudition: NoopInstrumentAuditionRepository(),
+        arrangementLibrary: arrangements,
+      ),
+    );
+    await tester.tap(find.byKey(const Key('home-editor')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('editor-tab-arrangement')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('arrangement-add-section')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('loop-option-factory-loop-3-2')));
+    await tester.pumpAndSettle();
+    return arrangements;
+  }
+
+  testWidgets('leaving the Editor with an unsaved arrangement asks first', (
+    tester,
+  ) async {
+    await openWithDraft(tester);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Save this arrangement before leaving?'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('leave-cancel')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('arrangement-panel')), findsOneWidget);
+    expect(find.byKey(const Key('section-0')), findsOneWidget);
+  });
+
+  testWidgets('Save in the leave dialog stores the arrangement and leaves', (
+    tester,
+  ) async {
+    final arrangements = await openWithDraft(tester);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('leave-save')));
+    await tester.pumpAndSettle();
+    expect(arrangements.snapshot.value.items.single.sections, hasLength(1));
+    expect(find.byKey(const Key('home-editor')), findsOneWidget);
+  });
+
+  testWidgets('a saved arrangement leaves without asking', (tester) async {
+    await openWithDraft(tester);
+    await tester.tap(find.byKey(const Key('arrangement-save')));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Unsaved changes'), findsNothing);
+    expect(find.byKey(const Key('home-editor')), findsOneWidget);
   });
 }
