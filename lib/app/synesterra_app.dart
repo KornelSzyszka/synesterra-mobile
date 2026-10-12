@@ -17,6 +17,8 @@ import '../features/arrangement/arrangement_panel.dart';
 import '../features/learn/learn_view.dart';
 import '../features/library/library_view.dart';
 import '../features/audio_spike/audio_spike_view.dart';
+import '../features/design_lab/design_lab_view.dart';
+import '../features/design_lab/lab_motion.dart';
 import '../shared/theme/synesterra_theme.dart';
 
 class SynesterraApp extends StatefulWidget {
@@ -28,6 +30,7 @@ class SynesterraApp extends StatefulWidget {
     this.loopLibrary,
     this.arrangementLibrary,
     this.playback,
+    this.designLab,
   });
 
   final InstrumentLibraryRepository instrumentLibrary;
@@ -41,6 +44,10 @@ class SynesterraApp extends StatefulWidget {
 
   /// The bootstrap passes the engine; when omitted, a silent stand-in.
   final PlaybackRepository? playback;
+
+  /// Whether the Start screen offers the debug design lab; when omitted, only
+  /// debug builds do ([designLabAvailable]).
+  final bool? designLab;
 
   @override
   State<SynesterraApp> createState() => _SynesterraAppState();
@@ -140,6 +147,13 @@ class _SynesterraAppState extends State<SynesterraApp> {
                 ),
               ),
             ),
+            onOpenDesignLab: (widget.designLab ?? designLabAvailable())
+                ? () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DesignLabView(),
+                    ),
+                  )
+                : null,
             onOpenAudioSpike: widget.audioSpikeRepositoryFactory == null
                 ? null
                 : () => Navigator.of(context).push(
