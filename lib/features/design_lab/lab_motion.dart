@@ -1,9 +1,3 @@
-import 'package:flutter/foundation.dart';
-
-/// The design lab exists only in debug builds. [debugBuild] is a parameter so
-/// a test can ask what a release build would do.
-bool designLabAvailable({bool debugBuild = kDebugMode}) => debugBuild;
-
 /// How strongly a tap answers with the glitch / polarization flash. A lab
 /// control, so the Founder can compare.
 enum GlitchStrength {

@@ -16,8 +16,10 @@ shapes, shadows and glows are local to the lab.
 1. `flutter run -d <device>` (a debug build; `flutter build apk --debug` and
    install also works).
 2. On the Start screen, **long-press the title "◉ synesterra"**.
-3. In release builds the long press does nothing (`designLabAvailable()` is
-   `kDebugMode`; `SynesterraApp(designLab: false)` simulates release in tests).
+3. In release builds the long press does nothing: the entry and the route are
+   behind the compile-time constant `kDebugMode` in `lib/app/`, so release
+   drops the lab. Tests simulate release with the test-only
+   `SynesterraApp(debugHideDesignLab: true)`, which can only hide the lab.
 
 Top of the lab: back, the ground switch (sun / moon icon: dark or light),
 the variant switch **Glass · Organic · Material**, the **Tap flash** strength

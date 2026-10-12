@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/features/design_lab/design_lab_view.dart';
 import 'package:synesterra/features/design_lab/lab_components.dart';
 import 'package:synesterra/features/design_lab/lab_motion.dart';
+import 'package:synesterra/features/design_lab/lab_palette.dart';
 import 'package:synesterra/features/design_lab/lab_skin.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
 
@@ -52,25 +53,32 @@ Future<void> _select(WidgetTester tester, LabVariant variant) async {
 }
 
 void main() {
-  testWidgets('the switcher shows each variant with the same components', (
-    tester,
-  ) async {
+  testWidgets('the switcher shows each variant with the same components, '
+      'on the dark and the light ground', (tester) async {
     await _pumpLab(tester);
-    for (final variant in LabVariant.values) {
-      await _select(tester, variant);
-      expect(
-        find.byKey(ValueKey('lab-canvas-${variant.name}-dark')),
-        findsOneWidget,
-      );
-      for (final key in _components) {
-        expect(
-          find.byKey(ValueKey(key)),
-          findsOneWidget,
-          reason: '$key in ${variant.name}',
-        );
+    for (final tone in LabTone.values) {
+      if (tone == LabTone.light) {
+        await tester.tap(find.byKey(const Key('lab-tone')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
       }
-      final scope = tester.widget<LabScope>(find.byType(LabScope).first);
-      expect(scope.skin.variant, variant);
+      for (final variant in LabVariant.values) {
+        await _select(tester, variant);
+        expect(
+          find.byKey(ValueKey('lab-canvas-${variant.name}-${tone.name}')),
+          findsOneWidget,
+        );
+        for (final key in _components) {
+          expect(
+            find.byKey(ValueKey(key)),
+            findsOneWidget,
+            reason: '$key in ${variant.name} ${tone.name}',
+          );
+        }
+        final scope = tester.widget<LabScope>(find.byType(LabScope).first);
+        expect(scope.skin.variant, variant);
+        expect(scope.skin.palette.tone, tone);
+      }
     }
   });
 
