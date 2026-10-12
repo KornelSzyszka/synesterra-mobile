@@ -12,6 +12,7 @@ class HomeView extends StatelessWidget {
     required this.onOpenLibrary,
     required this.onOpenLearn,
     this.onOpenAudioSpike,
+    this.onOpenDesignLab,
     this.palette = SynesterraPalette.forest,
     this.onPaletteChanged,
   });
@@ -20,6 +21,9 @@ class HomeView extends StatelessWidget {
   final VoidCallback onOpenLibrary;
   final VoidCallback onOpenLearn;
   final VoidCallback? onOpenAudioSpike;
+
+  /// Debug builds only: a long press on the title opens the design lab.
+  final VoidCallback? onOpenDesignLab;
   final SynesterraPalette palette;
   final ValueChanged<SynesterraPalette>? onPaletteChanged;
 
@@ -29,13 +33,20 @@ class HomeView extends StatelessWidget {
     final platform = Theme.of(context).platform;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          '◉  synesterra',
-          style: TextStyle(
-            color: tokens.text,
-            fontFamily: SynesterraFonts.serif(platform),
-            fontFamilyFallback: SynesterraFonts.serifFallback(platform),
-            fontWeight: FontWeight.bold,
+        title: Semantics(
+          onLongPressHint: onOpenDesignLab == null ? null : 'open design lab',
+          child: GestureDetector(
+            key: const Key('home-title'),
+            onLongPress: onOpenDesignLab,
+            child: Text(
+              '◉  synesterra',
+              style: TextStyle(
+                color: tokens.text,
+                fontFamily: SynesterraFonts.serif(platform),
+                fontFamilyFallback: SynesterraFonts.serifFallback(platform),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
         actions: [

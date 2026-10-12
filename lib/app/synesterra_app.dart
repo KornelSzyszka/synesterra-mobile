@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
@@ -17,6 +18,7 @@ import '../features/arrangement/arrangement_panel.dart';
 import '../features/learn/learn_view.dart';
 import '../features/library/library_view.dart';
 import '../features/audio_spike/audio_spike_view.dart';
+import '../features/design_lab/design_lab_view.dart';
 import '../shared/theme/synesterra_theme.dart';
 
 class SynesterraApp extends StatefulWidget {
@@ -28,6 +30,7 @@ class SynesterraApp extends StatefulWidget {
     this.loopLibrary,
     this.arrangementLibrary,
     this.playback,
+    @visibleForTesting this.debugHideDesignLab = false,
   });
 
   final InstrumentLibraryRepository instrumentLibrary;
@@ -41,6 +44,10 @@ class SynesterraApp extends StatefulWidget {
 
   /// The bootstrap passes the engine; when omitted, a silent stand-in.
   final PlaybackRepository? playback;
+
+  /// Tests only: hides the design lab as a release build would. It can only
+  /// hide the lab; nothing can show it outside a debug build ([kDebugMode]).
+  final bool debugHideDesignLab;
 
   @override
   State<SynesterraApp> createState() => _SynesterraAppState();
@@ -140,6 +147,15 @@ class _SynesterraAppState extends State<SynesterraApp> {
                 ),
               ),
             ),
+            // Both the entry and the route sit behind the compile-time
+            // constant, so a release build drops the lab entirely.
+            onOpenDesignLab: kDebugMode && !widget.debugHideDesignLab
+                ? () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DesignLabView(),
+                    ),
+                  )
+                : null,
             onOpenAudioSpike: widget.audioSpikeRepositoryFactory == null
                 ? null
                 : () => Navigator.of(context).push(
