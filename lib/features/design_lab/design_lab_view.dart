@@ -288,6 +288,7 @@ class _DesignLabViewState extends State<DesignLabView>
             small,
             LabSheet(
               key: const Key('lab-sheet'),
+              inline: true,
               onKeep: () {},
               onDismiss: () {},
             ),

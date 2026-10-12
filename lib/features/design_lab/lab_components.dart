@@ -425,6 +425,7 @@ class LabChip extends StatelessWidget {
       builder: (context, press) => SizedBox(
         height: 48,
         child: Center(
+          widthFactor: 1,
           child: LabSurface(
             form: LabForm.wide,
             kind: kind,
@@ -941,22 +942,31 @@ class LabTransport extends StatelessWidget {
 
 /// The bottom sheet sample: a question with a quiet and a primary answer.
 class LabSheet extends StatelessWidget {
-  const LabSheet({super.key, required this.onKeep, required this.onDismiss});
+  const LabSheet({
+    super.key,
+    required this.onKeep,
+    required this.onDismiss,
+    this.inline = false,
+  });
 
   final VoidCallback onKeep;
   final VoidCallback onDismiss;
+
+  /// The preview inside the lab: its lower part fades into the ground, so it
+  /// does not end in a hard rectangle as a real sheet does at the screen edge.
+  final bool inline;
 
   @override
   Widget build(BuildContext context) {
     final skin = LabScope.of(context).skin;
     return CustomPaint(
-      painter: _SheetPainter(skin),
+      painter: _SheetPainter(skin, fade: inline),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           Space.xl,
           Space.huge - Space.sm,
           Space.xl,
-          Space.xl,
+          inline ? Space.huge : Space.xl,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1004,19 +1014,43 @@ class LabSheet extends StatelessWidget {
 }
 
 class _SheetPainter extends CustomPainter {
-  const _SheetPainter(this.skin);
+  const _SheetPainter(this.skin, {this.fade = false});
 
   final LabSkin skin;
+  final bool fade;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    skin.paintSurface(canvas, skin.sheetOutline(rect), rect, LabKind.raised);
+    final outline = skin.sheetOutline(rect);
+    if (!fade) {
+      skin.paintSurface(canvas, outline, rect, LabKind.raised);
+      return;
+    }
+    // One static layer (inside a RepaintBoundary): paint, then fade out the
+    // bottom 30 % with a dstIn gradient.
+    canvas.saveLayer(rect.inflate(24), Paint());
+    skin.paintSurface(canvas, outline, rect, LabKind.raised);
+    canvas
+      ..drawRect(
+        rect.inflate(24),
+        Paint()
+          ..blendMode = BlendMode.dstIn
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: const [Colors.black, Colors.black, Colors.transparent],
+            stops: const [0, .7, 1],
+          ).createShader(rect),
+      )
+      ..restore();
   }
 
   @override
   bool shouldRepaint(_SheetPainter old) =>
-      old.skin.variant != skin.variant || old.skin.palette != skin.palette;
+      old.fade != fade ||
+      old.skin.variant != skin.variant ||
+      old.skin.palette != skin.palette;
 }
 
 /// The instrument mist behind everything: two very soft lights (the
