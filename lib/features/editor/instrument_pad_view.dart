@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
@@ -6,13 +8,16 @@ import '../../shared/theme/synesterra_theme.dart';
 import 'immediate_pan.dart';
 import 'pad_geometry.dart';
 
-/// The 2D field that shapes a sound: dark to bright from left to right, soft
-/// to hard from top to bottom. It reports the touched [PadPoint] while the
-/// finger is down ([onPoint]) and the lift ([onRelease]); it holds no state.
+/// The disc that shapes a sound: the angle around it picks the character
+/// (the five anchor names sit on the rim) and the distance from the centre
+/// sets how pronounced it is (centre neutral, rim pure). It reports the
+/// touched [PadPoint] while the finger is down ([onPoint]) and the lift
+/// ([onRelease]); it holds no state.
 ///
-/// It is the whole touch target and takes the gesture at once, so touching it
-/// never scrolls the page. Screen readers get one adjustable control per axis
-/// instead of a drag.
+/// The whole square around the disc is the touch target and takes the gesture
+/// at once, so touching it never scrolls the page; a touch outside the disc
+/// puts the dot on the rim. Screen readers get one adjustable control for the
+/// character and one for the strength instead of a drag.
 class InstrumentPad extends StatelessWidget {
   const InstrumentPad({
     super.key,
@@ -26,22 +31,23 @@ class InstrumentPad extends StatelessWidget {
   final ValueChanged<PadPoint> onPoint;
   final VoidCallback onRelease;
 
-  static const horizontalLabel = 'Brightness, dark to bright';
-  static const verticalLabel = 'Hardness, soft to hard';
+  static const characterLabel = 'Character, turn around the circle';
+  static const strengthLabel = 'Strength, centre to rim';
 
-  static String _spoken(double? coordinate) =>
-      coordinate == null ? 'Not set' : '${padPercent(coordinate)} percent';
+  static String _character(PadPoint? point) =>
+      point == null ? 'Not set' : 'Closest to ${padCharacterName(point)}';
 
-  void _adjust({double dx = 0, double dy = 0}) {
-    onPoint(stepPadPoint(point, dx: dx, dy: dy));
+  static String _strength(PadPoint? point) =>
+      point == null ? 'Not set' : '${padPercent(point.radius)} percent';
+
+  void _adjust({double dAngle = 0, double dRadius = 0}) {
+    onPoint(stepPadPoint(point, dAngle: dAngle, dRadius: dRadius));
     onRelease();
   }
 
   @override
   Widget build(BuildContext context) {
     final tokens = SynesterraTokens.of(context);
-    final x = point?.x;
-    final y = point?.y;
     return AspectRatio(
       aspectRatio: 1,
       child: LayoutBuilder(
@@ -72,22 +78,30 @@ class InstrumentPad extends StatelessWidget {
               ),
               Semantics(
                 container: true,
-                label: horizontalLabel,
-                value: _spoken(x),
-                increasedValue: _spoken(stepPadPoint(point, dx: padStep).x),
-                decreasedValue: _spoken(stepPadPoint(point, dx: -padStep).x),
-                onIncrease: () => _adjust(dx: padStep),
-                onDecrease: () => _adjust(dx: -padStep),
+                label: characterLabel,
+                value: _character(point),
+                increasedValue: _character(
+                  stepPadPoint(point, dAngle: padStepAngle),
+                ),
+                decreasedValue: _character(
+                  stepPadPoint(point, dAngle: -padStepAngle),
+                ),
+                onIncrease: () => _adjust(dAngle: padStepAngle),
+                onDecrease: () => _adjust(dAngle: -padStepAngle),
                 child: const SizedBox.expand(),
               ),
               Semantics(
                 container: true,
-                label: verticalLabel,
-                value: _spoken(y),
-                increasedValue: _spoken(stepPadPoint(point, dy: padStep).y),
-                decreasedValue: _spoken(stepPadPoint(point, dy: -padStep).y),
-                onIncrease: () => _adjust(dy: padStep),
-                onDecrease: () => _adjust(dy: -padStep),
+                label: strengthLabel,
+                value: _strength(point),
+                increasedValue: _strength(
+                  stepPadPoint(point, dRadius: padStepRadius),
+                ),
+                decreasedValue: _strength(
+                  stepPadPoint(point, dRadius: -padStepRadius),
+                ),
+                onIncrease: () => _adjust(dRadius: padStepRadius),
+                onDecrease: () => _adjust(dRadius: -padStepRadius),
                 child: const SizedBox.expand(),
               ),
             ],
@@ -98,7 +112,8 @@ class InstrumentPad extends StatelessWidget {
   }
 }
 
-/// Draws the field, the faint anchor names and the dot.
+/// Draws the disc, its hint rings, the faint anchor names on the rim and the
+/// dot.
 class InstrumentPadPainter extends CustomPainter {
   const InstrumentPadPainter({
     required this.point,
@@ -123,20 +138,32 @@ class InstrumentPadPainter extends CustomPainter {
   /// The dot's radius; the ring and outline are drawn outside it.
   static const dotRadius = 10.0;
 
+  /// Concentric hint rings as fractions of the disc radius: the rim is the
+  /// pure character, each ring marks a step toward the neutral centre.
+  static const ringFractions = [1 / 3, 2 / 3];
+
   @override
   void paint(Canvas canvas, Size size) {
-    final field = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      const Radius.circular(Radii.lg),
-    );
+    final centre = size.center(Offset.zero);
+    final reach = padDiscRadius(size);
     canvas
-      ..drawRRect(field, Paint()..color = background)
-      ..drawRRect(
-        field.deflate(0.5),
+      ..drawCircle(centre, reach, Paint()..color = background)
+      ..drawCircle(
+        centre,
+        reach - 0.5,
         Paint()
           ..color = border
           ..style = PaintingStyle.stroke,
       );
+    for (final fraction in ringFractions) {
+      canvas.drawCircle(
+        centre,
+        reach * fraction,
+        Paint()
+          ..color = border.withValues(alpha: 0.45)
+          ..style = PaintingStyle.stroke,
+      );
+    }
 
     for (final anchor in anchors) {
       final painter = TextPainter(
@@ -150,33 +177,28 @@ class InstrumentPadPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
         maxLines: 1,
       )..layout();
-      final center = padOffsetOf(PadPoint(anchor.x, anchor.y), size);
-      final left = (center.dx - painter.width / 2).clamp(
-        Space.sm,
-        (size.width - painter.width - Space.sm).clamp(
-          Space.sm,
-          double.infinity,
-        ),
+      // Centred on the anchor's place on the rim, kept inside the field.
+      final rim = padOffsetOf(anchor.point, size);
+      final left = (rim.dx - painter.width / 2).clamp(
+        Space.xs,
+        max(Space.xs, size.width - painter.width - Space.xs),
       );
-      final top = (center.dy - painter.height / 2).clamp(
-        Space.sm,
-        (size.height - painter.height - Space.sm).clamp(
-          Space.sm,
-          double.infinity,
-        ),
+      final top = (rim.dy - painter.height / 2).clamp(
+        Space.xs,
+        max(Space.xs, size.height - painter.height - Space.xs),
       );
-      painter.paint(canvas, Offset(left, top));
+      painter.paint(canvas, Offset(left.toDouble(), top.toDouble()));
     }
 
     final p = point;
     if (p == null) return;
     // Three layers keep the dot visible on every background: a dark outline,
     // a light ring and the accent fill.
-    final center = padOffsetOf(p, size);
+    final at = padOffsetOf(p, size);
     canvas
-      ..drawCircle(center, dotRadius + Space.xs, Paint()..color = dotOutline)
-      ..drawCircle(center, dotRadius + 2, Paint()..color = dotRing)
-      ..drawCircle(center, dotRadius, Paint()..color = dot);
+      ..drawCircle(at, dotRadius + Space.xs, Paint()..color = dotOutline)
+      ..drawCircle(at, dotRadius + 2, Paint()..color = dotRing)
+      ..drawCircle(at, dotRadius, Paint()..color = dot);
   }
 
   @override

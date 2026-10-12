@@ -69,7 +69,7 @@ void main() {
     addTearDown(vm.dispose);
     vm
       ..setPadPoint(PadPoint(0.1, 0.1))
-      ..setPadPoint(PadPoint(0.9, 0.9));
+      ..setPadPoint(PadPoint(-0.6, 0.6));
     expect(audition.played, isEmpty);
 
     vm.releasePad();
