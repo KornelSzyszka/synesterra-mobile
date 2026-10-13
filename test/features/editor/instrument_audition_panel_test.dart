@@ -15,7 +15,7 @@ Future<void> openEditor(WidgetTester tester) async {
   addTearDown(() => showTechnicalControls = false);
   tester.view
     ..devicePixelRatio = 1
-    ..physicalSize = const Size(800, 3200);
+    ..physicalSize = const Size(800, 4000);
   addTearDown(tester.view.reset);
   audition = RecordingAudition();
   await tester.pumpWidget(

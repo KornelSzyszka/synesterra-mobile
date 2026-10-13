@@ -155,12 +155,12 @@ final List<LearnLesson> learnLessons = List.unmodifiable([
   LearnLesson(
     id: 'shaping-a-sound',
     title: 'Shaping a sound',
-    teaser: 'One dot on the pad changes how an instrument sounds.',
+    teaser: 'Drag the points of a shape to change how an instrument sounds.',
     sentences: [
-      'You shape an instrument by placing one dot on the pad.',
-      'Left is dark and right is bright.',
-      'Top is soft and airy, and bottom is hard and sharp.',
-      'Open the Instrument panel in the Editor and drag the dot to hear it.',
+      'You shape an instrument by dragging the points of a shape.',
+      'Drag a point out for more and in for less.',
+      'The points make it brighter, fuller, softer or longer.',
+      'Open the Instrument panel in the Editor and let go of a point to hear it.',
     ],
     terms: const [
       LearnTerm('Instrument', 'A sound you can play, such as wood or bell.'),

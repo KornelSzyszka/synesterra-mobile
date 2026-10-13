@@ -450,18 +450,69 @@ void main() {
       }
     });
 
-    test('factory instruments and pad anchors map to in-range traits', () {
+    test('factory instruments and old pad sounds map to in-range traits', () {
+      // The five rim recipes of the removed circular pad (UX-107): saved
+      // instruments made on it still have to open on the radar.
+      Instrument old(
+        String name,
+        List<double> harmonics,
+        int attackMs,
+        int decayMs,
+        double lowDb,
+        double midDb,
+        double highDb,
+      ) => Instrument(
+        id: 'old-pad',
+        name: name,
+        harmonics: harmonics,
+        attackMs: attackMs,
+        decayMs: decayMs,
+        eq: InstrumentEq(lowDb: lowDb, midDb: midDb, highDb: highDb),
+      );
       final instruments = [
         ...factoryInstruments,
-        for (final anchor in padAnchors)
-          Instrument(
-            id: 'anchor',
-            name: anchor.name,
-            harmonics: anchor.harmonics,
-            attackMs: anchor.attackMs,
-            decayMs: anchor.decayMs,
-            eq: anchor.eq,
-          ),
+        old('warm drone', const [1, 0.35, 0.12, 0.04], 400, 5000, 3, -1, -6),
+        old(
+          'airy pad',
+          const [1, 0.5, 0.6, 0.5, 0.4, 0.3, 0.2, 0.12, 0.08],
+          300,
+          4000,
+          -3,
+          0,
+          6,
+        ),
+        old('bass', const [1, 0.6, 0.25, 0.1, 0.04], 2, 500, 6, 0, -6),
+        old(
+          'guitar',
+          const [
+            1,
+            0.8,
+            0.7,
+            0.55,
+            0.45,
+            0.35,
+            0.28,
+            0.2,
+            0.15,
+            0.1,
+            0.08,
+            0.05,
+          ],
+          1,
+          1200,
+          -1,
+          2,
+          3,
+        ),
+        old(
+          'click',
+          const [1, 0.75, 0.5, 0.35, 0.25, 0.18, 0.12, 0.08, 0.05, 0.03],
+          0,
+          40,
+          -4,
+          4,
+          6,
+        ),
       ];
       for (final instrument in instruments) {
         final back = traitsForInstrument(instrument);

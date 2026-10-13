@@ -15,7 +15,8 @@ import 'package:synesterra/data/repositories/impl/in_memory_arrangement_library_
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_loop_library_repository.dart';
 import 'package:synesterra/data/repositories/playback_repository.dart';
-import 'package:synesterra/features/editor/pad_geometry.dart';
+import 'package:synesterra/features/editor/instrument_radar_view.dart';
+import 'package:synesterra/shared/instrument_radar/radar_geometry.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 import '../data/playback_fakes.dart';
@@ -324,18 +325,40 @@ void main() {
     await rig.finish();
   });
 
-  testWidgets('shape an instrument on the pad, save it, use it in a loop '
+  testWidgets('shape an instrument on the radar, save it, use it in a loop '
       'layer', (tester) async {
     final rig = await boot(tester);
     await rig.tap('home-editor');
-    expect(find.byKey(const Key('instrument-pad')), findsOneWidget);
+    const radar = Key('instrument-radar');
+    expect(find.byKey(radar), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('instrument-name')), 'Glow');
-    final rect = tester.getRect(find.byKey(const Key('instrument-pad')));
-    final point = PadPoint(0.8, 0.3);
-    await tester.tapAt(padOffsetOf(point, rect.size) + rect.topLeft);
+    // A new instrument is the plain Sine, at the centre of Fullness: drag
+    // that vertex toward the edge.
+    InstrumentTraits shown() =>
+        tester.widget<InstrumentRadar>(find.byKey(radar)).traits;
+    final before = shown();
+    expect(before[TraitIds.fullness], 0);
+    final rect = tester.getRect(find.byKey(radar));
+    final count = defaultTraitDefinitions.length;
+    final reach = radarReach(rect.size, count);
+    Offset vertex(double value) =>
+        radarPoint(1, count, value, rect.size, reach) + rect.topLeft;
+    final gesture = await tester.startGesture(vertex(0));
+    await gesture.moveTo(vertex(0.3));
+    await gesture.moveTo(vertex(0.6));
+    await tester.pump();
+    expect(rig.audition.played, isEmpty, reason: 'nothing under the finger');
+    await gesture.up();
     await tester.pump(const Duration(seconds: 1));
     expect(rig.audition.played, hasLength(1), reason: 'the lift sounds once');
+    final traits = shown();
+    expect(traits[TraitIds.fullness], closeTo(0.6, 0.01));
+    expect(
+      before.withValues({TraitIds.fullness: traits[TraitIds.fullness]}),
+      traits,
+      reason: 'only the dragged trait moved',
+    );
     await rig.tap('instrument-save');
     // The "saved" snack bar covers the pinned transport bar until it ends.
     await tester.pump(const Duration(seconds: 6));
@@ -345,10 +368,15 @@ void main() {
     expect(
       sameHarmonics(
         glow.harmonics,
-        instrumentForPad(point, id: 'x', name: 'x').harmonics,
+        instrumentForTraits(traits, id: 'x', name: 'x').harmonics,
       ),
       isTrue,
-      reason: 'the saved sound is the one under the finger',
+      reason: 'the saved sound is the shape under the finger',
+    );
+    expect(
+      glow.harmonics.length,
+      greaterThan(1),
+      reason: 'the drag made the plain tone fuller',
     );
 
     // Use it in the first layer of a new loop.

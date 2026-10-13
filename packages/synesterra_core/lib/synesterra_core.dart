@@ -16,7 +16,6 @@ export 'src/arrangement/arrangement.dart';
 export 'src/harmony/drone.dart';
 export 'src/sound/instrument.dart';
 export 'src/sound/instrument_envelope.dart';
-export 'src/sound/instrument_pad.dart';
 export 'src/sound/instrument_renderer.dart';
 export 'src/sound/instrument_response.dart';
 export 'src/sound/instrument_traits.dart';

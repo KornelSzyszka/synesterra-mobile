@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-13",
+  "task": "UX-115",
+  "prefix": "UX",
+  "size": "L",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-opus-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "author ran above the minimum class (M); interrupted once by a usage limit and resumed; geometry, view-model, screen and pad-removal tests red then green; kept the Sine as the new-instrument start (exactly on the radar) instead of neutral to avoid churning hidden technical-control tests; core inverse cannot read brightness below ~4 harmonics, so thin radar-made sounds reopen with the approximation note (core follow-up); Learn lesson copy still mentions the pad (outside write scope); app tests ran in a soloud-free scratch copy; feel, sound and phone frame rate not judged; Codex review pending"
+}

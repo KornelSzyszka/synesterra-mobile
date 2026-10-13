@@ -4,7 +4,7 @@ import 'package:synesterra_core/synesterra_core.dart';
 import '../../data/repositories/arrangement_library_repository.dart';
 import '../../data/repositories/instrument_library_repository.dart';
 import '../../data/repositories/loop_library_repository.dart';
-import '../../shared/instrument_mist/instrument_mist.dart';
+import '../../shared/instrument_radar/instrument_radar_thumbnail.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import '../../shared/theme/design_scale.dart';
@@ -231,7 +231,7 @@ class _InstrumentTile extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  InstrumentMist(instrument: instrument, size: 56),
+                  InstrumentRadarThumbnail(instrument: instrument, size: 56),
                   const SizedBox(width: Space.md),
                   Expanded(
                     child: Column(

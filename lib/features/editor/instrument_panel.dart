@@ -10,19 +10,20 @@ import '../../shared/widgets/design_components.dart';
 import 'envelope_editor.dart';
 import 'eq_editor.dart';
 import 'instrument_editor_view_model.dart';
-import 'instrument_pad_view.dart';
+import 'instrument_radar_view.dart';
 import 'spectrum_editor.dart';
 import 'test_sound.dart';
 import '../../shared/theme/design_scale.dart';
+import '../../shared/widgets/round_components.dart';
 
-/// The spectrum, envelope, EQ, tags, test sound and preset controls stay in
-/// the code but are not reachable: in v1 the pad is the whole experience
-/// (Founder, 2026-10-04). Only tests turn them on, to keep covering them.
+/// The spectrum, envelope, EQ, tags, test sound and factory-preset controls
+/// stay in the code but are not reachable: in v1 the radar is the whole
+/// experience (Founder, 2026-10-04 and 2026-10-13). Only tests turn them on,
+/// to keep covering them.
 @visibleForTesting
 bool showTechnicalControls = false;
 
-/// Shape the sound of one instrument by touching the pad and see its mist
-/// react.
+/// Shape the sound of one instrument on the radar and see its mist react.
 class InstrumentPanel extends StatefulWidget {
   const InstrumentPanel({super.key, required this.viewModel});
 
@@ -176,7 +177,7 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                                   ? 'Sound is not available right now. The '
                                         'editor still works; try Play again.'
                                   : 'Sound is not available right now. The '
-                                        'pad still works; try again.',
+                                        'shape still works; try again.',
                               key: const Key('instrument-sound-note'),
                               style: TextStyle(
                                 color: available
@@ -190,38 +191,8 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: Space.lg),
-                  DesignPanel(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          vm.startsNewSound
-                              ? 'Touching the pad starts a new sound. The '
-                                    'saved one stays until you save.'
-                              : 'Touch the pad to shape the sound. It plays '
-                                    'when you lift your finger.',
-                          key: const Key('instrument-pad-hint'),
-                          style: TextStyle(
-                            color: tokens.muted,
-                            fontSize: TypeScale.caption,
-                          ),
-                        ),
-                        const SizedBox(height: Space.md),
-                        Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 360),
-                            child: InstrumentPad(
-                              key: const Key('instrument-pad'),
-                              point: vm.padPoint,
-                              onPoint: vm.setPadPoint,
-                              onRelease: vm.releasePad,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: Space.xl),
+                  _RadarSection(viewModel: vm),
                   const SizedBox(height: Space.lg),
                   if (showTechnicalControls) ...[
                     const SizedBox(height: Space.lg),
@@ -428,6 +399,76 @@ int _sliderToMs(double t) =>
     (Instrument.minDecayMs *
             math.pow(Instrument.maxDecayMs / Instrument.minDecayMs, t))
         .round();
+
+/// The radar, the preset chips under it and one or two plain lines.
+class _RadarSection extends StatelessWidget {
+  const _RadarSection({required this.viewModel});
+
+  final InstrumentEditorViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = viewModel;
+    final tokens = SynesterraTokens.of(context);
+    final muted = roundText(
+      context,
+      color: tokens.muted,
+      size: TypeScale.caption,
+    );
+    final active = vm.activePreset;
+    return Column(
+      children: [
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: InstrumentRadar(
+              key: const Key('instrument-radar'),
+              traits: vm.traits,
+              color:
+                  tokens.layerColors[buildMistSpec(vm.instrument).colorIndex],
+              preset: active?.name,
+              onChanged: vm.setTrait,
+              onRelease: vm.releaseTraits,
+            ),
+          ),
+        ),
+        const SizedBox(height: Space.lg),
+        Wrap(
+          key: const Key('instrument-radar-presets'),
+          alignment: WrapAlignment.center,
+          spacing: Space.sm,
+          runSpacing: Space.sm,
+          children: [
+            for (final preset in vm.presets)
+              TactileChip(
+                key: Key('radar-preset-${preset.name.replaceAll(' ', '-')}'),
+                label: preset.name,
+                selected: preset == active,
+                onPressed: () => vm.applyPreset(preset),
+              ),
+          ],
+        ),
+        const SizedBox(height: Space.lg),
+        Text(
+          'Drag a point out for more, in for less. '
+          'It plays when you let go.',
+          key: const Key('instrument-radar-hint'),
+          textAlign: TextAlign.center,
+          style: muted,
+        ),
+        if (vm.approximated) ...[
+          const SizedBox(height: Space.xs),
+          Text(
+            'The shape is an approximation of this sound.',
+            key: const Key('instrument-radar-approximate'),
+            textAlign: TextAlign.center,
+            style: muted,
+          ),
+        ],
+      ],
+    );
+  }
+}
 
 class _StartFrom extends StatelessWidget {
   const _StartFrom({required this.onPick});

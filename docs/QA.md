@@ -317,7 +317,7 @@ Notes for this Windows host:
 - JDK 17 or 21 only (see [testing](testing.md)).
 - `D:\SynesterraBuilds\synesterra-pad-debug.apk` may exist, but it is the older pad-only build from before the loop, arrangement and Learn work. Do not install it for this review; build a fresh APK from the commit under review and write that commit hash in the result.
 - Use the phone, not the agent emulator `emulator-5560`, for anything about sound or feel. Never touch the Founder's emulator `emulator-5554`.
-- The app opens on the start screen and never plays by itself. The first sound comes from the first Play, a touch on the pad or a test sound.
+- The app opens on the start screen and never plays by itself. The first sound comes from the first Play, a lift on the instrument radar, a preset chip or a test sound.
 
 ### What ran and what it proves
 
@@ -337,7 +337,7 @@ The flows, as tests:
 1. Create a loop (the Editor's Loop panel starts from a copy of the factory 3:2 loop), switch a step off, Play (the engine starts only then; the first cycle holds exactly the edited number of hits), Stop (engine stopped, nothing pending, silent), Save, go to Library > Loops, tap the loop (it opens in place with the saved step state and name).
 2. Arrangement: add 3:2 and 5:4 from the picker, Save, Play. The section index is 0, moves to 1 after the first section's repeats (timed on the fake clock), both layers of the second loop sound, the sequence ends by itself and the engine stops. The saved arrangement opens from Library > Arrangements.
 3. Learn: open "Four against five (5:4)", press Try it. The Loop panel shows that lesson's 5:4 loop as an unsaved copy (the library is still empty), and it plays 5 + 4 hits in the first cycle.
-4. Instrument: shape a sound on the pad, name it, Save (the lift sounds once, the saved harmonics are the ones under the finger), choose it as layer 1's sound in a loop, Play. The engine renders a buffer for exactly that sound and nothing is reported as a missing sound.
+4. Instrument: shape a sound on the radar (drag a vertex, or pick a preset chip), name it, Save (the lift sounds once, the saved sound is the shape on screen), choose it as layer 1's sound in a loop, Play. The engine renders a buffer for exactly that sound and nothing is reported as a missing sound.
 
 Mutation check of the flow tests: with the loop save made a no-op, with the sequence reporting section 0 forever, and with Try it ignoring the lesson's loop, the matching flow failed each time (one mutation per run, then reverted).
 
@@ -371,7 +371,7 @@ Each flow: steps, then the expected result. Anything else is a finding; write it
 
 **Flow 4. Shape an instrument and use it**
 
-1. Editor > Instrument tab. Touch and drag on the pad, then lift the finger. Expected: the picture changes under the finger and the sound plays once on lift.
+1. Editor > Instrument tab. Drag a vertex of the radar along its axis, then lift the finger. Expected: only that point moves, the mist changes under the finger and the sound plays once on lift. Tap a preset chip: the shape glides there and the sound plays once.
 2. Type a name, Save. Expected: "Saved".
 3. Loop tab, tap a layer's sound, pick your instrument, Play. Expected: that layer uses your sound (not silence, not "missing sound").
 4. Library > Instruments lists it.
@@ -389,7 +389,7 @@ Listening:
 - Editing while playing (steps, instrument, note): is the restart at the cycle start audible as a glitch, or clean?
 - Volume slider while playing: does the change arrive quickly or only after a moment? (Known: only new hits follow it.)
 - Arrangement: the change from one section to the next is on the beat, with no gap and no double hit. Which tempo does the second section play at? (See known issues.)
-- Pad: does the left-right and up-down range sound useful; does a lifted finger always produce a sound; are the corners usable, or too harsh or too quiet? Are the anchors ("warm drone", "airy pad", "bass", "guitar", "click") where you expect them?
+- Radar: does each axis change what its name says (Brightness, Fullness, Warmth, Air, Softness, Length), from the centre to the edge, in a useful range; is any end too harsh or too quiet? Does every lift sound exactly once, and does an interrupted drag (a call, a system swipe) stay silent? Do the presets ("neutral", "warm drone", "airy pad", "bass", "guitar", "click") sound like their names, and does the glide to them feel calm?
 - The three factory instruments (wood, bell, sine) at the default pitches: balanced against each other? Any clipping or distortion with 3-4 layers?
 - Interruptions: an incoming call or notification, the screen lock, switching apps. Does sound stop safely, and does Play start cleanly afterwards?
 
@@ -399,7 +399,7 @@ Looking:
 - Does the playhead restart cleanly at the cycle boundary (no jump back)?
 - Polygons: 3:2 shows a triangle and a line, 5:4 a pentagon and a square.
 - Lesson text: clear and short enough? Any word you had to guess? Does each picture show what the sentence says? Does Try it do what you expect?
-- Touch targets: can you hit the steps, the tempo and the transport buttons with a thumb without mistakes? Is the pad large enough?
+- Touch targets: can you hit the steps, the tempo and the transport buttons with a thumb without mistakes? Is the radar large enough, and are its points easy to grab?
 - The "Saved" message after saving an instrument: does it cover the Play button for a moment? (Seen in a widget test layout; unconfirmed on a real screen.)
 - Leaving the Editor with unsaved work asks first, and Save, Discard and Cancel behave.
 - Colours and text legible in the chosen palette, also in bright light.
@@ -420,8 +420,8 @@ Editor, Library and Learn (#98, #101-#103):
 
 - The Learn tab calls `stop()` without an owner, so it can stop playback that an Editor panel started, if both are active at once (coordinator note on #101).
 - "Repeat all" is not persisted: arrangement JSON v1 has no field for it, so it resets when the arrangement is reopened.
-- The pad position is not persisted: opening a saved instrument hides the dot until the next touch.
-- The pad anchors and the factory instruments are untuned (Founder `musical` gate, out of scope for v0).
+- Trait values are not saved: opening a saved instrument shows its shape read back approximately, with a plain note when it is only an approximation.
+- The trait mapping, the radar presets and the factory instruments are untuned (Founder `musical` gate, out of scope for v0).
 - File saves are atomic against a failed write, but there is no directory fsync after the rename, so a power loss right after Save could lose that save (the previous file stays intact; #98).
 - Tags, the test note and the presets were removed from the instrument panel when the pad arrived (#86). Issue #87 tracks it. [instrument pad](product/instrument-pad.md) and [instrument](modules/instrument.md) still say the pad UI is out of scope, which is outdated; #87 corrects them (this task did not change them).
 - Out of v0 by decision: true sustain and the drone, noise and pitch-drop instruments, export and import, sharing, free/pro, iOS, localization (#25), background playback.
@@ -442,7 +442,7 @@ Evidence level: device (listening and looking only; no timing numbers)
 | 1 Loop: create, play, save, reopen | | | |
 | 2 Arrangement of two loops | | | |
 | 3 Learn and Try it | | | |
-| 4 Pad instrument in a loop | | | |
+| 4 Radar instrument in a loop | | | |
 
 Listening answers (one line per bullet above):
 Looking answers (one line per bullet above):
