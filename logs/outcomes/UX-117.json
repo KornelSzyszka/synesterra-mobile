@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-13",
+  "task": "UX-117",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-opus-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": "Haptic tick on snap not wired: decision 0001 R5 forbids package:flutter/services.dart in lib/features and lib/shared (the architecture test fails), and lib/app is outside the write scope. The wheel exposes onStep and InstrumentPanel(stepFeedback:); a follow-up must wire a platform feedback port in lib/app.",
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Acceptance criteria met; one Founder decision only half met: the light haptic tick on snap is exposed as a hook (InstrumentRadar.onStep, InstrumentPanel.stepFeedback) but not wired, because decision 0001 R5 forbids package:flutter/services.dart in the UI and lib/app is outside the write scope (see escalation). Geometry tests written before the geometry; screen tests written alongside the implementation (red seen on real defects: stacked handles, the hidden technical-control tests after the neutral start, Save below the fold on a short screen, fixed by fitting the wheel to the height). Hidden technical-control tests keep the Sine via a test-only newInstrumentTemplate. docs/modules/instrument.md and docs/QA.md still mention preset chips (outside write scope). App tests ran in a soloud-free scratch copy; feel, sound and frame rate on a phone not judged; Codex review pending."
+}
