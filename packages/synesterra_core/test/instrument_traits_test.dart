@@ -108,25 +108,95 @@ void main() {
       expect(traits({TraitIds.air: 0.7}), isNot(InstrumentTraits.neutral()));
     });
 
-    test('a custom definition list adds and removes traits', () {
+    test('an added trait drives the recipe through its declared effect', () {
       const custom = [
-        TraitDefinition(id: 'sparkle', label: 'Sparkle', defaultValue: 0.2),
         TraitDefinition(
-          id: TraitIds.brightness,
-          label: 'Light',
-          defaultValue: 0.7,
+          id: 'sparkle',
+          label: 'Sparkle',
+          defaultValue: 0.5,
+          effect: TraitEffect.highShelf,
+        ),
+        TraitDefinition(
+          id: 'depth',
+          label: 'Depth',
+          defaultValue: 0.5,
+          effect: TraitEffect.lowShelf,
         ),
       ];
-      final t = InstrumentTraits({'sparkle': 0.9}, definitions: custom);
-      expect(t['sparkle'], 0.9);
-      expect(t[TraitIds.brightness], 0.7);
-      expect(() => t[TraitIds.air], throwsArgumentError);
+      final low = InstrumentTraits({'sparkle': 0.0}, definitions: custom);
+      final high = InstrumentTraits({'sparkle': 1.0}, definitions: custom);
+      expect(build(low).eq.highDb, -InstrumentEq.maxGainDb);
+      expect(build(high).eq.highDb, InstrumentEq.maxGainDb);
+      expect(build(high).eq.lowDb, 0);
+      expect(() => high[TraitIds.air], throwsArgumentError);
       expect(
         () => InstrumentTraits({TraitIds.air: 0.5}, definitions: custom),
         throwsArgumentError,
       );
-      // A trait without a definition has no effect: the neutral value is used.
-      expect(build(t).eq.lowDb, 0);
+      // And the inverse reads it back from the same axis.
+      final back = traitsForInstrument(build(high), definitions: custom);
+      expect(back['sparkle'], 1);
+      expect(back['depth'], 0.5);
+    });
+
+    test('a removed trait leaves its recipe field neutral', () {
+      final withoutAir = [
+        for (final d in defaultTraitDefinitions)
+          if (d.id != TraitIds.air) d,
+      ];
+      final t = InstrumentTraits({
+        TraitIds.warmth: 1.0,
+      }, definitions: withoutAir);
+      expect(build(t).eq.highDb, 0);
+      expect(build(t).eq.lowDb, InstrumentEq.maxGainDb);
+    });
+
+    test('two definitions with the same effect are rejected', () {
+      const twice = [
+        TraitDefinition(
+          id: 'a',
+          label: 'A',
+          defaultValue: 0.5,
+          effect: TraitEffect.attack,
+        ),
+        TraitDefinition(
+          id: 'b',
+          label: 'B',
+          defaultValue: 0.5,
+          effect: TraitEffect.attack,
+        ),
+      ];
+      expect(
+        () => InstrumentTraits(const {}, definitions: twice),
+        throwsArgumentError,
+      );
+    });
+
+    test('equality and hash include the definitions', () {
+      final reordered = InstrumentTraits(
+        const {},
+        definitions: defaultTraitDefinitions.reversed.toList(),
+      );
+      expect(reordered, isNot(InstrumentTraits.neutral()));
+      final relabeled = InstrumentTraits(
+        const {},
+        definitions: [
+          const TraitDefinition(
+            id: TraitIds.brightness,
+            label: 'Light',
+            defaultValue: 0.5,
+            effect: TraitEffect.harmonicTilt,
+          ),
+          ...defaultTraitDefinitions.skip(1),
+        ],
+      );
+      expect(relabeled, isNot(InstrumentTraits.neutral()));
+      final same = InstrumentTraits(
+        const {},
+        definitions: List.of(defaultTraitDefinitions),
+      );
+      expect(same, InstrumentTraits.neutral());
+      expect(same.hashCode, InstrumentTraits.neutral().hashCode);
     });
   });
 
@@ -347,7 +417,7 @@ void main() {
     // The stated bound: every trait within this distance after a round trip.
     // Brightness is only observable from two or more harmonics, so its check
     // starts at fullness 0.1.
-    const tolerance = 0.025;
+    const tolerance = 0.02;
 
     test('round trip stays within the tolerance for in-range vectors', () {
       var worst = 0.0;
@@ -363,10 +433,21 @@ void main() {
       expect(worst, greaterThan(0), reason: 'the inverse is not exact');
     });
 
-    test('a single harmonic reads as neutral brightness', () {
-      final back = traitsForInstrument(build(traits({TraitIds.fullness: 0})));
-      expect(back[TraitIds.brightness], 0.5);
-      expect(back[TraitIds.fullness], 0);
+    test('brightness reads neutral below fullness 0.1', () {
+      for (final fullness in [0.0, 0.01, 0.03, 0.05, 0.08, 0.099]) {
+        for (final brightness in [0.0, 0.3, 1.0]) {
+          final back = traitsForInstrument(
+            build(
+              traits({
+                TraitIds.fullness: fullness,
+                TraitIds.brightness: brightness,
+              }),
+            ),
+          );
+          expect(back[TraitIds.brightness], 0.5, reason: '$fullness');
+          expect((back[TraitIds.fullness] - fullness).abs(), lessThan(0.02));
+        }
+      }
     });
 
     test('factory instruments and pad anchors map to in-range traits', () {

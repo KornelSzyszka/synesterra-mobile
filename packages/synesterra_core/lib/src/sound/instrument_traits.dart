@@ -9,10 +9,11 @@ import 'instrument.dart';
 /// [Instrument]; [traitsForInstrument] is an approximate inverse, so a saved or
 /// factory instrument can be shown on the chart. The recipe and its JSON do not
 /// change. The traits are data ([defaultTraitDefinitions]); the mapping reads
-/// the well-known ids in [TraitIds] and ignores traits it does not know.
+/// each trait's [TraitEffect], so an added trait drives its recipe field and a
+/// removed one leaves that field neutral.
 /// See `docs/modules/instrument.md` (Traits).
 
-/// The ids the mapping understands.
+/// The ids of the default traits (any id may be used in a custom list).
 abstract final class TraitIds {
   static const brightness = 'brightness';
   static const fullness = 'fullness';
@@ -22,13 +23,37 @@ abstract final class TraitIds {
   static const length = 'length';
 }
 
+/// The recipe field a trait drives. This is what makes a definition
+/// data-driven: a new trait picks one of these effects and needs no code.
+enum TraitEffect {
+  /// Tilt of the harmonic amplitudes, dark (0) to bright (1).
+  harmonicTilt,
+
+  /// How many harmonics are present, 1..32.
+  harmonicCount,
+
+  /// Low shelf EQ gain, -12..+12 dB.
+  lowShelf,
+
+  /// High shelf EQ gain, -12..+12 dB.
+  highShelf,
+
+  /// Attack time, hard (0) to soft (1).
+  attack,
+
+  /// Decay time, short (0) to long (1).
+  decay,
+}
+
 /// One axis of the radar chart: a stable [id], a user-facing English [label]
-/// (localization comes later) and the value on the neutral shape.
+/// (localization comes later), the value on the neutral shape and the
+/// recipe field it drives ([effect]).
 class TraitDefinition {
   const TraitDefinition({
     required this.id,
     required this.label,
     required this.defaultValue,
+    required this.effect,
   });
 
   final String id;
@@ -36,6 +61,18 @@ class TraitDefinition {
 
   /// 0..1.
   final double defaultValue;
+  final TraitEffect effect;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TraitDefinition &&
+      id == other.id &&
+      label == other.label &&
+      defaultValue == other.defaultValue &&
+      effect == other.effect;
+
+  @override
+  int get hashCode => Object.hash(id, label, defaultValue, effect);
 }
 
 /// The default six traits (coordinator proposal, **untuned**; the Founder may
@@ -45,12 +82,38 @@ const List<TraitDefinition> defaultTraitDefinitions = [
     id: TraitIds.brightness,
     label: 'Brightness',
     defaultValue: 0.5,
+    effect: TraitEffect.harmonicTilt,
   ),
-  TraitDefinition(id: TraitIds.fullness, label: 'Fullness', defaultValue: 0.5),
-  TraitDefinition(id: TraitIds.warmth, label: 'Warmth', defaultValue: 0.5),
-  TraitDefinition(id: TraitIds.air, label: 'Air', defaultValue: 0.5),
-  TraitDefinition(id: TraitIds.softness, label: 'Softness', defaultValue: 0.5),
-  TraitDefinition(id: TraitIds.length, label: 'Length', defaultValue: 0.5),
+  TraitDefinition(
+    id: TraitIds.fullness,
+    label: 'Fullness',
+    defaultValue: 0.5,
+    effect: TraitEffect.harmonicCount,
+  ),
+  TraitDefinition(
+    id: TraitIds.warmth,
+    label: 'Warmth',
+    defaultValue: 0.5,
+    effect: TraitEffect.lowShelf,
+  ),
+  TraitDefinition(
+    id: TraitIds.air,
+    label: 'Air',
+    defaultValue: 0.5,
+    effect: TraitEffect.highShelf,
+  ),
+  TraitDefinition(
+    id: TraitIds.softness,
+    label: 'Softness',
+    defaultValue: 0.5,
+    effect: TraitEffect.attack,
+  ),
+  TraitDefinition(
+    id: TraitIds.length,
+    label: 'Length',
+    defaultValue: 0.5,
+    effect: TraitEffect.decay,
+  ),
 ];
 
 /// Immutable, validated trait values: one number 0..1 per definition.
@@ -74,9 +137,17 @@ class InstrumentTraits {
     List<TraitDefinition> definitions,
   ) {
     final known = <String>{};
+    final effects = <TraitEffect>{};
     for (final definition in definitions) {
       if (!known.add(definition.id)) {
         throw ArgumentError.value(definition.id, 'definitions', 'repeated id');
+      }
+      if (!effects.add(definition.effect)) {
+        throw ArgumentError.value(
+          definition.effect,
+          'definitions',
+          'two traits drive the same effect',
+        );
       }
       _checkValue(definition.id, definition.defaultValue);
     }
@@ -113,14 +184,27 @@ class InstrumentTraits {
     return value;
   }
 
+  /// The value of the trait that drives [effect], or null when no active
+  /// definition has that effect.
+  double? valueFor(TraitEffect effect) {
+    for (final definition in definitions) {
+      if (definition.effect == effect) return values[definition.id];
+    }
+    return null;
+  }
+
   /// A copy with [changes] applied (validated like the constructor).
   InstrumentTraits withValues(Map<String, double> changes) =>
       InstrumentTraits({...values, ...changes}, definitions: definitions);
 
   @override
   bool operator ==(Object other) {
-    if (other is! InstrumentTraits || other.values.length != values.length) {
+    if (other is! InstrumentTraits ||
+        other.definitions.length != definitions.length) {
       return false;
+    }
+    for (var i = 0; i < definitions.length; i++) {
+      if (other.definitions[i] != definitions[i]) return false;
     }
     for (final entry in values.entries) {
       if (other.values[entry.key] != entry.value) return false;
@@ -129,9 +213,10 @@ class InstrumentTraits {
   }
 
   @override
-  int get hashCode => Object.hashAll([
-    for (final entry in values.entries) Object.hash(entry.key, entry.value),
-  ]);
+  int get hashCode => Object.hash(
+    Object.hashAll(definitions),
+    Object.hashAll([for (final d in definitions) values[d.id]]),
+  );
 
   @override
   String toString() => 'InstrumentTraits($values)';
@@ -148,7 +233,7 @@ class TraitPreset {
 // ---------------------------------------------------------------------------
 // Mapping constants. All **untuned**; tune by ear (`musical` gate).
 
-/// Value used for a trait the active definitions do not have.
+/// Value used for an effect no active trait drives.
 const double _neutralValue = 0.5;
 
 /// Harmonic amplitude falls like `k^-slope` (k = 1 is the fundamental). The
@@ -162,8 +247,12 @@ const double _darkSlope = 2.0;
 const double _presenceThreshold = 1e-4;
 
 /// Attack: `attackMs = c * (exp(s * ln(1 + 500 / c)) - 1)`, rounded. The offset
-/// `c` keeps one whole millisecond below ~0.025 of the softness range.
-const double _attackOffsetMs = 5.0;
+/// `c` keeps one whole millisecond below ~0.008 of the softness range.
+const double _attackOffsetMs = 20.0;
+
+/// Below this fullness (fewer than about four harmonics) brightness is not
+/// observable and reads as neutral.
+const double _brightnessMinFullness = 0.1;
 
 double _slope(double brightness) => _darkSlope * (1 - brightness);
 
@@ -213,13 +302,13 @@ Instrument instrumentForTraits(
   required String name,
   List<String> tags = const [],
 }) {
-  double value(String traitId) => traits.values[traitId] ?? _neutralValue;
+  double value(TraitEffect effect) => traits.valueFor(effect) ?? _neutralValue;
 
   const gain = InstrumentEq.maxGainDb;
   final attack =
       _attackOffsetMs *
       (exp(
-            value(TraitIds.softness) *
+            value(TraitEffect.attack) *
                 log(1 + Instrument.maxAttackMs / _attackOffsetMs),
           ) -
           1);
@@ -227,21 +316,21 @@ Instrument instrumentForTraits(
       Instrument.minDecayMs *
       pow(
         Instrument.maxDecayMs / Instrument.minDecayMs,
-        value(TraitIds.length),
+        value(TraitEffect.decay),
       );
   return Instrument(
     id: id,
     name: name,
     tags: tags,
     harmonics: _harmonics(
-      value(TraitIds.brightness),
-      _count(value(TraitIds.fullness)),
+      value(TraitEffect.harmonicTilt),
+      _count(value(TraitEffect.harmonicCount)),
     ),
     attackMs: attack.round().clamp(0, Instrument.maxAttackMs),
     decayMs: decay.round().clamp(Instrument.minDecayMs, Instrument.maxDecayMs),
     eq: InstrumentEq(
-      lowDb: (value(TraitIds.warmth) * 2 - 1) * gain,
-      highDb: (value(TraitIds.air) * 2 - 1) * gain,
+      lowDb: (value(TraitEffect.lowShelf) * 2 - 1) * gain,
+      highDb: (value(TraitEffect.highShelf) * 2 - 1) * gain,
     ),
   );
 }
@@ -256,20 +345,21 @@ Instrument instrumentForTraits(
 ///   forward mapping, its fraction is recovered from the measured slope.
 /// - **Brightness**: the amplitude-weighted harmonic centroid
 ///   `sum(k * a_k) / sum(a_k)` is matched by bisection against the centroid the
-///   forward mapping gives for the measured count. With a single harmonic the
-///   centroid cannot move, so brightness reads as 0.5.
+///   forward mapping gives for the measured count. Below fullness 0.1 the
+///   centroid barely moves, so brightness reads as 0.5.
 /// - **Warmth** and **Air**: the low and high shelf gains over +-12 dB.
 /// - **Softness**: the attack on the same exponential scale as the forward
 ///   mapping.
 /// - **Length**: the decay on the same exponential scale.
 ///
 /// Error bound (tested): for an instrument made by [instrumentForTraits], every
-/// measured trait is within 0.025 of the original. Brightness is excluded below
-/// fullness 0.1 (fewer than about four harmonics), where it is not observable.
+/// measured trait is within 0.02 of the original (worst measured case below).
+/// Below fullness 0.1 (fewer than about four harmonics) brightness is not
+/// observable and always reads 0.5; it is excluded from the bound there.
 /// For other recipes (factory instruments, hand-drawn spectra) the result is
 /// the nearest reading of each quantity, not a promise that
-/// [instrumentForTraits] gives the same sound back. Traits in [definitions]
-/// that this function cannot measure keep their default.
+/// [instrumentForTraits] gives the same sound back. Each trait is
+/// measured by its [TraitEffect], so renamed or added traits read back too.
 InstrumentTraits traitsForInstrument(
   Instrument instrument, {
   List<TraitDefinition> definitions = defaultTraitDefinitions,
@@ -304,7 +394,7 @@ InstrumentTraits traitsForInstrument(
   );
 
   var brightness = 0.5;
-  if (last > 1) {
+  if (fullness >= _brightnessMinFullness) {
     final target = _centroid(harmonics);
     var lo = 0.0;
     var hi = 1.0;
@@ -320,24 +410,21 @@ InstrumentTraits traitsForInstrument(
   }
 
   const gain = InstrumentEq.maxGainDb;
-  final measured = <String, double>{
-    TraitIds.brightness: brightness,
-    TraitIds.fullness: fullness,
-    TraitIds.warmth: (instrument.eq.lowDb / gain + 1) / 2,
-    TraitIds.air: (instrument.eq.highDb / gain + 1) / 2,
-    TraitIds.softness:
+  final measured = <TraitEffect, double>{
+    TraitEffect.harmonicTilt: brightness,
+    TraitEffect.harmonicCount: fullness,
+    TraitEffect.lowShelf: (instrument.eq.lowDb / gain + 1) / 2,
+    TraitEffect.highShelf: (instrument.eq.highDb / gain + 1) / 2,
+    TraitEffect.attack:
         log(1 + instrument.attackMs / _attackOffsetMs) /
         log(1 + Instrument.maxAttackMs / _attackOffsetMs),
-    TraitIds.length:
+    TraitEffect.decay:
         log(instrument.decayMs / Instrument.minDecayMs) /
         log(Instrument.maxDecayMs / Instrument.minDecayMs),
   };
   return InstrumentTraits({
     for (final definition in definitions)
-      definition.id: (measured[definition.id] ?? definition.defaultValue).clamp(
-        0.0,
-        1.0,
-      ),
+      definition.id: (measured[definition.effect]!).clamp(0.0, 1.0),
   }, definitions: definitions);
 }
 
