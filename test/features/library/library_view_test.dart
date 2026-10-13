@@ -327,6 +327,12 @@ void main() {
   testWidgets('each instrument card shows a small radar of its traits', (
     tester,
   ) async {
+    // The round cards are taller than the old tiles; a taller screen keeps
+    // all four on screen, as before.
+    tester.view
+      ..devicePixelRatio = 1
+      ..physicalSize = const Size(800, 1400);
+    addTearDown(tester.view.reset);
     final alpha = mine('a', 'Alpha');
     await pumpLibrary(tester, InMemoryInstrumentLibraryRepository([alpha]));
     final shapes = tester
