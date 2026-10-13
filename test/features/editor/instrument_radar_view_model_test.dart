@@ -53,7 +53,11 @@ void main() {
     expect(vm.traits[TraitIds.warmth], 0.9);
     for (final definition in defaultTraitDefinitions) {
       if (definition.id == TraitIds.warmth) continue;
-      expect(vm.traits[definition.id], before[definition.id], reason: '$id');
+      expect(
+        vm.traits[definition.id],
+        before[definition.id],
+        reason: definition.id,
+      );
     }
     expect(
       vm.instrument,
