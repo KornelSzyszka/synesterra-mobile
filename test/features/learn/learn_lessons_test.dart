@@ -99,12 +99,35 @@ void main() {
     expect(chaining.sections.length, inInclusiveRange(2, 3));
   });
 
-  test('the pad lesson loop uses three different instruments and pitches', () {
-    final loop = learnLessons
-        .firstWhere((l) => l.id == 'shaping-a-sound')
-        .loop!;
-    final layers = loop.document.scenes.first.layers;
-    expect(layers.map((l) => l.instrumentId).toSet(), hasLength(3));
-    expect(layers.map((l) => l.pitch).toSet(), hasLength(3));
+  test('the shaping lesson explains the radar in plain words, not the old '
+      'pad', () {
+    final lesson = learnLessons.firstWhere((l) => l.id == 'shaping-a-sound');
+    final text = [lesson.teaser, ...lesson.sentences].join(' ');
+    final words = RegExp(r'[a-z]+')
+        .allMatches(text.toLowerCase())
+        .map((m) => m.group(0));
+    expect(words, isNot(contains('pad')));
+    expect(words, isNot(contains('dot')));
+    expect(text, contains('shape'));
+    expect(text, contains('out for more'));
+    expect(text, contains('in for less'));
+    for (final trait in const ['bright', 'full', 'soft', 'long']) {
+      expect(text.toLowerCase(), contains(trait), reason: trait);
+    }
+    for (final technical in const ['harmonic', 'attack', 'decay', 'eq']) {
+      expect(words, isNot(contains(technical)), reason: technical);
+    }
   });
+
+  test(
+    'the shaping lesson loop uses three different instruments and pitches',
+    () {
+      final loop = learnLessons
+          .firstWhere((l) => l.id == 'shaping-a-sound')
+          .loop!;
+      final layers = loop.document.scenes.first.layers;
+      expect(layers.map((l) => l.instrumentId).toSet(), hasLength(3));
+      expect(layers.map((l) => l.pitch).toSet(), hasLength(3));
+    },
+  );
 }
