@@ -176,6 +176,34 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('disabled components carry no tap effect at all', (tester) async {
+    await _pump(
+      tester,
+      const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TactileChip(label: 'bell', onPressed: null),
+          TactileChip(label: 'Keep', primary: true, onPressed: null),
+          RoundIconButton(
+            icon: Icons.stop_rounded,
+            label: 'Stop',
+            onPressed: null,
+          ),
+          RoundActionButton(
+            icon: Icons.play_arrow_rounded,
+            label: 'Play',
+            onPressed: null,
+          ),
+          SizedBox(width: 300, child: OrganicCard(child: Text('Bell'))),
+        ],
+      ),
+    );
+    expect(find.byType(TapGlitch), findsNothing);
+    await tester.tap(find.text('bell'), warnIfMissed: false);
+    await tester.pump();
+    expect(_flashing(tester), isFalse);
+  });
+
   testWidgets('a disabled action is announced as disabled and does not flash', (
     tester,
   ) async {

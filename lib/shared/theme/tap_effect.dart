@@ -38,8 +38,13 @@ const glitchDuration = Duration(milliseconds: 220);
 /// No more than three flashes per second anywhere on screen (WCAG 2.3.1).
 const maxFlashesPerSecond = 3;
 
-/// The shortest gap between two flashes.
-const minFlashInterval = Duration(microseconds: 1000000 ~/ maxFlashesPerSecond);
+/// The shortest gap between two flash starts, rounded up by a microsecond:
+/// [maxFlashesPerSecond] gaps then span more than one second, so no window of
+/// one second can hold more than [maxFlashesPerSecond] flashes (with the gap
+/// rounded down, starts at 0, 333 333, 666 666 and 999 999 us would be four).
+const minFlashInterval = Duration(
+  microseconds: 1000000 ~/ maxFlashesPerSecond + 1,
+);
 
 /// True when a flash may start at [now], given the start of the previous one.
 /// A retrigger sooner than [minFlashInterval] is rejected: the tap still

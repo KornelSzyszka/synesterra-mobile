@@ -149,6 +149,38 @@ void main() {
     });
   });
 
+  group('flash limit boundary', () {
+    test(
+      'a fourth flash inside one second is rejected, to the microsecond',
+      () {
+        final gate = FlashGate();
+        expect(gate.tryFlash(Duration.zero), isTrue);
+        expect(gate.tryFlash(minFlashInterval), isTrue);
+        expect(gate.tryFlash(minFlashInterval * 2), isTrue);
+        // Three gaps of the minimum span more than one second.
+        expect(minFlashInterval * 3, greaterThan(const Duration(seconds: 1)));
+        final gate2 = FlashGate();
+        for (final us in [0, 333333, 666666]) {
+          gate2.tryFlash(Duration(microseconds: us));
+        }
+        expect(gate2.tryFlash(const Duration(microseconds: 999999)), isFalse);
+      },
+    );
+
+    test('no window of one second ever holds more than three flashes', () {
+      // Retries every microsecond step of 1/7 ms for two seconds.
+      final gate = FlashGate();
+      final starts = <int>[];
+      for (var us = 0; us < 2000000; us += 143) {
+        if (gate.tryFlash(Duration(microseconds: us))) starts.add(us);
+      }
+      for (var i = 0; i + 3 < starts.length; i++) {
+        expect(starts[i + 3] - starts[i], greaterThan(1000000));
+      }
+      expect(starts.length, greaterThanOrEqualTo(6));
+    });
+  });
+
   group('FlashGate clock', () {
     test('tryFlashNow uses the gate clock', () {
       var now = Duration.zero;

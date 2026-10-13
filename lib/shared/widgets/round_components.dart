@@ -165,6 +165,11 @@ class _PressableState extends State<_Pressable> {
   }
 }
 
+/// [child] with the tap effect in [shape] when [enabled]; a disabled control
+/// has no effect at all.
+Widget _glitchIf(bool enabled, RoundShape shape, Widget child) =>
+    enabled ? TapGlitch(shape: shape, child: child) : child;
+
 /// A disc of [size] centred in a square of at least 48 dp, with the glitch.
 Widget _orb({
   required double size,
@@ -320,9 +325,10 @@ class TactileChip extends StatelessWidget {
         height: 48,
         child: Center(
           widthFactor: 1,
-          child: TapGlitch(
-            shape: RoundShape.capsule,
-            child: RoundSurface(
+          child: _glitchIf(
+            onPressed != null,
+            RoundShape.capsule,
+            RoundSurface(
               style: style,
               pressed: pressed,
               padding: const EdgeInsets.symmetric(
