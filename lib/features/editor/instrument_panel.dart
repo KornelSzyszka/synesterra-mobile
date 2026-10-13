@@ -14,16 +14,18 @@ import 'instrument_radar_view.dart';
 import 'spectrum_editor.dart';
 import 'test_sound.dart';
 import '../../shared/theme/design_scale.dart';
+import '../../shared/theme/ground_palette.dart';
 import '../../shared/widgets/round_components.dart';
 
 /// The spectrum, envelope, EQ, tags, test sound and factory-preset controls
-/// stay in the code but are not reachable: in v1 the radar is the whole
-/// experience (Founder, 2026-10-04 and 2026-10-13). Only tests turn them on,
-/// to keep covering them.
+/// stay in the code but are not reachable: in v1 the stat wheel is the whole
+/// experience (Founder, 2026-10-04, 2026-10-13 and 2026-10-14). Only tests
+/// turn them on, to keep covering them.
 @visibleForTesting
 bool showTechnicalControls = false;
 
-/// Shape the sound of one instrument on the radar and see its mist react.
+/// Shape the sound of one instrument on the stat wheel: the name above it
+/// (tap to rename), the wheel, and one round Save button. Nothing else.
 class InstrumentPanel extends StatefulWidget {
   const InstrumentPanel({super.key, required this.viewModel});
 
@@ -93,6 +95,9 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
     return ListenableBuilder(
       listenable: vm,
       builder: (context, _) {
+        if (!showTechnicalControls) {
+          return _WheelBody(viewModel: vm, name: _name);
+        }
         final tokens = SynesterraTokens.of(context);
         final instrument = vm.instrument;
         final nameField = TextField(
@@ -126,75 +131,67 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
               child: ListView(
                 padding: const EdgeInsets.all(Space.lg),
                 children: [
-                  if (showTechnicalControls) ...[
-                    _StartFrom(onPick: _startFrom),
-                    const SizedBox(height: Space.md),
-                  ],
+                  _StartFrom(onPick: _startFrom),
+                  const SizedBox(height: Space.md),
                   DesignPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (showTechnicalControls) ...[
-                          nameField,
-                          const SizedBox(height: Space.lg),
-                          Center(child: mist(220)),
-                        ] else
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: nameField),
-                              const SizedBox(width: Space.lg),
-                              mist(96),
-                            ],
-                          ),
-                        if (showTechnicalControls) ...[
-                          const SizedBox(height: Space.sm),
-                          Center(
-                            child: FilledButton.icon(
-                              key: const Key('instrument-play'),
-                              style: FilledButton.styleFrom(
-                                minimumSize: const Size(120, 48),
-                              ),
-                              onPressed: vm.audition,
-                              icon: const Icon(Icons.play_arrow),
-                              label: const Text('Play'),
+                        nameField,
+                        const SizedBox(height: Space.lg),
+                        Center(child: mist(220)),
+                        const SizedBox(height: Space.sm),
+                        Center(
+                          child: FilledButton.icon(
+                            key: const Key('instrument-play'),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(120, 48),
                             ),
+                            onPressed: vm.audition,
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text('Play'),
                           ),
-                        ],
+                        ),
                         const SizedBox(height: Space.sm),
                         ValueListenableBuilder<bool>(
                           valueListenable: vm.soundAvailable,
-                          builder: (context, available, _) {
-                            if (available && !showTechnicalControls) {
-                              return const SizedBox.shrink();
-                            }
-                            return Text(
-                              available
-                                  ? 'Tap the mist or press Play to hear it. '
-                                        'The sound updates when you let go of '
-                                        'a control.'
-                                  : showTechnicalControls
-                                  ? 'Sound is not available right now. The '
-                                        'editor still works; try Play again.'
-                                  : 'Sound is not available right now. The '
-                                        'shape still works; try again.',
-                              key: const Key('instrument-sound-note'),
-                              style: TextStyle(
-                                color: available
-                                    ? tokens.muted
-                                    : Theme.of(context).colorScheme.error,
-                                fontSize: TypeScale.caption,
-                              ),
-                            );
-                          },
+                          builder: (context, available, _) => Text(
+                            available
+                                ? 'Tap the mist or press Play to hear it. '
+                                      'The sound updates when you let go of '
+                                      'a control.'
+                                : 'Sound is not available right now. The '
+                                      'editor still works; try Play again.',
+                            key: const Key('instrument-sound-note'),
+                            style: TextStyle(
+                              color: available
+                                  ? tokens.muted
+                                  : Theme.of(context).colorScheme.error,
+                              fontSize: TypeScale.caption,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: Space.xl),
-                  _RadarSection(viewModel: vm),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: InstrumentRadar(
+                        key: const Key('instrument-radar'),
+                        traits: vm.traits,
+                        color:
+                            tokens.layerColors[buildMistSpec(instrument)
+                                .colorIndex],
+                        approximated: vm.approximated,
+                        onChanged: vm.setTrait,
+                        onRelease: vm.releaseTraits,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: Space.lg),
-                  if (showTechnicalControls) ...[
+                  ...[
                     const SizedBox(height: Space.lg),
                     _TestSoundPanel(viewModel: vm),
                     const SizedBox(height: Space.lg),
@@ -400,72 +397,169 @@ int _sliderToMs(double t) =>
             math.pow(Instrument.maxDecayMs / Instrument.minDecayMs, t))
         .round();
 
-/// The radar, the preset chips under it and one or two plain lines.
-class _RadarSection extends StatelessWidget {
-  const _RadarSection({required this.viewModel});
+/// The panel in v1: the name (tap to rename), the stat wheel with the
+/// instrument's mist glowing behind it, and one round Save button. A line
+/// appears only when something is wrong (no sound, or saving failed); the
+/// rest (how to use it, that a shape approximates a sound) is said to
+/// screen readers only.
+class _WheelBody extends StatelessWidget {
+  const _WheelBody({required this.viewModel, required this.name});
 
   final InstrumentEditorViewModel viewModel;
+  final TextEditingController name;
+
+  Future<void> _save(BuildContext context) async {
+    final vm = viewModel;
+    final messenger = ScaffoldMessenger.of(context);
+    final saved = vm.name;
+    if (await vm.save()) {
+      messenger.showSnackBar(SnackBar(content: Text('Saved "$saved"')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final vm = viewModel;
     final tokens = SynesterraTokens.of(context);
-    final muted = roundText(
+    final palette = groundOf(context);
+    final spec = buildMistSpec(vm.instrument);
+    final error = roundText(
       context,
-      color: tokens.muted,
+      color: Theme.of(context).colorScheme.error,
       size: TypeScale.caption,
     );
-    final active = vm.activePreset;
-    return Column(
-      children: [
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: InstrumentRadar(
-              key: const Key('instrument-radar'),
-              traits: vm.traits,
-              color:
-                  tokens.layerColors[buildMistSpec(vm.instrument).colorIndex],
-              preset: active?.name,
-              onChanged: vm.setTrait,
-              onRelease: vm.releaseTraits,
-            ),
-          ),
+    final saveError = vm.saveError;
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          Space.lg,
+          Space.md,
+          Space.lg,
+          Space.xl,
         ),
-        const SizedBox(height: Space.lg),
-        Wrap(
-          key: const Key('instrument-radar-presets'),
-          alignment: WrapAlignment.center,
-          spacing: Space.sm,
-          runSpacing: Space.sm,
-          children: [
-            for (final preset in vm.presets)
-              TactileChip(
-                key: Key('radar-preset-${preset.name.replaceAll(' ', '-')}'),
-                label: preset.name,
-                selected: preset == active,
-                onPressed: () => vm.applyPreset(preset),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: math.max(0, constraints.maxHeight - Space.md - Space.xl),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _NameTitle(
+                controller: name,
+                valid: vm.nameValid,
+                onChanged: vm.setName,
+                palette: palette,
               ),
-          ],
-        ),
-        const SizedBox(height: Space.lg),
-        Text(
-          'Drag a point out for more, in for less. '
-          'It plays when you let go.',
-          key: const Key('instrument-radar-hint'),
-          textAlign: TextAlign.center,
-          style: muted,
-        ),
-        if (vm.approximated) ...[
-          const SizedBox(height: Space.xs),
-          Text(
-            'The shape is an approximation of this sound.',
-            key: const Key('instrument-radar-approximate'),
-            textAlign: TextAlign.center,
-            style: muted,
+              const SizedBox(height: Space.sm),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: InstrumentRadar(
+                  key: const Key('instrument-radar'),
+                  traits: vm.traits,
+                  color: tokens.layerColors[spec.colorIndex],
+                  glow: spec,
+                  preset: vm.activePreset?.name,
+                  approximated: vm.approximated,
+                  onChanged: vm.setTrait,
+                  onRelease: vm.releaseTraits,
+                ),
+              ),
+              ValueListenableBuilder<bool>(
+                valueListenable: vm.soundAvailable,
+                builder: (context, available, _) => available
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(top: Space.sm),
+                        child: Text(
+                          'Sound is not available right now. The shape '
+                          'still works; try again.',
+                          key: const Key('instrument-sound-note'),
+                          textAlign: TextAlign.center,
+                          style: error,
+                        ),
+                      ),
+              ),
+              if (saveError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: Space.sm),
+                  child: Text(
+                    saveError,
+                    key: const Key('instrument-save-error'),
+                    textAlign: TextAlign.center,
+                    style: error,
+                  ),
+                ),
+              const SizedBox(height: Space.lg),
+              RoundActionButton(
+                key: const Key('instrument-save'),
+                icon: Icons.check_rounded,
+                label: 'Save',
+                onPressed: vm.canSave ? () => _save(context) : null,
+              ),
+            ],
           ),
-        ],
-      ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The instrument's name above the wheel, written like a title. Tapping it
+/// edits it in place; an underline shows only while editing.
+class _NameTitle extends StatelessWidget {
+  const _NameTitle({
+    required this.controller,
+    required this.valid,
+    required this.onChanged,
+    required this.palette,
+  });
+
+  final TextEditingController controller;
+  final bool valid;
+  final ValueChanged<String> onChanged;
+  final GroundPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 320),
+      child: Semantics(
+        label: 'Name',
+        child: TextField(
+          key: const Key('instrument-name'),
+          controller: controller,
+          onChanged: onChanged,
+          maxLength: Instrument.maxNameLength,
+          textAlign: TextAlign.center,
+          textInputAction: TextInputAction.done,
+          textCapitalization: TextCapitalization.sentences,
+          cursorColor: palette.accent,
+          buildCounter: (
+            _, {
+            required currentLength,
+            required isFocused,
+            maxLength,
+          }) => null,
+          style: roundText(
+            context,
+            color: palette.text,
+            size: TypeScale.title,
+            serif: true,
+          ),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(
+                color: palette.accent.withValues(alpha: .6),
+              ),
+            ),
+            errorText: valid ? null : 'Give it a name',
+          ),
+        ),
+      ),
     );
   }
 }

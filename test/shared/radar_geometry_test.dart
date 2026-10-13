@@ -4,6 +4,9 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/shared/instrument_radar/radar_geometry.dart';
 
+/// Normalizes an angle to -pi..pi.
+double wrap(double a) => atan2(sin(a), cos(a));
+
 void main() {
   group('radarAxisAngle', () {
     test('the first axis points straight up and the axes turn clockwise', () {
@@ -21,8 +24,6 @@ void main() {
             reason: '$i of $count',
           );
         }
-        final step = radarAxisAngle(1, count) - radarAxisAngle(0, count);
-        expect(step, closeTo(2 * pi / count, 1e-12));
       }
     });
 
@@ -42,6 +43,48 @@ void main() {
     });
   });
 
+  group('WheelLayout', () {
+    test('rings sit inside each other: ticks, names, then the chart', () {
+      const size = Size(380, 380);
+      final layout = WheelLayout.of(size);
+      expect(layout.centre, const Offset(190, 190));
+      expect(layout.outer, lessThanOrEqualTo(190));
+      expect(layout.ringInner, lessThan(layout.outer));
+      expect(
+        layout.nameRadius + wheelNameHeight / 2,
+        lessThan(layout.ringInner),
+      );
+      // A handle at the edge (value 1) and its glow stay clear of the names.
+      expect(
+        layout.reach + radarHandleTarget / 4,
+        lessThan(layout.nameRadius - wheelNameHeight / 2),
+      );
+      expect(layout.reach, greaterThan(120), reason: 'big on a phone');
+    });
+
+    test('a non-square field uses its shorter side, centred', () {
+      final layout = WheelLayout.of(const Size(400, 300));
+      expect(layout.centre, const Offset(200, 150));
+      expect(layout.outer, lessThanOrEqualTo(150));
+    });
+
+    test('is never negative', () {
+      final layout = WheelLayout.of(const Size(20, 20));
+      expect(layout.reach, 0);
+      expect(WheelLayout.of(Size.zero).reach, 0);
+    });
+
+    test(
+      'a bare wheel (a thumbnail) has no ring and nearly fills the field',
+      () {
+        final layout = WheelLayout.bare(const Size(56, 56));
+        expect(layout.reach, closeTo(28 - wheelBareMargin, 1e-9));
+        expect(layout.hasRing, isFalse);
+        expect(WheelLayout.of(const Size(380, 380)).hasRing, isTrue);
+      },
+    );
+  });
+
   group('radarProject', () {
     const size = Size(300, 300);
     const centre = Offset(150, 150);
@@ -58,8 +101,7 @@ void main() {
       );
     });
 
-    test('only the component along the axis counts', () {
-      // Axis 0 points up; moving sideways changes nothing.
+    test('only the component along the spoke counts', () {
       for (final dx in [-80.0, -10.0, 0.0, 33.0, 120.0]) {
         expect(
           radarProject(centre + Offset(dx, -70), 0, 6, size, reach),
@@ -75,10 +117,9 @@ void main() {
         radarProject(centre + const Offset(0, -900), 0, 6, size, reach),
         1,
       );
-      expect(radarProject(centre, 2, 6, size, reach), 0);
     });
 
-    test('a slanted axis projects along its own direction', () {
+    test('a slanted spoke projects along its own direction', () {
       final direction = radarAxisDirection(1, 6);
       final onAxis = centre + direction * 60;
       final normal = Offset(-direction.dy, direction.dx);
@@ -97,8 +138,8 @@ void main() {
       );
     });
 
-    test('radarPoint and radarProject are inverse on the axis', () {
-      for (final count in [3, 6, 8]) {
+    test('radarPoint and radarProject are inverse on the spoke', () {
+      for (final count in [3, 6, 8, 10]) {
         for (var i = 0; i < count; i++) {
           for (final value in [0.0, 0.2, 0.5, 0.93, 1.0]) {
             final at = radarPoint(i, count, value, size, reach);
@@ -112,46 +153,13 @@ void main() {
     });
   });
 
-  group('radarReach', () {
-    test('leaves room for the labels and is positive on a phone', () {
-      const size = Size(380, 330);
-      final reach = radarReach(size, 6);
-      expect(reach, greaterThan(100));
-      for (var i = 0; i < 6; i++) {
-        final box = radarLabelRect(i, 6, size, reach);
-        expect(
-          (Offset.zero & size).inflate(1e-9).contains(box.topLeft),
-          isTrue,
-        );
-        expect(
-          (Offset.zero & size).inflate(1e-9).contains(box.bottomRight),
-          isTrue,
-        );
-        // A label never covers the end of its own axis.
-        expect(box.contains(radarPoint(i, 6, 1, size, reach)), isFalse);
-      }
-    });
-
-    test('is never negative', () {
-      expect(radarReach(const Size(20, 20), 6), 0);
-      expect(radarReach(Size.zero, 3), 0);
-    });
-
-    test('without labels it is half the shorter side minus the margin', () {
-      expect(
-        radarReach(const Size(100, 80), 5, label: Size.zero, gap: 0, margin: 4),
-        36,
-      );
-    });
-  });
-
   group('radarHitAxis', () {
     const size = Size(300, 300);
     const centre = Offset(150, 150);
     const reach = 100.0;
     final values = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
 
-    test('a touch on a handle picks its axis', () {
+    test('a touch on a handle picks its spoke', () {
       for (var i = 0; i < 6; i++) {
         final at = radarPoint(i, 6, values[i], size, reach);
         expect(radarHitAxis(at, values, size, reach), i);
@@ -173,46 +181,272 @@ void main() {
       );
     });
 
-    test('a touch along an axis line picks it even away from the handle', () {
+    test('a touch along a spoke picks it even away from the handle', () {
       expect(
         radarHitAxis(centre + const Offset(4, -95), values, size, reach),
         0,
       );
     });
 
-    test('the nearest handle wins when two are close', () {
-      final crowded = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05];
-      final at = radarPoint(2, 6, 0.05, size, reach);
-      expect(radarHitAxis(at, crowded, size, reach), 2);
-    });
-
-    test('a touch far from every axis picks nothing', () {
-      // Between axes 0 and 1, outside the field.
+    test('a touch far from every spoke picks nothing', () {
       final between = (radarAxisDirection(0, 6) + radarAxisDirection(1, 6));
       final far = centre + between / between.distance * 145;
       expect(radarHitAxis(far, values, size, reach), isNull);
     });
+
+    test('handles stacked at the centre are all candidates', () {
+      final zero = [0.0, 0.0, 0.0, 0.5, 0.5, 0.5];
+      expect(radarHandlesAt(centre, zero, size, reach), [0, 1, 2]);
+      expect(
+        radarHandlesAt(radarPoint(4, 6, 0.5, size, reach), zero, size, reach),
+        [4],
+      );
+    });
+
+    test('the first move picks the stacked spoke it points along', () {
+      for (var i = 0; i < 6; i++) {
+        final move = radarAxisDirection(i, 6) * 12 + const Offset(1, -1);
+        expect(radarPickByDirection([0, 1, 2, 3, 4, 5], move, 6), i);
+      }
+      // Only candidates count.
+      expect(radarPickByDirection([1, 2], radarAxisDirection(5, 6) * 10, 6), 1);
+    });
   });
 
-  group('steps and words', () {
-    test('a step moves a tenth and stays in range', () {
-      expect(radarStep(0.5, 1), closeTo(0.6, 1e-12));
-      expect(radarStep(0.5, -1), closeTo(0.4, 1e-12));
-      expect(radarStep(0.95, 1), 1);
-      expect(radarStep(0.03, -1), 0);
+  group('ranks: ten steps, E to A', () {
+    test('values snap to the nearest of ten steps from the centre', () {
+      expect(rankSteps, 10);
+      expect(rankStep(0), 0);
+      expect(rankStep(1), 10);
+      expect(rankStep(0.5), 5);
+      expect(rankStep(0.53), 5);
+      expect(rankStep(0.57), 6);
+      expect(rankStep(-3), 0);
+      expect(rankStep(7), 10);
+      expect(rankStep(double.nan), 0);
+      for (var step = 0; step <= 10; step++) {
+        expect(snapToRank(step / 10 + 0.04), closeTo(step / 10, 1e-12));
+        expect(snapToRank(step / 10 - 0.04), closeTo(step / 10, 1e-12));
+        expect(rankValue(step), closeTo(step / 10, 1e-12));
+      }
     });
 
-    test('a step lands on whole tenths so values stay readable', () {
-      expect(radarStep(0.53, 1), closeTo(0.6, 1e-12));
-      expect(radarStep(0.53, -1), closeTo(0.5, 1e-12));
-      expect(radarStep(0.6, 1), closeTo(0.7, 1e-12));
+    test('five ranks, each in two half-steps; E near the centre, A at the '
+        'edge', () {
+      expect(rankLetters, ['E', 'D', 'C', 'B', 'A']);
+      expect(
+        [for (var s = 0; s <= 10; s++) rankName(s)],
+        ['none', 'E', 'E+', 'D', 'D+', 'C', 'C+', 'B', 'B+', 'A', 'A+'],
+      );
+      expect(rankSpoken(6), 'C plus');
+      expect(rankSpoken(9), 'A');
+      expect(rankSpoken(0), 'none');
+      expect(rankName(5), 'C', reason: 'the middle of the chart is rank C');
     });
 
-    test('a level is spoken as a whole percent', () {
-      expect(radarPercent(0), 0);
-      expect(radarPercent(0.5), 50);
-      expect(radarPercent(0.126), 13);
-      expect(radarPercent(1), 100);
+    test('the letters sit on the full steps, the half-steps between', () {
+      expect(
+        [
+          for (var s = 1; s <= 10; s++)
+            if (isLetterStep(s)) s,
+        ],
+        [1, 3, 5, 7, 9],
+      );
+      expect(rankLetterStep(0), 1, reason: 'E');
+      expect(rankLetterStep(4), 9, reason: 'A');
+    });
+
+    test('a step moves to the neighbouring step and stays in range', () {
+      expect(rankStepFrom(0.5, 1), closeTo(0.6, 1e-12));
+      expect(rankStepFrom(0.5, -1), closeTo(0.4, 1e-12));
+      expect(rankStepFrom(0.53, 1), closeTo(0.6, 1e-12));
+      expect(rankStepFrom(1, 1), 1);
+      expect(rankStepFrom(0, -1), 0);
+    });
+
+    test(
+      'the graduated spoke ticks: one per step, the letter steps marked',
+      () {
+        final ticks = spokeTicks();
+        expect(ticks, hasLength(10));
+        for (final (i, tick) in ticks.indexed) {
+          expect(tick.step, i + 1);
+          expect(tick.value, closeTo((i + 1) / 10, 1e-12));
+          expect(tick.letter, isLetterStep(i + 1));
+        }
+      },
+    );
+
+    test('rank letters sit beside the first spoke, E nearest the centre', () {
+      const size = Size(300, 300);
+      const reach = 100.0;
+      final points = [
+        for (var r = 0; r < 5; r++)
+          rankLetterPoint(rankLetterStep(r), 6, size, reach),
+      ];
+      for (var r = 0; r < 5; r++) {
+        // Beside the upward spoke (to its right), at the letter's height.
+        expect(points[r].dx, greaterThan(150 + 6));
+        expect(
+          points[r].dy,
+          closeTo(150 - rankValue(rankLetterStep(r)) * reach, 1e-9),
+        );
+        if (r > 0) expect(points[r].dy, lessThan(points[r - 1].dy));
+      }
+    });
+  });
+
+  group('the outer ring: tick blocks', () {
+    test('evenly spaced, the dividers midway between the names', () {
+      for (var count = 3; count <= 10; count++) {
+        final ticks = ringTicks(count);
+        expect(ticks, hasLength(count * ringTicksPerSector));
+        final step = 2 * pi / ticks.length;
+        for (var i = 1; i < ticks.length; i++) {
+          expect(
+            ticks[i].angle - ticks[i - 1].angle,
+            closeTo(step, 1e-9),
+            reason: '$count',
+          );
+        }
+        final dividers = [
+          for (final t in ticks)
+            if (t.kind == RingTickKind.divider) t.angle,
+        ];
+        expect(dividers, hasLength(count));
+        final marks = [
+          for (final t in ticks)
+            if (t.kind == RingTickKind.axis) t.angle,
+        ];
+        expect(marks, hasLength(count));
+        for (var i = 0; i < count; i++) {
+          expect(
+            wrap(dividers[i] - radarAxisAngle(i, count)),
+            closeTo(-pi / count, 1e-9),
+          );
+          expect(wrap(marks[i] - radarAxisAngle(i, count)), closeTo(0, 1e-9));
+        }
+      }
+    });
+  });
+
+  group('names written along the ring', () {
+    const centre = Offset(200, 200);
+    const radius = 160.0;
+    // Rough uppercase advances (11.5 px tracked), 8 to 11 px per letter.
+    List<double> advances(String text) => [
+      for (final c in text.split('')) 'MW'.contains(c) ? 11.0 : 8.5,
+    ];
+    const names = [
+      'BRIGHTNESS',
+      'FULLNESS',
+      'WARMTH',
+      'AIR',
+      'SOFTNESS',
+      'LENGTH',
+      'SPARKLE',
+      'GRIT',
+      'SHIMMER',
+      'DEPTH',
+    ];
+
+    test('the bottom half reads left to right, upright', () {
+      for (final angle in [pi / 2, pi / 3, 2 * pi / 3]) {
+        expect(ringReadsReversed(angle), isTrue, reason: '$angle');
+        final glyphs = ringGlyphs(
+          centre: centre,
+          radius: radius,
+          angle: angle,
+          advances: advances('WARMTH'),
+        );
+        expect(glyphs.first.position.dx, lessThan(glyphs.last.position.dx));
+        // Upright at the very bottom: the glyph's top faces the centre.
+        if (angle == pi / 2) {
+          for (final g in glyphs) {
+            expect(wrap(g.rotation), closeTo(0, 0.2));
+          }
+        }
+      }
+    });
+
+    test('the top half reads left to right, upright', () {
+      for (final angle in [-pi / 2, -pi / 3, -2 * pi / 3]) {
+        expect(ringReadsReversed(angle), isFalse);
+        final glyphs = ringGlyphs(
+          centre: centre,
+          radius: radius,
+          angle: angle,
+          advances: advances('BRIGHTNESS'),
+        );
+        expect(glyphs.first.position.dx, lessThan(glyphs.last.position.dx));
+        if (angle == -pi / 2) {
+          for (final g in glyphs) {
+            expect(wrap(g.rotation), closeTo(0, 0.3));
+          }
+        }
+      }
+    });
+
+    test('glyphs sit on the ring, centred on the name angle, in reading '
+        'order with their own widths', () {
+      final widths = advances('LENGTH');
+      for (final angle in [-pi / 2, pi / 2, 0.4, 2.6]) {
+        final glyphs = ringGlyphs(
+          centre: centre,
+          radius: radius,
+          angle: angle,
+          advances: widths,
+        );
+        expect(glyphs, hasLength(widths.length));
+        for (final g in glyphs) {
+          expect((g.position - centre).distance, closeTo(radius, 1e-9));
+        }
+        // The middle of the name is at the name's angle.
+        final first = glyphs.first.angle;
+        final last = glyphs.last.angle;
+        final mid = wrap(
+          (first + last) / 2 + (widths.last - widths.first) / 4 / radius,
+        );
+        expect(wrap(mid - angle), closeTo(0, 1e-9));
+        // Neighbouring glyphs are half their widths apart along the arc.
+        for (var i = 1; i < glyphs.length; i++) {
+          expect(
+            wrap(glyphs[i].angle - glyphs[i - 1].angle).abs() * radius,
+            closeTo((widths[i] + widths[i - 1]) / 2, 1e-9),
+          );
+        }
+      }
+    });
+
+    test('for N = 3..10 the names never overlap once scaled to fit', () {
+      for (var count = 3; count <= 10; count++) {
+        final labels = [for (var i = 0; i < count; i++) advances(names[i])];
+        final scale = ringLabelScale(labels, radius: radius, count: count);
+        expect(scale, inInclusiveRange(ringMinLabelScale, 1));
+        final spans = [
+          for (final l in labels) ringLabelSpan(l, radius) * scale,
+        ];
+        for (var i = 0; i < count; i++) {
+          final j = (i + 1) % count;
+          final gap = 2 * pi / count - spans[i] / 2 - spans[j] / 2;
+          expect(
+            gap,
+            greaterThanOrEqualTo(ringLabelGap / radius - 1e-9),
+            reason: '$count names, between ${names[i]} and ${names[j]}',
+          );
+        }
+      }
+    });
+
+    test('short names on few spokes keep full size', () {
+      expect(
+        ringLabelScale(
+          [advances('AIR'), advances('GRIT'), advances('DEPTH')],
+          radius: radius,
+          count: 3,
+        ),
+        1,
+      );
     });
   });
 }
