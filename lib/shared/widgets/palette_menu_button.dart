@@ -20,6 +20,10 @@ class PaletteMenuButton extends StatelessWidget {
       initialValue: palette,
       onSelected: onPaletteChanged,
       itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: SynesterraPalette.graphite,
+          child: Text('Graphite'),
+        ),
         PopupMenuItem(value: SynesterraPalette.forest, child: Text('Forest')),
         PopupMenuItem(value: SynesterraPalette.autumn, child: Text('Autumn')),
         PopupMenuItem(

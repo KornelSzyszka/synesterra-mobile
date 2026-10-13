@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'design_scale.dart';
+import 'tap_effect.dart';
 
-enum SynesterraPalette { forest, autumn, highContrast }
+/// The colour palettes. [graphite] is the default (Founder, 2026-10-13).
+enum SynesterraPalette { graphite, forest, autumn, highContrast }
 
 @immutable
 class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
@@ -14,6 +16,7 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
     required this.border,
     required this.accent,
     required this.layerColors,
+    this.tapEffect = GlitchStrength.subtle,
   });
 
   final Color background;
@@ -23,6 +26,10 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
   final Color border;
   final Color accent;
   final List<Color> layerColors;
+
+  /// Visual language v2: how strongly a tap answers with the glitch flash
+  /// (`TapGlitch`). Optional, so every existing caller keeps working.
+  final GlitchStrength tapEffect;
 
   /// A step above [surface]: dialogs, snackbars and tooltips.
   Color get surfaceHigh => Color.lerp(surface, text, .1)!;
@@ -64,6 +71,19 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
     Color(0xffc5a27d),
   ];
 
+  /// The default: neutral dark greys with a very slight cool tint, and the
+  /// launcher icon's gold as the one accent, so the app and the icon belong
+  /// together.
+  static const graphite = SynesterraTokens(
+    background: Color(0xff121417),
+    surface: Color(0xff1c1f24),
+    text: Color(0xffe6e7ea),
+    muted: Color(0xffa8adb5),
+    border: Color(0xff2c3036),
+    accent: Color(0xffe4b46a),
+    layerColors: layerPalette,
+  );
+
   static const forest = SynesterraTokens(
     background: Color(0xff111512),
     surface: Color(0xff1a1f1a),
@@ -96,6 +116,7 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
 
   static SynesterraTokens forPalette(SynesterraPalette palette) =>
       switch (palette) {
+        SynesterraPalette.graphite => graphite,
         SynesterraPalette.forest => forest,
         SynesterraPalette.autumn => autumn,
         SynesterraPalette.highContrast => highContrast,
@@ -113,6 +134,7 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
     Color? border,
     Color? accent,
     List<Color>? layerColors,
+    GlitchStrength? tapEffect,
   }) => SynesterraTokens(
     background: background ?? this.background,
     surface: surface ?? this.surface,
@@ -121,6 +143,7 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
     border: border ?? this.border,
     accent: accent ?? this.accent,
     layerColors: layerColors ?? this.layerColors,
+    tapEffect: tapEffect ?? this.tapEffect,
   );
 
   @override
@@ -137,6 +160,7 @@ class SynesterraTokens extends ThemeExtension<SynesterraTokens> {
         for (var i = 0; i < layerColors.length; i++)
           Color.lerp(layerColors[i], other.layerColors[i], t)!,
       ],
+      tapEffect: t < .5 ? tapEffect : other.tapEffect,
     );
   }
 }

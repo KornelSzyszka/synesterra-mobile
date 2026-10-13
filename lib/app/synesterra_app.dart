@@ -54,7 +54,7 @@ class SynesterraApp extends StatefulWidget {
 }
 
 class _SynesterraAppState extends State<SynesterraApp> {
-  SynesterraPalette _palette = SynesterraPalette.forest;
+  SynesterraPalette _palette = SynesterraPalette.graphite;
   late final LoopLibraryRepository _loops =
       widget.loopLibrary ?? InMemoryLoopLibraryRepository();
   late final ArrangementLibraryRepository _arrangements =
