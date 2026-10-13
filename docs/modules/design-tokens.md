@@ -37,9 +37,10 @@ one BPM. The UI timer only handles input and does not drive playback timing.
 ## Visual language v2: round shapes, three surfaces (UX-112)
 
 The shared foundation for the blend of glass, organic and material chosen after the
-design lab (Founder, 2026-10-13). Screens adopt it in later tasks; until then they
-keep the rounded-rectangle `Radii` (kept as they are, with a note in
-`design_scale.dart`). Code: `lib/shared/theme/` and `lib/shared/widgets/`.
+design lab (Founder, 2026-10-13). The Start screen, Library, Learn and the rhythm
+screen use it since UX-118 (see *Screens on v2* below); the Editor, Loop and
+Arrangement screens still keep the rounded-rectangle `Radii` until their own task.
+Code: `lib/shared/theme/` and `lib/shared/widgets/`.
 
 ### Tokens (`lib/shared/theme/`)
 
@@ -94,6 +95,54 @@ checks 4.5:1 for every surface style, all four palettes, both grounds and all tw
 instrument colours. Two rules come from that test: on dark glass, secondary text is
 pulled toward the main text, and on a selected (gold-tinted) tactile surface there
 is no dim second tier at all.
+
+### Screens on v2 (UX-118)
+
+Start, Library (three tabs), Learn (list and lesson pages) and the rhythm screen
+are built from the components above. Screenshots (dark Graphite, 412 x 892 dp,
+rendered by a widget test with real fonts, drift at rest):
+[Start](../assets/v2/start.png), Library
+[instruments](../assets/v2/library-instruments.png),
+[loops](../assets/v2/library-loops.png),
+[arrangements](../assets/v2/library-arrangements.png), Learn
+[list](../assets/v2/learn-list.png) and [a lesson](../assets/v2/learn-lesson.png).
+
+- **Frame**: `RoundScreen` (`lib/shared/widgets/round_screen.dart`) is the
+  `Scaffold` of each screen: the Graphite ground with a very faint gold and cool
+  mist (`MistGroundPainter`, behind a `RepaintBoundary`), an `AmbientScope` for
+  the round components and a round header (a `RoundIconButton` Back with the
+  tooltip "Back", the title as a heading, actions). `RoundSectionHeader` is the
+  small gold light with a tracked-out label.
+- **Start**: the title with a soft glow (a long press still opens the design lab in
+  debug builds) and three round entries: Editor is the large gold blob (the one
+  element that breathes), Library and Learn are two organic blobs, the second one a
+  little lower. Each is one semantics node, "Title. Description".
+- **Library**: `LibraryTabs` is a tray with the chosen tab raised (like
+  `RoundSegmented`, but with the existing keys, driving the `DefaultTabController`
+  so swiping still works); tags are `TactileChip`s; items are `OrganicCard`s with a
+  glass disc (the instrument's mist, or an icon) and round icon buttons for Rename,
+  Delete and Copy; an empty list is a glass capsule with a small gold light.
+- **Learn**: a lesson is an `OrganicCard` with its number on a glass disc; a lesson
+  page has a round Back, the text on the ground, and `TactileChip`s for Hear it,
+  Run picture and Try it (gold). The picture itself (`LoopView`) is shared and is
+  unchanged.
+- **Rhythm**: each layer is an `OrganicCard` with a number badge ringed in the layer
+  colour, a round on/off `RoundIconButton` (labelled "Layer N", selected while on)
+  instead of a `Switch`, and the existing `NumberStepper`s. The layer colour is data
+  and stays on a ring and a disc, so text contrast does not depend on it.
+- **Defaults**: `HomeView` and `RhythmView` default to `SynesterraPalette.graphite`
+  (the app default); the rhythm screen's own menu was replaced by `PaletteMenuButton`.
+- **Motion**: only the Start screen drifts (`RoundScreen(drifts: true)`), and only
+  as one breath: a single pass over `driftPeriod` that ends where it began, started
+  when the screen appears and again by a touch. A screen at rest schedules no
+  frames. This also keeps `pumpAndSettle` and the tutorial-clock test (which counts
+  tickers) valid. Library, Learn and the rhythm screen have no ticker of their own.
+  The tap effect is the shared `TapGlitch` with the default strength `subtle`; under
+  reduce motion it is a fade and nothing drifts.
+- **Left as they were**: dialogs (rename, unsaved changes), snack bars, the popup
+  palette menu, `NumberStepper` and the `LoopView` and `ArrangementStrip` controls
+  are still the Material or first-language look; they belong to the theme and to the
+  Editor/Loop tasks.
 
 ## Colour roles: three colours, 60 : 30 : 10
 
