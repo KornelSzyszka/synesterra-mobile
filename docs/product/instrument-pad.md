@@ -1,5 +1,7 @@
 # Instrument pad
 
+> **Superseded (2026-10-13, issue #111):** a radar chart of traits replaces the circular pad; see [instrument traits](../modules/instrument.md#traits). The five characters survive as trait presets. This page and `instrument_pad.dart` stay until the radar screen replaces the pad in a follow-up task.
+
 Status: rules decided by the Founder on 2026-10-04 (issue #83); the pad became a **circle** on 2026-10-13 (issue #107, after the first phone test). Anchor values and the centre recipe are **untuned**. Code: `packages/synesterra_core/lib/src/sound/instrument_pad.dart` (mapping), `lib/features/editor/instrument_pad_view.dart` and `pad_geometry.dart` (UI). Module notes: [instrument](../modules/instrument.md).
 
 ## Principles (Founder)

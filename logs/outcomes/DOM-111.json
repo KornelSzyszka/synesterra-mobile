@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-13",
+  "task": "DOM-111",
+  "prefix": "DOM",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "unit",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "traits model, forward mapping, approximate inverse, presets; tests written first (red: type not found), one fix of the inverse for 2 harmonics after a failing round trip; review pending; mapping untuned"
+}
