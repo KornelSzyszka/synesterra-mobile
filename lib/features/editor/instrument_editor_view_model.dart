@@ -11,10 +11,12 @@ import 'test_sound.dart';
 /// Edits one instrument. The draft is always a valid [Instrument]; only the
 /// name can be temporarily invalid, and then saving is disabled.
 class InstrumentEditorViewModel extends ChangeNotifier {
-  /// [instrument] null starts a new instrument. A factory preset or a copy is
-  /// passed with [existing] false and gets a fresh id, so presets are never
-  /// overwritten. A library instrument is passed with [existing] true and
-  /// keeps its id.
+  /// [instrument] null starts a new instrument from the plain Sine, which sits
+  /// exactly on the radar. A factory preset or a copy is passed with
+  /// [existing] false and gets a fresh id, so presets are never overwritten. A library instrument is passed with
+  /// [existing] true and keeps its id. An opened instrument is never changed
+  /// until the user moves the radar (and stored only on Save); the radar shows
+  /// its approximate traits ([traitsForInstrument]).
   InstrumentEditorViewModel({
     required this._repository,
     required this._audition,
@@ -37,6 +39,7 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     _persisted = existing;
     _name = draft.name;
     _brightness = fitBrightness(draft.harmonics);
+    _readTraits();
   }
 
   final InstrumentLibraryRepository _repository;
@@ -57,7 +60,8 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   late String _name;
   late double _brightness;
   int _selectedHarmonic = 0;
-  PadPoint? _padPoint;
+  late InstrumentTraits _traits;
+  late bool _approximated;
   bool _saving = false;
   String? _saveError;
 
@@ -135,33 +139,94 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   /// False when the engine could not start or play.
   ValueListenable<bool> get soundAvailable => _audition.available;
 
-  /// Where the user last touched the pad; null until the first touch. An
-  /// instrument cannot be placed on the pad (there is no inverse mapping), so
-  /// a new, copied or opened instrument has no point yet.
-  PadPoint? get padPoint => _padPoint;
+  /// The radar shape: one value 0..1 per trait.
+  InstrumentTraits get traits => _traits;
 
-  /// An instrument from the library is open and the pad has not been touched:
-  /// the first touch starts a new sound, which replaces the saved one only
-  /// when the user saves.
-  bool get startsNewSound => _persisted && _padPoint == null;
+  /// The shape is only an approximation of the current sound: the instrument
+  /// was made another way (a factory sound, an older pad sound) and has not
+  /// been moved on the radar yet. Moving any trait replaces the whole recipe
+  /// with the mapped one, which clears this.
+  bool get approximated => _approximated;
 
-  /// Replaces the recipe with the one for [point], keeping id, name and tags.
-  /// Never plays sound; the pad calls [releasePad] when the finger lifts.
-  void setPadPoint(PadPoint point) {
-    if (point == _padPoint) return;
-    _padPoint = point;
-    final next = instrumentForPad(
-      point,
+  /// The named shapes offered as quick starts.
+  List<TraitPreset> get presets => traitPresets;
+
+  /// The preset whose shape is the current one, if any.
+  TraitPreset? get activePreset {
+    for (final preset in traitPresets) {
+      if (preset.traits == _traits) return preset;
+    }
+    return null;
+  }
+
+  /// Sets trait [id] to [value] (clamped to 0..1) and replaces the recipe with
+  /// the mapped one, keeping id, name and tags. Never plays sound; the radar
+  /// calls [releaseTraits] when the finger lifts.
+  void setTrait(String id, double value) {
+    final next = _traits.withValues({id: _clampDouble(value, 0, 1)});
+    if (next == _traits && !_approximated) return;
+    _applyTraits(next);
+  }
+
+  /// The finger left the radar: plays the sound once.
+  void releaseTraits() => audition();
+
+  /// Moves every trait to [preset] and plays the sound once.
+  void applyPreset(TraitPreset preset) {
+    _applyTraits(preset.traits);
+    audition();
+  }
+
+  void _applyTraits(InstrumentTraits next) {
+    _traits = next;
+    _approximated = false;
+    final mapped = instrumentForTraits(
+      next,
       id: _draft.id,
       name: _draft.name,
       tags: _draft.tags,
     );
-    _brightness = fitBrightness(next.harmonics);
-    _edit((_) => next);
+    _brightness = fitBrightness(mapped.harmonics);
+    _edit((_) => mapped);
   }
 
-  /// The finger left the pad: plays the sound once.
-  void releasePad() => audition();
+  /// Reads the radar shape from the draft after it was replaced from outside
+  /// the radar (opened, copied, or edited with the technical controls).
+  ///
+  /// The inverse is approximate, so an instrument that sounds like a preset
+  /// shows that preset's exact shape.
+  void _readTraits() {
+    Instrument mapped(InstrumentTraits traits) =>
+        instrumentForTraits(traits, id: _draft.id, name: _draft.name);
+    for (final preset in traitPresets) {
+      if (_sameSound(_draft, mapped(preset.traits))) {
+        _traits = preset.traits;
+        _approximated = false;
+        return;
+      }
+    }
+    _traits = traitsForInstrument(_draft);
+    _approximated = !_sameSound(_draft, mapped(_traits));
+  }
+
+  /// [a] and [b] sound the same for the radar note: the harmonics agree
+  /// within 0.01, the times within a millisecond and the EQ within 0.1 dB. An
+  /// instrument made on the radar reads back this closely unless it is very
+  /// thin (below about four harmonics its brightness cannot be read back, see
+  /// `traitsForInstrument`).
+  static bool _sameSound(Instrument a, Instrument b) {
+    final count = math.max(a.harmonics.length, b.harmonics.length);
+    for (var k = 0; k < count; k++) {
+      final x = k < a.harmonics.length ? a.harmonics[k] : 0.0;
+      final y = k < b.harmonics.length ? b.harmonics[k] : 0.0;
+      if ((x - y).abs() > 0.01) return false;
+    }
+    return (a.attackMs - b.attackMs).abs() <= 1 &&
+        (a.decayMs - b.decayMs).abs() <= 1 &&
+        (a.eq.lowDb - b.eq.lowDb).abs() <= 0.1 &&
+        (a.eq.midDb - b.eq.midDb).abs() <= 0.1 &&
+        (a.eq.highDb - b.eq.highDb).abs() <= 0.1;
+  }
 
   /// Plays the instrument now. Only ever called from a user gesture.
   void audition() {
@@ -212,12 +277,14 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     // Cutting off every bar that had sound would leave silence.
     if (!next.any((amplitude) => amplitude > 0)) next[0] = 1;
     _selectedHarmonic = _clampInt(_selectedHarmonic, 0, clamped - 1);
-    _edit((i) => i.copyWith(harmonics: next));
+    _editSound((i) => i.copyWith(harmonics: next));
   }
 
   void setBrightness(double value) {
     _brightness = _clampDouble(value, 0, 1);
-    _edit((i) => i.copyWith(harmonics: spectrum(harmonicCount, _brightness)));
+    _editSound(
+      (i) => i.copyWith(harmonics: spectrum(harmonicCount, _brightness)),
+    );
   }
 
   /// The harmonic (0-based) the user touched last; the editor shows it for
@@ -256,7 +323,7 @@ class InstrumentEditorViewModel extends ChangeNotifier {
       next.length - 1,
     );
     _brightness = fitBrightness(next);
-    _edit((i) => i.copyWith(harmonics: next));
+    _editSound((i) => i.copyWith(harmonics: next));
   }
 
   void setHarmonic(int index, double amplitude) =>
@@ -266,22 +333,22 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   void applySpectrumShape(SpectrumShape shape) {
     final next = shape.amplitudes(harmonicCount);
     _brightness = fitBrightness(next);
-    _edit((i) => i.copyWith(harmonics: next));
+    _editSound((i) => i.copyWith(harmonics: next));
   }
 
   /// Sets attack and decay in one change, for the envelope graph.
-  void setEnvelope(int attackMs, int decayMs) => _edit(
+  void setEnvelope(int attackMs, int decayMs) => _editSound(
     (i) => i.copyWith(
       attackMs: _clampInt(attackMs, 0, Instrument.maxAttackMs),
       decayMs: _clampInt(decayMs, Instrument.minDecayMs, Instrument.maxDecayMs),
     ),
   );
 
-  void setAttackMs(int ms) => _edit(
+  void setAttackMs(int ms) => _editSound(
     (i) => i.copyWith(attackMs: _clampInt(ms, 0, Instrument.maxAttackMs)),
   );
 
-  void setDecayMs(int ms) => _edit(
+  void setDecayMs(int ms) => _editSound(
     (i) => i.copyWith(
       decayMs: _clampInt(ms, Instrument.minDecayMs, Instrument.maxDecayMs),
     ),
@@ -290,7 +357,7 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   void setEq({double? lowDb, double? midDb, double? highDb}) {
     double gain(double value) =>
         _clampDouble(value, -InstrumentEq.maxGainDb, InstrumentEq.maxGainDb);
-    _edit(
+    _editSound(
       (i) => i.copyWith(
         eq: i.eq.copyWith(
           lowDb: lowDb == null ? null : gain(lowDb),
@@ -306,15 +373,22 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     _draft = preset.copyWith(id: _newId());
     _baseline = _draft;
     _persisted = false;
-    _padPoint = null;
     _name = _draft.name;
     _brightness = fitBrightness(_draft.harmonics);
+    _readTraits();
     _saveError = null;
     notifyListeners();
   }
 
   void _edit(Instrument Function(Instrument) change) {
     _draft = change(_draft);
+    _changed();
+  }
+
+  /// An edit from the technical controls: the radar follows the new recipe.
+  void _editSound(Instrument Function(Instrument) change) {
+    _draft = change(_draft);
+    _readTraits();
     _changed();
   }
 
