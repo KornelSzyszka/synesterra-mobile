@@ -341,7 +341,7 @@ String _loopSummary(Loop loop) =>
     '${loop.bpm.round()} BPM';
 
 class _Note extends StatelessWidget {
-  const _Note(this.text, {super.key, required this.color});
+  const _Note(this.text, {required this.color});
 
   final String text;
   final Color color;
@@ -597,7 +597,8 @@ class _NumberOrb extends StatelessWidget {
           child: Text(
             number.toString().padLeft(2, '0'),
             style: TextStyle(
-              color: palette.accentText,
+              // Gold text fell below 4.5:1 on the lit card (Autumn).
+              color: textOn(context, SurfaceStyle.organic),
               fontFamily: SynesterraFonts.monospace(platform),
               fontFamilyFallback: SynesterraFonts.monospaceFallback(platform),
               fontSize: TypeScale.caption,

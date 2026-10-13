@@ -114,9 +114,36 @@ class ArrangementStripPainter extends CustomPainter {
   final SynesterraTokens tokens;
   final TextStyle labelStyle;
 
+  /// The top and bottom of a section's capsule.
+  static (Color, Color) capsuleStops(SynesterraTokens tokens) => (
+    Color.lerp(tokens.surface, Colors.white, .045)!,
+    Color.lerp(tokens.surface, Colors.black, .18)!,
+  );
+
+  /// Alpha of the gold progress over the current section.
+  static const progressAlpha = .24;
+
+  /// Every opaque colour a section's label can sit on: the capsule's
+  /// gradient and, for the [current] section, also the gold progress over
+  /// it. A missing section is skipped, so it is never current.
+  static List<Color> labelGrounds(
+    SynesterraTokens tokens, {
+    required bool current,
+  }) {
+    final (top, bottom) = capsuleStops(tokens);
+    final plain = [top, Color.lerp(top, bottom, .5)!, bottom];
+    return [
+      ...plain,
+      if (current)
+        for (final c in plain)
+          Color.alphaBlend(tokens.accent.withValues(alpha: progressAlpha), c),
+    ];
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     if (sections.isEmpty) return;
+    final (top, bottom) = capsuleStops(tokens);
     final position = source.value;
     final totalRepeats = sections.fold<int>(0, (sum, s) => sum + s.repeats);
     final room = size.width - Space.xs * (sections.length - 1);
@@ -145,10 +172,7 @@ class ArrangementStripPainter extends CustomPainter {
           ..shader = LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color.lerp(tokens.surface, Colors.white, .045)!,
-              Color.lerp(tokens.surface, Colors.black, .18)!,
-            ],
+            colors: [top, bottom],
           ).createShader(rect),
       );
       if (current) {
@@ -161,7 +185,7 @@ class ArrangementStripPainter extends CustomPainter {
             width * sectionProgress(position, section.repeats),
             size.height,
           ),
-          Paint()..color = tokens.accent.withValues(alpha: .24),
+          Paint()..color = tokens.accent.withValues(alpha: progressAlpha),
         );
         canvas.restore();
       }
@@ -181,9 +205,10 @@ class ArrangementStripPainter extends CustomPainter {
               '${(i + 1).toString().padLeft(2, '0')} ${section.label}'
               '${section.missing ? ' (missing)' : ''}\n×${section.repeats}',
           style: labelStyle.copyWith(
-            color: section.missing
-                ? tokens.muted
-                : (current ? tokens.accentText : tokens.text),
+            // The current section shows by its gold rim, fill and glow; its
+            // label stays in the text colour (gold text on the gold fill
+            // fell to 3.9:1 on Autumn).
+            color: section.missing ? tokens.muted : tokens.text,
           ),
         ),
         textDirection: TextDirection.ltr,

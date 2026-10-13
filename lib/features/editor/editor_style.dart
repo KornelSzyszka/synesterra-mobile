@@ -462,7 +462,8 @@ class _TactileCapsuleState extends State<TactileCapsule> {
 }
 
 /// A layer's number in a small round badge of its colour (identity is never
-/// colour alone).
+/// colour alone). The number is in the text colour: in the layer's own colour
+/// it fell below 4.5:1 on the lit organic card for some layer colours.
 class NumberBadge extends StatelessWidget {
   const NumberBadge({super.key, required this.number, required this.color});
 
@@ -480,7 +481,7 @@ class NumberBadge extends StatelessWidget {
           child: Text(
             number.toString().padLeft(2, '0'),
             style: TextStyle(
-              color: color,
+              color: textOn(context, SurfaceStyle.organic),
               fontFamily: SynesterraFonts.monospace(platform),
               fontFamilyFallback: SynesterraFonts.monospaceFallback(platform),
               fontSize: TypeScale.caption,
@@ -551,7 +552,8 @@ List<ContrastRule> editorTextRules(SynesterraTokens tokens, Color error) {
   add('tempo on tray', tokens.accent, tray, minimum: 3);
   // Transport: the note above it, the word under Play.
   add('play word on glass', s.mutedOn(SurfaceStyle.glass), glass);
-  add('error on glass', error, glass);
+  // A missing sound's icon in its glass vessel: a graphic, so 3:1.
+  add('missing-sound icon on glass', error, glass, minimum: 3);
   // Chips and capsules.
   add('chip on tactile', s.textOn(SurfaceStyle.tactile), tactile);
   add('error on tactile', error, tactile);
@@ -573,7 +575,7 @@ List<ContrastRule> editorTextRules(SynesterraTokens tokens, Color error) {
       card.mutedOn(SurfaceStyle.organic),
       organic,
     );
-    add('number ${i + 1} on its badge', color, [
+    add('number on badge ${i + 1}', card.textOn(SurfaceStyle.organic), [
       for (final c in organic) Color.alphaBlend(color.withValues(alpha: .1), c),
     ]);
     add('legend ${i + 1} on ground', color, grounds);

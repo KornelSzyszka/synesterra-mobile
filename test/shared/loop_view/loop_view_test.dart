@@ -7,6 +7,7 @@ import 'package:synesterra/shared/loop_view/loop_painters.dart';
 import 'package:synesterra/shared/loop_view/loop_view.dart';
 import 'package:synesterra/shared/loop_view/loop_view_state.dart';
 import 'package:synesterra/shared/loop_view/position_source.dart';
+import 'package:synesterra/shared/theme/ground_palette.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
 
 Future<void> pumpView(
@@ -276,6 +277,25 @@ void main() {
       );
       expect(strip.painter, isA<ArrangementStripPainter>());
       handle.dispose();
+    });
+
+    test('section labels keep 4.5:1 on their capsules on every palette', () {
+      for (final palette in SynesterraPalette.values) {
+        final tokens = SynesterraTokens.forPalette(palette);
+        List<Color> on({required bool current}) =>
+            ArrangementStripPainter.labelGrounds(tokens, current: current);
+        for (final (name, color, grounds) in [
+          ('label', tokens.text, on(current: false)),
+          ('current label', tokens.text, on(current: true)),
+          ('missing label', tokens.muted, on(current: false)),
+        ]) {
+          expect(
+            TextContrastPair(name, color, grounds).worstContrast,
+            greaterThanOrEqualTo(4.5),
+            reason: '${palette.name}: $name',
+          );
+        }
+      }
     });
 
     test('a section needs 1..32 repeats, checked at runtime', () {
