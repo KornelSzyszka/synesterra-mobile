@@ -16,6 +16,11 @@ abstract final class Space {
 }
 
 /// Corner radii: about φ apart.
+///
+/// Rounded rectangles belong to the first visual language. They stay for the
+/// screens that have not moved to visual language v2 yet; new components use
+/// the round shapes in `round_shapes.dart` (circle, capsule, blob, pebble,
+/// lens) instead.
 abstract final class Radii {
   static const xs = 4.0;
   static const sm = 7.0;

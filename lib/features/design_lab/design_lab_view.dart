@@ -3,8 +3,10 @@ import 'package:flutter/scheduler.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../shared/instrument_mist/mist_spec.dart';
+import '../../shared/theme/ambient_scope.dart';
 import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/synesterra_theme.dart';
+import 'blend_canvas.dart';
 import 'lab_components.dart';
 import 'lab_motion.dart';
 import 'lab_palette.dart';
@@ -12,9 +14,14 @@ import 'lab_skin.dart';
 
 /// Debug-only screen that renders the same components in three visual
 /// directions (glass, organic, material), on a dark or a light ground, so the
-/// Founder can compare them on a phone. Nothing here is product UI.
+/// Founder can compare them on a phone, and the Blend of the three (visual
+/// language v2, the default tab) built from the shared round components.
+/// Nothing here is product UI.
 class DesignLabView extends StatefulWidget {
-  const DesignLabView({super.key});
+  const DesignLabView({super.key, @visibleForTesting this.debugGate});
+
+  /// Tests only: the lab's flash gate, with a fake clock.
+  final FlashGate? debugGate;
 
   @override
   State<DesignLabView> createState() => _DesignLabViewState();
@@ -26,9 +33,13 @@ class _DesignLabViewState extends State<DesignLabView>
     vsync: this,
     duration: driftPeriod,
   );
-  final _gate = FlashGate();
+
+  /// One gate for every tab, on one (monotonic) clock.
+  late final _gate = widget.debugGate ?? FlashGate();
   final _frames = ValueNotifier<String>('frame time: waiting for frames');
 
+  /// True while the Blend tab is shown; otherwise [_variant] is.
+  bool _blend = true;
   LabVariant _variant = LabVariant.glass;
   LabTone _tone = LabTone.dark;
   GlitchStrength _glitch = GlitchStrength.subtle;
@@ -88,6 +99,25 @@ class _DesignLabViewState extends State<DesignLabView>
         ' (worst ${(worst / 1000).toStringAsFixed(1)}) · ${timings.length} frames';
   }
 
+  void _openBlendSheet(AmbientScope scope) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      barrierColor: scope.palette.shade.withValues(alpha: .35),
+      builder: (sheetContext) => AmbientScope(
+        palette: scope.palette,
+        drift: scope.drift,
+        tapStrength: scope.tapStrength,
+        gate: scope.gate,
+        child: BlendSheet(
+          onKeep: () => Navigator.of(sheetContext).pop(),
+          onDismiss: () => Navigator.of(sheetContext).pop(),
+        ),
+      ),
+    );
+  }
+
   void _openSheet(LabScope scope) {
     showModalBottomSheet<void>(
       context: context,
@@ -137,11 +167,16 @@ class _DesignLabViewState extends State<DesignLabView>
               children: [
                 _Chrome(
                   palette: palette,
+                  blend: _blend,
                   variant: _variant,
                   tone: _tone,
                   glitch: _glitch,
                   frames: _frames,
-                  onVariant: (v) => setState(() => _variant = v),
+                  onBlend: () => setState(() => _blend = true),
+                  onVariant: (v) => setState(() {
+                    _blend = false;
+                    _variant = v;
+                  }),
                   onTone: () => setState(
                     () => _tone = _tone == LabTone.dark
                         ? LabTone.light
@@ -155,12 +190,17 @@ class _DesignLabViewState extends State<DesignLabView>
                       duration: _reduceMotion
                           ? Duration.zero
                           : const Duration(milliseconds: 280),
-                      child: KeyedSubtree(
-                        key: ValueKey(
-                          'lab-canvas-${_variant.name}-${_tone.name}',
-                        ),
-                        child: _canvas(context, skin, scope),
-                      ),
+                      child: _blend
+                          ? KeyedSubtree(
+                              key: ValueKey('lab-canvas-blend-${_tone.name}'),
+                              child: _blendCanvas(palette),
+                            )
+                          : KeyedSubtree(
+                              key: ValueKey(
+                                'lab-canvas-${_variant.name}-${_tone.name}',
+                              ),
+                              child: _canvas(context, skin, scope),
+                            ),
                     ),
                   ),
                 ),
@@ -171,6 +211,34 @@ class _DesignLabViewState extends State<DesignLabView>
       ),
     );
   }
+
+  Widget _blendCanvas(LabPalette palette) => AmbientScope(
+    palette: palette,
+    drift: _drift,
+    tapStrength: _glitch,
+    gate: _gate,
+    child: Builder(
+      builder: (context) => BlendCanvas(
+        instrument: _instrument,
+        dot: _dot,
+        onDot: (dot) => setState(() => _dot = dot),
+        view: _view,
+        onView: (view) => setState(() => _view = view),
+        level: _level,
+        onLevel: (level) => setState(() => _level = level),
+        tags: _tags,
+        onTag: (tag) => setState(
+          () => _tags.contains(tag) ? _tags.remove(tag) : _tags.add(tag),
+        ),
+        playing: _playing,
+        looping: _looping,
+        onPlay: () => setState(() => _playing = !_playing),
+        onStop: () => setState(() => _playing = false),
+        onLoop: () => setState(() => _looping = !_looping),
+        onOpenSheet: () => _openBlendSheet(AmbientScope.maybeOf(context)!),
+      ),
+    ),
+  );
 
   Widget _canvas(BuildContext context, LabSkin skin, LabScope scope) {
     final palette = skin.palette;
@@ -300,24 +368,29 @@ class _DesignLabViewState extends State<DesignLabView>
 }
 
 /// The lab's own controls, kept plain so they are not part of the
-/// comparison: back, variant, ground, tap flash and the frame-time reading.
+/// comparison: back, Blend or variant, ground, tap flash and the frame-time
+/// reading.
 class _Chrome extends StatelessWidget {
   const _Chrome({
     required this.palette,
+    required this.blend,
     required this.variant,
     required this.tone,
     required this.glitch,
     required this.frames,
+    required this.onBlend,
     required this.onVariant,
     required this.onTone,
     required this.onGlitch,
   });
 
   final LabPalette palette;
+  final bool blend;
   final LabVariant variant;
   final LabTone tone;
   final GlitchStrength glitch;
   final ValueNotifier<String> frames;
+  final VoidCallback onBlend;
   final ValueChanged<LabVariant> onVariant;
   final VoidCallback onTone;
   final ValueChanged<GlitchStrength> onGlitch;
@@ -367,12 +440,20 @@ class _Chrome extends StatelessWidget {
           Wrap(
             alignment: WrapAlignment.center,
             children: [
+              _Tab(
+                key: const ValueKey('lab-variant-blend'),
+                label: 'Blend',
+                semanticLabel: 'Blend variant',
+                selected: blend,
+                palette: palette,
+                onTap: onBlend,
+              ),
               for (final v in LabVariant.values)
                 _Tab(
                   key: ValueKey('lab-variant-${v.name}'),
                   label: v.label,
                   semanticLabel: '${v.label} variant',
-                  selected: v == variant,
+                  selected: !blend && v == variant,
                   palette: palette,
                   onTap: () => onVariant(v),
                 ),

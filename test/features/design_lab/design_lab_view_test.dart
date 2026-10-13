@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:synesterra/features/design_lab/blend_canvas.dart';
 import 'package:synesterra/features/design_lab/design_lab_view.dart';
 import 'package:synesterra/features/design_lab/lab_components.dart';
 import 'package:synesterra/features/design_lab/lab_motion.dart';
 import 'package:synesterra/features/design_lab/lab_palette.dart';
 import 'package:synesterra/features/design_lab/lab_skin.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
+import 'package:synesterra/shared/widgets/tap_glitch.dart';
 
 /// A phone width; tall enough that the whole lab is built at once.
 Future<void> _pumpLab(
   WidgetTester tester, {
   bool reduceMotion = false,
+  FlashGate? gate,
   double height = 2600,
 }) async {
   tester.view
@@ -25,7 +28,7 @@ Future<void> _pumpLab(
   await tester.pumpWidget(
     MaterialApp(
       theme: synesterraTheme(SynesterraPalette.forest),
-      home: const DesignLabView(),
+      home: DesignLabView(debugGate: gate),
     ),
   );
   await tester.pump();
@@ -46,11 +49,30 @@ const _components = [
   'lab-sheet',
 ];
 
-Future<void> _select(WidgetTester tester, LabVariant variant) async {
-  await tester.tap(find.byKey(ValueKey('lab-variant-${variant.name}')));
+Future<void> _select(WidgetTester tester, LabVariant variant) =>
+    _selectTab(tester, variant.name);
+
+Future<void> _selectTab(WidgetTester tester, String name) async {
+  await tester.tap(find.byKey(ValueKey('lab-variant-$name')));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
 }
+
+/// The tab names: the Blend (default) and the three original variants.
+final _tabs = ['blend', for (final v in LabVariant.values) v.name];
+
+/// The modes of the tap flashes on screen, from the lab variants' painter
+/// and from the Blend's shared TapGlitch.
+List<GlitchMode> _flashModes(WidgetTester tester) => [
+  for (final painter
+      in tester
+          .widgetList<CustomPaint>(find.byType(CustomPaint))
+          .map((paint) => paint.foregroundPainter))
+    if (painter is LabFlashPainter)
+      painter.mode
+    else if (painter is TapGlitchPainter)
+      painter.mode,
+];
 
 void main() {
   testWidgets('the switcher shows each variant with the same components, '
@@ -61,6 +83,18 @@ void main() {
         await tester.tap(find.byKey(const Key('lab-tone')));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
+      }
+      await _selectTab(tester, 'blend');
+      expect(
+        find.byKey(ValueKey('lab-canvas-blend-${tone.name}')),
+        findsOneWidget,
+      );
+      for (final key in _components) {
+        expect(
+          find.byKey(ValueKey(key)),
+          findsOneWidget,
+          reason: '$key in blend ${tone.name}',
+        );
       }
       for (final variant in LabVariant.values) {
         await _select(tester, variant);
@@ -82,8 +116,15 @@ void main() {
     }
   });
 
+  testWidgets('the lab opens on the Blend', (tester) async {
+    await _pumpLab(tester);
+    expect(find.byKey(const ValueKey('lab-canvas-blend-dark')), findsOneWidget);
+    expect(find.text(BlendCanvas.tagline), findsOneWidget);
+  });
+
   testWidgets('the ground switches between dark and light', (tester) async {
     await _pumpLab(tester);
+    await _select(tester, LabVariant.glass);
     final dark = tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor;
 
     await tester.tap(find.byKey(const Key('lab-tone')));
@@ -105,8 +146,8 @@ void main() {
   ) async {
     final handle = tester.ensureSemantics();
     await _pumpLab(tester);
-    for (final variant in LabVariant.values) {
-      await _select(tester, variant);
+    for (final tab in _tabs) {
+      await _selectTab(tester, tab);
       for (final label in [
         'Sound pad',
         'Play',
@@ -121,6 +162,7 @@ void main() {
         'Open as sheet',
         'Keep',
         'Not now',
+        'Blend variant',
         'Glass variant',
         'Organic variant',
         'Material variant',
@@ -131,7 +173,7 @@ void main() {
         expect(
           find.bySemanticsLabel(label),
           findsWidgets,
-          reason: '"$label" in ${variant.name}',
+          reason: '"$label" in $tab',
         );
       }
       expect(find.byTooltip('Back'), findsOneWidget);
@@ -165,16 +207,18 @@ void main() {
     await _pumpLab(tester, reduceMotion: true);
     expect(tester.binding.hasScheduledFrame, isFalse);
 
-    await tester.tap(find.byKey(const Key('lab-play')));
-    await tester.pump();
-    final flashes = tester
-        .widgetList<CustomPaint>(find.byType(CustomPaint))
-        .map((paint) => paint.foregroundPainter)
-        .whereType<LabFlashPainter>();
-    expect(flashes, isNotEmpty);
-    expect(flashes.every((f) => f.mode == GlitchMode.fade), isTrue);
-    await tester.pump(glitchDuration);
-    expect(tester.binding.hasScheduledFrame, isFalse);
+    for (final tab in ['blend', 'glass']) {
+      await _selectTab(tester, tab);
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.binding.hasScheduledFrame, isFalse, reason: tab);
+      await tester.tap(find.byKey(const Key('lab-play')));
+      await tester.pump();
+      final modes = _flashModes(tester);
+      expect(modes, isNotEmpty, reason: tab);
+      expect(modes.every((m) => m == GlitchMode.fade), isTrue, reason: tab);
+      await tester.pump(glitchDuration);
+      expect(tester.binding.hasScheduledFrame, isFalse, reason: tab);
+    }
   });
 
   testWidgets('without reduce motion the drift runs and a tap glitches', (
@@ -183,16 +227,18 @@ void main() {
     await _pumpLab(tester);
     expect(tester.binding.hasScheduledFrame, isTrue);
 
-    await tester.tap(find.byKey(const Key('lab-play')));
-    await tester.pump();
-    final flashes = tester
-        .widgetList<CustomPaint>(find.byType(CustomPaint))
-        .map((paint) => paint.foregroundPainter)
-        .whereType<LabFlashPainter>();
-    expect(flashes.every((f) => f.mode == GlitchMode.full), isTrue);
-    // Every variant paints its flash mid-way without throwing.
-    for (final variant in LabVariant.values) {
-      await _select(tester, variant);
+    for (final tab in ['blend', 'glass']) {
+      await _selectTab(tester, tab);
+      await tester.tap(find.byKey(const Key('lab-play')));
+      await tester.pump();
+      final modes = _flashModes(tester);
+      expect(modes, isNotEmpty, reason: tab);
+      expect(modes.every((m) => m == GlitchMode.full), isTrue, reason: tab);
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+    // Every tab paints its flash mid-way without throwing.
+    for (final tab in _tabs) {
+      await _selectTab(tester, tab);
       await tester.tap(find.byKey(const Key('lab-stop')));
       await tester.pump(const Duration(milliseconds: 110));
       expect(tester.takeException(), isNull);
@@ -200,16 +246,84 @@ void main() {
     }
   });
 
-  testWidgets('the flash strength Off removes the flash', (tester) async {
-    await _pumpLab(tester);
-    await tester.tap(find.byKey(const ValueKey('lab-glitch-off')));
-    await tester.pump();
+  testWidgets('one gate on one clock for every tab: a flash in Glass does '
+      'not block the Blend for longer than the gap, and no more than three '
+      'flashes start in any second across tabs', (tester) async {
+    var now = const Duration(seconds: 5);
+    await _pumpLab(tester, gate: FlashGate(clock: () => now));
 
-    final flashes = tester
+    /// True when the last tap started a flash (lab painter or TapGlitch).
+    bool started() => tester
         .widgetList<CustomPaint>(find.byType(CustomPaint))
         .map((paint) => paint.foregroundPainter)
-        .whereType<LabFlashPainter>();
-    expect(flashes, isEmpty);
+        .any(
+          (painter) =>
+              (painter is LabFlashPainter &&
+                  painter.flash.isAnimating &&
+                  painter.flash.value == 0) ||
+              (painter is TapGlitchPainter &&
+                  painter.flash.isAnimating &&
+                  painter.flash.value == 0),
+        );
+
+    Future<bool> tapStop(String tab, Duration at) async {
+      await _selectTab(tester, tab);
+      now = at;
+      await tester.tap(find.byKey(const Key('lab-stop')));
+      await tester.pump();
+      final flashed = started();
+      await tester.pump(const Duration(milliseconds: 300));
+      return flashed;
+    }
+
+    const t0 = Duration(seconds: 10);
+    expect(await tapStop('glass', t0), isTrue, reason: 'Glass flashes');
+    // The shared gate holds the Blend back inside the gap ...
+    expect(
+      await tapStop('blend', t0 + const Duration(milliseconds: 200)),
+      isFalse,
+      reason: 'Blend inside the gap',
+    );
+    // ... and lets it flash right after it.
+    expect(
+      await tapStop('blend', t0 + minFlashInterval),
+      isTrue,
+      reason: 'Blend after the gap',
+    );
+    // And the other way round.
+    expect(
+      await tapStop('organic', t0 + minFlashInterval * 2),
+      isTrue,
+      reason: 'Organic after the Blend',
+    );
+
+    // A tap every 50 ms for two seconds, cycling through all tabs.
+    final starts = <Duration>[];
+    for (var i = 0; i < 40; i++) {
+      final at = const Duration(seconds: 20) + Duration(milliseconds: 50 * i);
+      if (await tapStop(_tabs[i % _tabs.length], at)) starts.add(at);
+    }
+    expect(starts.length, greaterThanOrEqualTo(4));
+    for (var i = 0; i + 3 < starts.length; i++) {
+      expect(
+        starts[i + 3] - starts[i],
+        greaterThan(const Duration(seconds: 1)),
+      );
+    }
+  });
+
+  testWidgets('the flash strength Off removes the flash', (tester) async {
+    await _pumpLab(tester);
+    for (final tab in ['blend', 'glass']) {
+      await _selectTab(tester, tab);
+      expect(_flashModes(tester), isNotEmpty, reason: tab);
+    }
+    await tester.tap(find.byKey(const ValueKey('lab-glitch-off')));
+    await tester.pump();
+    for (final tab in ['blend', 'glass']) {
+      await _selectTab(tester, tab);
+      expect(_flashModes(tester), isEmpty, reason: tab);
+    }
   });
 
   testWidgets('Play toggles to Pause and the sheet opens as a sheet', (
@@ -217,17 +331,22 @@ void main() {
   ) async {
     final handle = tester.ensureSemantics();
     await _pumpLab(tester);
-    await tester.tap(find.byKey(const Key('lab-play')));
-    await tester.pump();
-    expect(find.bySemanticsLabel('Pause'), findsOneWidget);
+    for (final tab in ['blend', 'glass']) {
+      await _selectTab(tester, tab);
+      await tester.tap(find.byKey(const Key('lab-play')));
+      await tester.pump();
+      expect(find.bySemanticsLabel('Pause'), findsOneWidget, reason: tab);
+      await tester.tap(find.byKey(const Key('lab-play')));
+      await tester.pump(const Duration(milliseconds: 400));
 
-    await tester.tap(find.byKey(const Key('lab-open-sheet')));
-    await tester.pumpAndSettleWithDrift();
-    expect(find.text('Keep this sound?'), findsNWidgets(2));
+      await tester.tap(find.byKey(const Key('lab-open-sheet')));
+      await tester.pumpAndSettleWithDrift();
+      expect(find.text('Keep this sound?'), findsNWidgets(2), reason: tab);
 
-    await tester.tap(find.byKey(const Key('lab-sheet-keep')).last);
-    await tester.pumpAndSettleWithDrift();
-    expect(find.text('Keep this sound?'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('lab-sheet-keep')).last);
+      await tester.pumpAndSettleWithDrift();
+      expect(find.text('Keep this sound?'), findsOneWidget, reason: tab);
+    }
     handle.dispose();
   });
 }
