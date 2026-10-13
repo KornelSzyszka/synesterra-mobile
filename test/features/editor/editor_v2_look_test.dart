@@ -28,6 +28,8 @@ Future<void> _pumpEditor(
   WidgetTester tester, {
   bool reduceMotion = false,
   EditorTab tab = EditorTab.loop,
+  Size size = const Size(480, 3000),
+  double textScale = 1,
 }) async {
   _now = const Duration(seconds: 10);
   if (reduceMotion) {
@@ -37,8 +39,10 @@ Future<void> _pumpEditor(
   }
   tester.view
     ..devicePixelRatio = 1
-    ..physicalSize = const Size(480, 3000);
+    ..physicalSize = size;
   addTearDown(tester.view.reset);
+  tester.platformDispatcher.textScaleFactorTestValue = textScale;
+  addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   await tester.pumpWidget(
     MaterialApp(
       theme: synesterraTheme(SynesterraPalette.graphite),
@@ -144,6 +148,46 @@ void main() {
     // Glass is painted, never a live blur.
     expect(find.byType(BackdropFilter), findsNothing);
   });
+
+  for (final textScale in [1.0, 1.5]) {
+    testWidgets('the Loop panel fits a 320 dp screen at text scale '
+        '$textScale', (tester) async {
+      await _pumpEditor(
+        tester,
+        size: const Size(320, 4000),
+        textScale: textScale,
+      );
+      expect(tester.takeException(), isNull);
+      // Up to the longest pattern: 16 steps wrap inside the card.
+      for (var i = 0; i < 14; i++) {
+        await tester.tap(find.byKey(const Key('layer-hits-0')).last);
+        await tester.tap(
+          find.descendant(
+            of: find.byKey(const Key('layer-hits-0')),
+            matching: find.byIcon(Icons.add),
+          ),
+          warnIfMissed: false,
+        );
+        await tester.pump();
+      }
+      await tester.tap(find.byKey(const Key('loop-add-layer')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      for (final key in [
+        'layer-remove-0',
+        'layer-note-0',
+        'layer-sound-0',
+        'loop-play',
+        'loop-save',
+      ]) {
+        expect(
+          tester.getRect(find.byKey(Key(key))).right,
+          lessThanOrEqualTo(320),
+          reason: key,
+        );
+      }
+    });
+  }
 
   testWidgets('every control of the shell and the Loop panel is 48 dp and '
       'labelled', (tester) async {

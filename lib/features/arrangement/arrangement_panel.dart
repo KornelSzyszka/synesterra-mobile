@@ -365,23 +365,29 @@ class _Captioned extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      child,
-      ExcludeSemantics(
-        child: Text(
-          caption,
-          style: roundText(
-            context,
-            color: mutedTextOn(context, SurfaceStyle.glass),
-            size: TypeScale.caption,
-            weight: FontWeight.w500,
-            spacing: .6,
+  // A fixed width, so a large text size wraps the word instead of pushing
+  // the transport off a narrow screen.
+  Widget build(BuildContext context) => SizedBox(
+    width: 76,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        child,
+        ExcludeSemantics(
+          child: Text(
+            caption,
+            textAlign: TextAlign.center,
+            style: roundText(
+              context,
+              color: mutedTextOn(context, SurfaceStyle.glass),
+              size: TypeScale.caption,
+              weight: FontWeight.w500,
+              spacing: .6,
+            ),
           ),
         ),
-      ),
-    ],
+      ],
+    ),
   );
 }
 
@@ -405,14 +411,16 @@ class _Header extends StatelessWidget {
             painter: _MarkPainter(palette.accent),
           ),
           const SizedBox(width: Space.md),
-          Text(
-            title.toUpperCase(),
-            style: roundText(
-              context,
-              color: palette.muted,
-              size: TypeScale.caption,
-              weight: FontWeight.w600,
-              spacing: 2.2,
+          Flexible(
+            child: Text(
+              title.toUpperCase(),
+              style: roundText(
+                context,
+                color: palette.muted,
+                size: TypeScale.caption,
+                weight: FontWeight.w600,
+                spacing: 2.2,
+              ),
             ),
           ),
         ],
@@ -539,7 +547,10 @@ class _SectionCard extends StatelessWidget {
                 ),
               ],
             ),
-            Row(
+            // On a narrow screen the move buttons go to a second line.
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 KeyedSubtree(
                   key: Key('section-repeats-$index'),
@@ -555,20 +566,24 @@ class _SectionCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Spacer(),
-                RoundIconButton(
-                  key: Key('section-up-$index'),
-                  icon: Icons.arrow_upward_rounded,
-                  label: 'Move section $number earlier',
-                  size: 38,
-                  onPressed: onMoveUp,
-                ),
-                RoundIconButton(
-                  key: Key('section-down-$index'),
-                  icon: Icons.arrow_downward_rounded,
-                  label: 'Move section $number later',
-                  size: 38,
-                  onPressed: onMoveDown,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RoundIconButton(
+                      key: Key('section-up-$index'),
+                      icon: Icons.arrow_upward_rounded,
+                      label: 'Move section $number earlier',
+                      size: 38,
+                      onPressed: onMoveUp,
+                    ),
+                    RoundIconButton(
+                      key: Key('section-down-$index'),
+                      icon: Icons.arrow_downward_rounded,
+                      label: 'Move section $number later',
+                      size: 38,
+                      onPressed: onMoveDown,
+                    ),
+                  ],
                 ),
               ],
             ),

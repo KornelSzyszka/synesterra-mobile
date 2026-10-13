@@ -14,11 +14,18 @@ import 'package:synesterra/shared/widgets/round_components.dart';
 
 import 'arrangement_fakes.dart';
 
-Future<void> _pumpPanel(WidgetTester tester) async {
+Future<void> _pumpPanel(
+  WidgetTester tester, {
+  Size size = const Size(1080, 2400),
+  double ratio = 2.6,
+  double textScale = 1,
+}) async {
   tester.view
-    ..physicalSize = const Size(1080, 2400)
-    ..devicePixelRatio = 2.6;
+    ..physicalSize = size
+    ..devicePixelRatio = ratio;
   addTearDown(tester.view.reset);
+  tester.platformDispatcher.textScaleFactorTestValue = textScale;
+  addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   await tester.pumpWidget(
     MaterialApp(
       theme: synesterraTheme(SynesterraPalette.graphite),
@@ -95,6 +102,30 @@ void main() {
     }
     expect(find.byType(BackdropFilter), findsNothing);
   });
+
+  for (final textScale in [1.0, 1.5]) {
+    testWidgets('fits a 320 dp screen at text scale $textScale', (
+      tester,
+    ) async {
+      await _pumpPanel(
+        tester,
+        size: const Size(320, 1400),
+        ratio: 1,
+        textScale: textScale,
+      );
+      expect(tester.takeException(), isNull);
+      for (final key in [
+        'section-up-0',
+        'section-down-0',
+        'section-remove-0',
+        'arrangement-repeat-all',
+      ]) {
+        final rect = tester.getRect(find.byKey(Key(key)));
+        expect(rect.right, lessThanOrEqualTo(320), reason: key);
+        expect(rect.width, greaterThanOrEqualTo(48), reason: key);
+      }
+    });
+  }
 
   testWidgets('every control is 48 dp and labelled', (tester) async {
     final semantics = tester.ensureSemantics();
