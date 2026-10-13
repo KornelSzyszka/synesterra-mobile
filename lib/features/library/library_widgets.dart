@@ -118,7 +118,13 @@ class LibraryCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: Space.md),
       child: OrganicCard(
-        label: title,
+        // The card reads as one button; its label carries the summary lines
+        // too ("1 missing loop" must be heard, not only seen).
+        label: [
+          title,
+          for (final line in lines)
+            if (_lineText(line) case final text?) text,
+        ].join('. '),
         onTap: onTap,
         seed: seed,
         padding: const EdgeInsets.fromLTRB(
@@ -157,6 +163,13 @@ class LibraryCard extends StatelessWidget {
     );
   }
 }
+
+/// The text of a summary line ([CardLine] or [Text]), or null.
+String? _lineText(Widget line) => switch (line) {
+  CardLine(:final text) => text,
+  Text(:final data) => data,
+  _ => null,
+};
 
 /// The round picture at the left of a card: a glass disc with an icon.
 class CardBadge extends StatelessWidget {

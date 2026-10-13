@@ -53,7 +53,10 @@ Future<void> _pump(WidgetTester tester, {bool reduceMotion = false}) async {
           Arrangement(
             id: 'a1',
             name: 'Suite',
-            sections: [ArrangementSection(loopId: 'l1', repeats: 2)],
+            sections: [
+              ArrangementSection(loopId: 'l1', repeats: 2),
+              ArrangementSection(loopId: 'gone', repeats: 1),
+            ],
           ),
         ]),
         onOpenInstrument: (_, _) {},
@@ -121,5 +124,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('loop-tile-l1')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a card is read with its summary, not only its name', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await _pump(tester);
+    expect(
+      find.bySemanticsLabel(
+        RegExp(r'^Glass drop\. 2 harmonics · 150 ms\. bell$'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('library-tab-loops')));
+    await tester.pumpAndSettle();
+    expect(
+      find.bySemanticsLabel(
+        RegExp(r'^Evening walk\. 3:2 · 2 layers · 96 BPM$'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('library-tab-arrangements')));
+    await tester.pumpAndSettle();
+    expect(
+      find.bySemanticsLabel(
+        RegExp(
+          r'^Suite\. 2 sections · 3 repeats\. Evening walk ×2 → missing loop ×1\. '
+          r'1 missing loop$',
+        ),
+      ),
+      findsOneWidget,
+    );
+    handle.dispose();
   });
 }
