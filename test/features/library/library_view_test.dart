@@ -339,4 +339,25 @@ void main() {
     expect(shapes.any((s) => listEquals(s.values, expected)), isTrue);
     expect(shapes.every((s) => !s.handles && s.breath == null), isTrue);
   });
+
+  testWidgets('cards off screen are not built, so their radars are not '
+      'drawn', (tester) async {
+    tester.view
+      ..devicePixelRatio = 1
+      ..physicalSize = const Size(400, 800);
+    addTearDown(tester.view.reset);
+    await pumpLibrary(
+      tester,
+      InMemoryInstrumentLibraryRepository([
+        for (var i = 0; i < 40; i++) mine('m$i', 'Sound ${i + 10}'),
+      ]),
+    );
+    final built = tester
+        .widgetList<CustomPaint>(find.byType(CustomPaint))
+        .map((w) => w.foregroundPainter)
+        .whereType<RadarShapePainter>()
+        .length;
+    expect(built, greaterThan(0));
+    expect(built, lessThan(20), reason: '43 cards, about 10 fit');
+  });
 }

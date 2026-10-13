@@ -389,7 +389,7 @@ Listening:
 - Editing while playing (steps, instrument, note): is the restart at the cycle start audible as a glitch, or clean?
 - Volume slider while playing: does the change arrive quickly or only after a moment? (Known: only new hits follow it.)
 - Arrangement: the change from one section to the next is on the beat, with no gap and no double hit. Which tempo does the second section play at? (See known issues.)
-- Pad: does the left-right and up-down range sound useful; does a lifted finger always produce a sound; are the corners usable, or too harsh or too quiet? Are the anchors ("warm drone", "airy pad", "bass", "guitar", "click") where you expect them?
+- Radar: does each axis change what its name says (Brightness, Fullness, Warmth, Air, Softness, Length), from the centre to the edge, in a useful range; is any end too harsh or too quiet? Does every lift sound exactly once, and does an interrupted drag (a call, a system swipe) stay silent? Do the presets ("neutral", "warm drone", "airy pad", "bass", "guitar", "click") sound like their names, and does the glide to them feel calm?
 - The three factory instruments (wood, bell, sine) at the default pitches: balanced against each other? Any clipping or distortion with 3-4 layers?
 - Interruptions: an incoming call or notification, the screen lock, switching apps. Does sound stop safely, and does Play start cleanly afterwards?
 
