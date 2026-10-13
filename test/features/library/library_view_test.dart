@@ -8,6 +8,7 @@ import 'package:synesterra/data/repositories/impl/in_memory_loop_library_reposit
 import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
 import 'package:synesterra/data/repositories/instrument_library_repository.dart';
 import 'package:synesterra/features/library/library_view.dart';
+import 'package:synesterra/shared/instrument_radar/radar_painter.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
@@ -320,5 +321,22 @@ void main() {
         expect(find.byKey(const Key('own-b')), findsOneWidget);
       },
     );
+  });
+
+  testWidgets('each instrument card shows a small radar of its traits', (
+    tester,
+  ) async {
+    final alpha = mine('a', 'Alpha');
+    await pumpLibrary(tester, InMemoryInstrumentLibraryRepository([alpha]));
+    final shapes = tester
+        .widgetList<CustomPaint>(find.byType(CustomPaint))
+        .map((w) => w.foregroundPainter)
+        .whereType<RadarShapePainter>()
+        .toList();
+    expect(shapes.length, greaterThan(factoryInstruments.length));
+    final traits = traitsForInstrument(alpha);
+    final expected = [for (final d in traits.definitions) traits[d.id]];
+    expect(shapes.any((s) => listEquals(s.values, expected)), isTrue);
+    expect(shapes.every((s) => !s.handles && s.breath == null), isTrue);
   });
 }
