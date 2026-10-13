@@ -471,7 +471,7 @@ class _WheelBody extends StatelessWidget {
               const SizedBox(height: Space.sm),
               ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: wheelSide(constraints.biggest),
+                  maxWidth: _wheelSide(constraints.biggest),
                 ),
                 child: InstrumentRadar(
                   key: const Key('instrument-radar'),
@@ -528,8 +528,7 @@ class _WheelBody extends StatelessWidget {
 /// The side of the wheel on a screen of [size] (the panel): as large as
 /// fits beside the name and Save without scrolling, at most 420 dp and at
 /// least 260 dp (a very short screen scrolls).
-@visibleForTesting
-double wheelSide(Size size) {
+double _wheelSide(Size size) {
   // The name, Save and the paddings around them.
   const reserved = 190.0;
   final byHeight = size.height.isFinite ? size.height - reserved : 420.0;
