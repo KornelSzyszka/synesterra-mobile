@@ -132,6 +132,8 @@ class Surfaces {
   /// no room for a dim second tier, so it is pulled toward the main text.
   Color mutedOn(SurfaceStyle style) => switch (style) {
     SurfaceStyle.primary => palette.onAccent,
+    // The gold tint leaves no room for a dim second tier either.
+    SurfaceStyle.tactileSelected => palette.text,
     SurfaceStyle.glass when _dark => Color.lerp(
       palette.muted,
       palette.text,
