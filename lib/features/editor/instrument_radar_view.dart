@@ -216,6 +216,14 @@ class _InstrumentRadarState extends State<InstrumentRadar>
     _breathe();
   }
 
+  /// The system cancelled the drag (a call, a system gesture): stop it
+  /// without a sound and without the accent; the shape keeps the last value.
+  void _cancel() {
+    if (_active == null) return;
+    setState(() => _active = null);
+    _breathe();
+  }
+
   /// The polarized accent on the released handle, within the shared limits.
   void _accent(Offset at) {
     final mode = glitchModeFor(
@@ -268,6 +276,7 @@ class _InstrumentRadarState extends State<InstrumentRadar>
                       onDown: (local) => _down(local, size, reach),
                       onUpdate: (local) => _move(local, size, reach),
                       onEnd: () => _up(size, reach),
+                      onCancel: _cancel,
                       child: Stack(
                         children: [
                           RepaintBoundary(
