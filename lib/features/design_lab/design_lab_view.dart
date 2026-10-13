@@ -18,7 +18,10 @@ import 'lab_skin.dart';
 /// language v2, the default tab) built from the shared round components.
 /// Nothing here is product UI.
 class DesignLabView extends StatefulWidget {
-  const DesignLabView({super.key});
+  const DesignLabView({super.key, @visibleForTesting this.debugGate});
+
+  /// Tests only: the lab's flash gate, with a fake clock.
+  final FlashGate? debugGate;
 
   @override
   State<DesignLabView> createState() => _DesignLabViewState();
@@ -30,7 +33,9 @@ class _DesignLabViewState extends State<DesignLabView>
     vsync: this,
     duration: driftPeriod,
   );
-  final _gate = FlashGate();
+
+  /// One gate for every tab, on one (monotonic) clock.
+  late final _gate = widget.debugGate ?? FlashGate();
   final _frames = ValueNotifier<String>('frame time: waiting for frames');
 
   /// True while the Blend tab is shown; otherwise [_variant] is.

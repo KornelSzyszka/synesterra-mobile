@@ -13,6 +13,7 @@ import 'package:synesterra/shared/widgets/tap_glitch.dart';
 Future<void> _pumpLab(
   WidgetTester tester, {
   bool reduceMotion = false,
+  FlashGate? gate,
   double height = 2600,
 }) async {
   tester.view
@@ -27,7 +28,7 @@ Future<void> _pumpLab(
   await tester.pumpWidget(
     MaterialApp(
       theme: synesterraTheme(SynesterraPalette.forest),
-      home: const DesignLabView(),
+      home: DesignLabView(debugGate: gate),
     ),
   );
   await tester.pump();
@@ -242,6 +243,72 @@ void main() {
       await tester.pump(const Duration(milliseconds: 110));
       expect(tester.takeException(), isNull);
       await tester.pump(const Duration(milliseconds: 400));
+    }
+  });
+
+  testWidgets('one gate on one clock for every tab: a flash in Glass does '
+      'not block the Blend for longer than the gap, and no more than three '
+      'flashes start in any second across tabs', (tester) async {
+    var now = const Duration(seconds: 5);
+    await _pumpLab(tester, gate: FlashGate(clock: () => now));
+
+    /// True when the last tap started a flash (lab painter or TapGlitch).
+    bool started() => tester
+        .widgetList<CustomPaint>(find.byType(CustomPaint))
+        .map((paint) => paint.foregroundPainter)
+        .any(
+          (painter) =>
+              (painter is LabFlashPainter &&
+                  painter.flash.isAnimating &&
+                  painter.flash.value == 0) ||
+              (painter is TapGlitchPainter &&
+                  painter.flash.isAnimating &&
+                  painter.flash.value == 0),
+        );
+
+    Future<bool> tapStop(String tab, Duration at) async {
+      await _selectTab(tester, tab);
+      now = at;
+      await tester.tap(find.byKey(const Key('lab-stop')));
+      await tester.pump();
+      final flashed = started();
+      await tester.pump(const Duration(milliseconds: 300));
+      return flashed;
+    }
+
+    const t0 = Duration(seconds: 10);
+    expect(await tapStop('glass', t0), isTrue, reason: 'Glass flashes');
+    // The shared gate holds the Blend back inside the gap ...
+    expect(
+      await tapStop('blend', t0 + const Duration(milliseconds: 200)),
+      isFalse,
+      reason: 'Blend inside the gap',
+    );
+    // ... and lets it flash right after it.
+    expect(
+      await tapStop('blend', t0 + minFlashInterval),
+      isTrue,
+      reason: 'Blend after the gap',
+    );
+    // And the other way round.
+    expect(
+      await tapStop('organic', t0 + minFlashInterval * 2),
+      isTrue,
+      reason: 'Organic after the Blend',
+    );
+
+    // A tap every 50 ms for two seconds, cycling through all tabs.
+    final starts = <Duration>[];
+    for (var i = 0; i < 40; i++) {
+      final at = const Duration(seconds: 20) + Duration(milliseconds: 50 * i);
+      if (await tapStop(_tabs[i % _tabs.length], at)) starts.add(at);
+    }
+    expect(starts.length, greaterThanOrEqualTo(4));
+    for (var i = 0; i + 3 < starts.length; i++) {
+      expect(
+        starts[i + 3] - starts[i],
+        greaterThan(const Duration(seconds: 1)),
+      );
     }
   });
 

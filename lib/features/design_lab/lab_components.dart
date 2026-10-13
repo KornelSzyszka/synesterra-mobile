@@ -135,9 +135,9 @@ class _LabPressableState extends State<LabPressable>
   void _tap() {
     final scope = LabScope.of(context);
     if (scope.glitchMode != GlitchMode.none &&
-        scope.gate.tryFlash(
-          Duration(microseconds: DateTime.now().microsecondsSinceEpoch),
-        )) {
+        // The gate's own monotonic clock, the same one the Blend uses: one
+        // gate, one time base, no wall-clock jumps.
+        scope.gate.tryFlashNow()) {
       _seed++;
       _flash.forward(from: 0);
     }
