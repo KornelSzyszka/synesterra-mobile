@@ -5,6 +5,7 @@ import 'package:synesterra/data/repositories/impl/in_memory_loop_library_reposit
 import 'package:synesterra/features/arrangement/arrangement_panel.dart';
 import 'package:synesterra/shared/loop_view/position_source.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
+import 'package:synesterra/shared/widgets/round_components.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 import 'arrangement_fakes.dart';
@@ -46,12 +47,13 @@ void main() {
     await tester.pump();
   }
 
-  FilledButton playButton(WidgetTester tester) => tester.widget<FilledButton>(
-    find.descendant(
-      of: find.byKey(const Key('arrangement-play')),
-      matching: find.byType(FilledButton),
-    ),
-  );
+  RoundActionButton playButton(WidgetTester tester) =>
+      tester.widget<RoundActionButton>(
+        find.descendant(
+          of: find.byKey(const Key('arrangement-play')),
+          matching: find.byType(RoundActionButton),
+        ),
+      );
 
   Future<void> addSection(WidgetTester tester, String loopId) async {
     await tester.ensureVisible(
@@ -147,7 +149,7 @@ void main() {
     );
     expect(
       tester
-          .widget<IconButton>(find.byKey(const Key('section-up-0')))
+          .widget<RoundIconButton>(find.byKey(const Key('section-up-0')))
           .onPressed,
       isNull,
     );

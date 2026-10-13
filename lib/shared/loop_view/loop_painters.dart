@@ -12,6 +12,11 @@ import 'position_source.dart';
 /// read nothing else for time: no timer, no animation of their own. A hit
 /// pulse is a function of the position ([stepPulse]), so a stopped or paused
 /// view is still and a resumed view is exact.
+///
+/// Visual language v2: soft, round marks. Steps are small lit pearls, a hit
+/// blooms into a soft halo, the playhead is a gold line with a glow and a
+/// small light at its tip. Glows use small blurs only, because a playing view
+/// repaints every frame.
 abstract class LoopPainter extends CustomPainter {
   LoopPainter({
     required this.state,
@@ -68,6 +73,8 @@ abstract class LoopPainter extends CustomPainter {
     );
   }
 
+  /// A step: a lit pearl of the layer's colour that blooms on its hit, or a
+  /// faint ring when it makes no hit.
   void paintStepDot(
     Canvas canvas,
     LoopLayerView layer,
@@ -83,19 +90,68 @@ abstract class LoopPainter extends CustomPainter {
         radius * .6,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2
-          ..color = tokens.muted.withValues(alpha: .6),
+          ..strokeWidth = 1.1
+          ..color = tokens.muted.withValues(alpha: .45),
       );
       return;
     }
     if (pulse > 0) {
       canvas.drawCircle(
         at,
-        radius + 8 * pulse,
-        Paint()..color = color.withValues(alpha: .35 * pulse),
+        radius + 7 * pulse,
+        Paint()
+          ..color = color.withValues(alpha: .4 * pulse)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3 + 4 * pulse),
       );
     }
-    canvas.drawCircle(at, radius * (1 + .35 * pulse), Paint()..color = color);
+    final r = radius * (1 + .35 * pulse);
+    canvas.drawCircle(at, r, Paint()..color = color);
+    // The pearl's light, top-left.
+    canvas.drawCircle(
+      at + Offset(-r * .32, -r * .32),
+      r * .38,
+      Paint()..color = Colors.white.withValues(alpha: .28 + .2 * pulse),
+    );
+  }
+
+  /// A soft gold light: the playhead's tip, the polygons' travelling dot.
+  void paintLight(Canvas canvas, Offset at, double radius) {
+    canvas
+      ..drawCircle(
+        at,
+        radius * 2,
+        Paint()
+          ..color = tokens.accent.withValues(alpha: .35)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius),
+      )
+      ..drawCircle(at, radius, Paint()..color = tokens.accent)
+      ..drawCircle(
+        at + Offset(-radius * .3, -radius * .3),
+        radius * .35,
+        Paint()..color = Colors.white.withValues(alpha: .55),
+      );
+  }
+
+  /// The playhead from [from] to [to]: a soft glow under a thin gold line.
+  void paintPlayhead(Canvas canvas, Offset from, Offset to) {
+    canvas
+      ..drawLine(
+        from,
+        to,
+        Paint()
+          ..color = tokens.accent.withValues(alpha: .22)
+          ..strokeWidth = 7
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+      )
+      ..drawLine(
+        from,
+        to,
+        Paint()
+          ..color = tokens.accent
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round,
+      );
   }
 
   @override
@@ -124,14 +180,25 @@ class CirclePainter extends LoopPainter {
     for (var l = 0; l < count; l++) {
       final layer = state.layers[l];
       final radius = ringRadius(l, count, layout.outerRadius);
-      canvas.drawCircle(
-        layout.center,
-        radius,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5
-          ..color = shown(layer).withValues(alpha: layer.muted ? .15 : .35),
-      );
+      final ring = shown(layer);
+      // A soft band under a hairline: the ring reads as light, not as wire.
+      canvas
+        ..drawCircle(
+          layout.center,
+          radius,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 6
+            ..color = ring.withValues(alpha: layer.muted ? .03 : .07),
+        )
+        ..drawCircle(
+          layout.center,
+          radius,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.2
+            ..color = ring.withValues(alpha: layer.muted ? .14 : .32),
+        );
       for (var i = 0; i < layer.stepCount; i++) {
         final at = pointOnCircle(
           layout.center,
@@ -154,20 +221,18 @@ class CirclePainter extends LoopPainter {
     }
     final angle = playheadAngle(position.cyclePosition);
     final tip = pointOnCircle(layout.center, layout.outerRadius, angle);
-    canvas.drawLine(
+    paintPlayhead(canvas, layout.center, tip);
+    canvas.drawCircle(
       layout.center,
-      tip,
-      Paint()
-        ..color = tokens.accent
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round,
+      3,
+      Paint()..color = tokens.accent.withValues(alpha: .7),
     );
-    canvas.drawCircle(tip, 3, Paint()..color = tokens.accent);
+    paintLight(canvas, tip, 3.5);
   }
 }
 
-/// One row per layer across the cycle, steps as blocks, a moving playhead
-/// line and a tick per beat.
+/// One row per layer across the cycle, steps as soft capsules, a moving
+/// playhead line and a small light per beat.
 class TimelinePainter extends LoopPainter {
   TimelinePainter({
     required super.state,
@@ -180,17 +245,11 @@ class TimelinePainter extends LoopPainter {
   void paint(Canvas canvas, Size size) {
     final count = state.layers.length;
     final layout = TimelineLayout(size, count);
-    final tick = Paint()
-      ..color = tokens.border
-      ..strokeWidth = 1;
+    final beat = Paint()..color = tokens.muted.withValues(alpha: .5);
     final beats = math.max(1, state.cycleBeats.ceil());
     for (var b = 0; b <= beats; b++) {
       final x = timelineX(b / beats, layout.left, layout.width);
-      canvas.drawLine(
-        Offset(x, layout.bottom),
-        Offset(x, layout.bottom + Space.xs),
-        tick,
-      );
+      canvas.drawCircle(Offset(x, layout.bottom + Space.xs), 1.4, beat);
     }
     for (var l = 0; l < count; l++) {
       final layer = state.layers[l];
@@ -199,8 +258,9 @@ class TimelinePainter extends LoopPainter {
         Offset(layout.left, y),
         Offset(layout.right, y),
         Paint()
-          ..color = shown(layer).withValues(alpha: layer.muted ? .15 : .3)
-          ..strokeWidth = 1,
+          ..color = shown(layer).withValues(alpha: layer.muted ? .1 : .2)
+          ..strokeWidth = 1
+          ..strokeCap = StrokeCap.round,
       );
       paintNumber(canvas, layer, Offset(Space.xs, y));
       final blockHeight = math.min(layout.rowHeight * .55, 28.0);
@@ -220,43 +280,51 @@ class TimelinePainter extends LoopPainter {
           width: blockWidth,
           height: blockHeight * (1 + .3 * pulse),
         );
-        final rrect = RRect.fromRectAndRadius(
+        final capsule = RRect.fromRectAndRadius(
           rect,
-          const Radius.circular(Radii.xs),
+          Radius.circular(rect.shortestSide / 2),
         );
         if (layer.steps[i]) {
+          final color = layerColor(layer)
+              .withValues(alpha: layer.muted ? .4 : .55 + .45 * pulse);
+          if (pulse > 0) {
+            canvas.drawRRect(
+              capsule.inflate(3 * pulse),
+              Paint()
+                ..color = color.withValues(alpha: .4 * pulse)
+                ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2 + 4 * pulse),
+            );
+          }
           canvas.drawRRect(
-            rrect,
+            capsule,
             Paint()
-              ..color = shown(layer)
-                  .withValues(alpha: layer.muted ? .4 : .55 + .45 * pulse),
+              ..shader = LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color.lerp(color, Colors.white, .18)!, color],
+              ).createShader(rect),
           );
         } else {
           canvas.drawRRect(
-            rrect,
+            capsule,
             Paint()
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 1.2
-              ..color = tokens.muted.withValues(alpha: .5),
+              ..strokeWidth = 1.1
+              ..color = tokens.muted.withValues(alpha: .4),
           );
         }
       }
     }
     final x = timelineX(position.cyclePosition, layout.left, layout.width);
-    canvas.drawLine(
-      Offset(x, layout.top),
-      Offset(x, layout.bottom),
-      Paint()
-        ..color = tokens.accent
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round,
-    );
+    paintPlayhead(canvas, Offset(x, layout.top), Offset(x, layout.bottom));
+    paintLight(canvas, Offset(x, layout.top), 3);
   }
 }
 
 /// A polygon per layer with one vertex per step: 3 steps give a triangle,
 /// 2 a line, 4 a square, 5 a pentagon. A dot travels along each polygon and
-/// is on a vertex exactly when that step hits.
+/// is on a vertex exactly when that step hits. The polygon is a soft shape of
+/// light: a faint fill, a glowing band and a fine edge with round joins.
 class PolygonsPainter extends LoopPainter {
   PolygonsPainter({
     required super.state,
@@ -276,17 +344,38 @@ class PolygonsPainter extends LoopPainter {
         polygonRadius(cell),
         layer.stepCount,
       );
-      final outline = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5
-        ..strokeJoin = StrokeJoin.round
-        ..color = shown(layer).withValues(alpha: layer.muted ? .2 : .55);
+      final color = shown(layer);
       if (vertices.length > 1) {
         final path = Path()..moveTo(vertices.first.dx, vertices.first.dy);
         for (final v in vertices.skip(1)) {
           path.lineTo(v.dx, v.dy);
         }
-        canvas.drawPath(path..close(), outline);
+        path.close();
+        if (vertices.length > 2) {
+          canvas.drawPath(
+            path,
+            Paint()..color = color.withValues(alpha: layer.muted ? .03 : .07),
+          );
+        }
+        canvas
+          ..drawPath(
+            path,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 6
+              ..strokeJoin = StrokeJoin.round
+              ..strokeCap = StrokeCap.round
+              ..color = color.withValues(alpha: layer.muted ? .04 : .09),
+          )
+          ..drawPath(
+            path,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.4
+              ..strokeJoin = StrokeJoin.round
+              ..strokeCap = StrokeCap.round
+              ..color = color.withValues(alpha: layer.muted ? .2 : .55),
+          );
       }
       for (var i = 0; i < vertices.length; i++) {
         paintStepDot(
@@ -303,15 +392,7 @@ class PolygonsPainter extends LoopPainter {
         position.cyclePosition,
         phaseSteps: layer.phaseSteps,
       );
-      canvas.drawCircle(dot, 5.5, Paint()..color = tokens.text);
-      canvas.drawCircle(
-        dot,
-        5.5,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = tokens.accent,
-      );
+      paintLight(canvas, dot, 5);
       paintNumber(
         canvas,
         layer,

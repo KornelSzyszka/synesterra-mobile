@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/design_scale.dart';
 import '../theme/synesterra_theme.dart';
-import '../widgets/design_components.dart';
+import '../widgets/round_components.dart';
 import 'loop_painters.dart';
 import 'loop_semantics.dart';
 import 'loop_view_state.dart';
@@ -89,30 +89,29 @@ class _LoopViewState extends State<LoopView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.showModeSwitch) ...[
-          SegmentedButton<LoopViewMode>(
-            showSelectedIcon: false,
-            segments: [
-              for (final mode in LoopViewMode.values)
-                ButtonSegment(value: mode, label: Text(mode.label)),
+          RoundSegmented<LoopViewMode>(
+            options: [
+              for (final mode in LoopViewMode.values) (mode, mode.label),
             ],
-            selected: {_mode},
-            onSelectionChanged: (selection) => _select(selection.single),
+            value: _mode,
+            onChanged: _select,
           ),
           const SizedBox(height: Space.md),
           Wrap(
-            spacing: Space.sm,
+            spacing: Space.lg,
             runSpacing: Space.sm,
             children: [
               for (final layer in state.layers)
-                LayerChip(
+                _LegendMark(
                   number: layer.number,
                   color:
                       tokens.layerColors[layer.colorIndex %
                           tokens.layerColors.length],
+                  style: labelStyle,
                 ),
             ],
           ),
-          const SizedBox(height: Space.md),
+          const SizedBox(height: Space.sm),
         ],
         SourceSemantics(
           source: source,
@@ -133,4 +132,40 @@ class _LoopViewState extends State<LoopView> {
       ],
     );
   }
+}
+
+/// A layer in the legend: a small light of its colour and its number.
+class _LegendMark extends StatelessWidget {
+  const _LegendMark({
+    required this.number,
+    required this.color,
+    required this.style,
+  });
+
+  final int number;
+  final Color color;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: color.withValues(alpha: .5), blurRadius: 6),
+          ],
+        ),
+      ),
+      const SizedBox(width: Space.sm),
+      Text(
+        number.toString().padLeft(2, '0'),
+        style: style.copyWith(color: color, fontWeight: FontWeight.w600),
+      ),
+    ],
+  );
 }
