@@ -4,7 +4,7 @@ import 'package:synesterra/data/repositories/rhythm_settings_repository.dart';
 import 'package:synesterra/features/rhythm/rhythm_view.dart';
 import 'package:synesterra/features/rhythm/rhythm_view_model.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
-import 'package:synesterra/shared/widgets/design_components.dart';
+import 'package:synesterra/shared/widgets/round_components.dart';
 
 class FakeRhythmSettingsRepository implements RhythmSettingsRepository {
   RhythmSettings settings = RhythmSettings(
@@ -37,7 +37,8 @@ void main() {
     );
 
     expect(find.text('Warstwy rytmu'), findsOneWidget);
-    expect(find.byType(LayerChip), findsNWidgets(4));
+    // The four round on/off buttons, one per layer.
+    expect(find.byType(RoundIconButton), findsNWidgets(4));
     expect(find.text('Layer 4'), findsOneWidget);
     expect(find.text('120'), findsOneWidget);
 

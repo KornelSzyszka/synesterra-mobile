@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-13",
+  "task": "UX-118",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Start, Library, Learn and rhythm screens moved to visual language v2. One design fix during work: a perpetual drift broke pumpAndSettle and the tutorial-clock test, so the drift became one breath on the Start screen only. Added one shared file (round_screen.dart) outside the issue's write scope. Look, feel and frame rate not judged on a phone. Review pending."
+}

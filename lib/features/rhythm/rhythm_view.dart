@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/theme/design_scale.dart';
+import '../../shared/theme/surfaces.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
+import '../../shared/widgets/palette_menu_button.dart';
+import '../../shared/widgets/round_components.dart';
+import '../../shared/widgets/round_screen.dart';
 import 'rhythm_view_model.dart';
-import '../../shared/theme/design_scale.dart';
 
+/// The rhythm layers and the tempo, in visual language v2: each layer is a
+/// soft organic card with a round on/off button, and the tempo has one of its
+/// own.
 class RhythmView extends StatelessWidget {
   const RhythmView({
     super.key,
     required this.viewModel,
-    this.palette = SynesterraPalette.forest,
+    this.palette = SynesterraPalette.graphite,
     this.onPaletteChanged,
   });
 
@@ -19,110 +26,94 @@ class RhythmView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          '◉  synesterra',
-          style: TextStyle(
-            color: tokens.text,
-            fontFamily: SynesterraFonts.serif(Theme.of(context).platform),
-            fontFamilyFallback: SynesterraFonts.serifFallback(
-              Theme.of(context).platform,
-            ),
-            fontWeight: FontWeight.bold,
+    return RoundScreen(
+      title: '◉  synesterra',
+      actions: [
+        if (onPaletteChanged != null)
+          PaletteMenuButton(
+            palette: palette,
+            onPaletteChanged: onPaletteChanged!,
           ),
-        ),
-        actions: [
-          if (onPaletteChanged != null)
-            PopupMenuButton<SynesterraPalette>(
-              tooltip: 'Choose palette',
-              icon: const Icon(Icons.palette_outlined),
-              initialValue: palette,
-              onSelected: onPaletteChanged,
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: SynesterraPalette.forest,
-                  child: Text('Forest'),
-                ),
-                PopupMenuItem(
-                  value: SynesterraPalette.autumn,
-                  child: Text('Autumn'),
-                ),
-                PopupMenuItem(
-                  value: SynesterraPalette.highContrast,
-                  child: Text('High contrast'),
-                ),
-              ],
-            ),
-        ],
-      ),
-      body: AnimatedBuilder(
+      ],
+      child: AnimatedBuilder(
         animation: viewModel,
         builder: (context, _) {
           final state = viewModel.state;
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(Space.lg),
+            padding: const EdgeInsets.fromLTRB(
+              Space.lg,
+              Space.md,
+              Space.lg,
+              Space.xl,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DesignPanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                const RoundSectionHeader('Independent voices'),
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: Space.md,
+                    right: Space.md,
+                    bottom: Space.md,
+                  ),
+                  child: Row(
                     children: [
-                      const SectionLabel('Independent voices'),
-                      const SizedBox(height: Space.md),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Warstwy rytmu',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                          Text(
-                            '${state.layers.length}',
-                            style: TextStyle(
-                              color: tokens.muted,
-                              fontFamily: SynesterraFonts.monospace(
-                                Theme.of(context).platform,
-                              ),
-                              fontFamilyFallback:
-                                  SynesterraFonts.monospaceFallback(
-                                    Theme.of(context).platform,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: Space.md),
-                      for (var index = 0; index < state.layers.length; index++)
-                        _LayerRow(
-                          index: index,
-                          enabled: state.layers[index].enabled,
-                          beats: state.layers[index].beatsPerCycle,
-                          onEnabled: (value) => viewModel.setLayerEnabled
-                              .execute(RhythmLayerEnabledCommand(index, value)),
-                          onBeats: (value) => viewModel.setLayerBeats.execute(
-                            RhythmLayerBeatsCommand(index, value),
+                      Expanded(
+                        child: Text(
+                          'Warstwy rytmu',
+                          style: roundText(
+                            context,
+                            color: groundOf(context).text,
+                            size: TypeScale.headline,
+                            serif: true,
                           ),
                         ),
+                      ),
+                      Text(
+                        '${state.layers.length}',
+                        style: roundText(
+                          context,
+                          color: groundOf(context).muted,
+                          size: TypeScale.bodyLarge,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: Space.lg),
-                DesignPanel(
+                for (var index = 0; index < state.layers.length; index++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: Space.md),
+                    child: _LayerCard(
+                      index: index,
+                      enabled: state.layers[index].enabled,
+                      beats: state.layers[index].beatsPerCycle,
+                      onEnabled: (value) => viewModel.setLayerEnabled.execute(
+                        RhythmLayerEnabledCommand(index, value),
+                      ),
+                      onBeats: (value) => viewModel.setLayerBeats.execute(
+                        RhythmLayerBeatsCommand(index, value),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: Space.md),
+                OrganicCard(
+                  seed: 21,
+                  padding: const EdgeInsets.fromLTRB(
+                    Space.xl,
+                    Space.md,
+                    Space.lg,
+                    Space.md,
+                  ),
                   child: Row(
                     children: [
-                      const Expanded(child: SectionLabel('Tempo')),
+                      const Expanded(child: RoundSectionHeader('Tempo')),
                       NumberStepper(
                         key: const Key('tempo-stepper'),
                         value: state.tempoBpm,
                         min: 20,
                         max: 300,
                         label: 'BPM',
-                        color: tokens.text,
+                        color: textOn(context, SurfaceStyle.organic),
                         onChanged: (value) => viewModel.setTempo.execute(value),
                         repeatOnHold: true,
                       ),
@@ -138,8 +129,10 @@ class RhythmView extends StatelessWidget {
   }
 }
 
-class _LayerRow extends StatelessWidget {
-  const _LayerRow({
+/// One layer: a round badge in the layer's colour, its name, a round on/off
+/// button, its colour as a small disc and its beats per cycle.
+class _LayerCard extends StatelessWidget {
+  const _LayerCard({
     required this.index,
     required this.enabled,
     required this.beats,
@@ -157,34 +150,43 @@ class _LayerRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = SynesterraTokens.of(context);
     final layerColor = tokens.layerColors[index];
-    final displayColor = enabled
-        ? layerColor
-        : tokens.disabledLayerText(layerColor);
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: Space.sm),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: tokens.border)),
+    // The colour is data and stays on a disc; the words stay in the text
+    // colours of the surface, so their contrast does not depend on the layer.
+    final disc = enabled ? layerColor : tokens.disabledLayerSwatch(layerColor);
+    final name = enabled
+        ? textOn(context, SurfaceStyle.organic)
+        : mutedTextOn(context, SurfaceStyle.organic);
+    return OrganicCard(
+      seed: 4 + index * 7,
+      padding: const EdgeInsets.fromLTRB(
+        Space.xl,
+        Space.md,
+        Space.lg,
+        Space.md,
       ),
       child: Column(
         children: [
           Row(
             children: [
-              LayerChip(number: index + 1, color: displayColor),
-              const SizedBox(width: Space.sm),
+              _Badge(number: index + 1, color: disc),
+              const SizedBox(width: Space.md),
               Expanded(
                 child: Text(
                   'Layer ${index + 1}',
-                  style: TextStyle(
-                    color: displayColor,
-                    fontWeight: enabled ? FontWeight.w600 : FontWeight.w400,
+                  style: roundText(
+                    context,
+                    color: name,
+                    size: TypeScale.bodyLarge,
+                    weight: enabled ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
               ),
-              LayerToggle(
+              RoundIconButton(
                 key: Key('layer-$index-enabled'),
-                value: enabled,
-                color: layerColor,
-                onChanged: onEnabled,
+                icon: Icons.graphic_eq_rounded,
+                label: 'Layer ${index + 1}',
+                selected: enabled,
+                onPressed: () => onEnabled(!enabled),
               ),
             ],
           ),
@@ -192,18 +194,16 @@ class _LayerRow extends StatelessWidget {
             children: [
               Semantics(
                 label: 'Layer ${index + 1} colour',
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  padding: const EdgeInsets.all(Space.sm),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: tokens.border),
-                    borderRadius: BorderRadius.circular(Radii.xs),
-                  ),
-                  child: ColoredBox(
-                    color: enabled
-                        ? layerColor
-                        : tokens.disabledLayerSwatch(layerColor),
+                child: SizedBox.square(
+                  dimension: 48,
+                  child: Center(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: disc,
+                      ),
+                      child: const SizedBox.square(dimension: 20),
+                    ),
                   ),
                 ),
               ),
@@ -214,12 +214,44 @@ class _LayerRow extends StatelessWidget {
                 min: 1,
                 max: 16,
                 label: 'beats / cycle',
-                color: displayColor,
+                color: name,
                 onChanged: onBeats,
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The layer's number in a round badge ringed in its colour.
+class _Badge extends StatelessWidget {
+  const _Badge({required this.number, required this.color});
+
+  final int number;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: 40,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: color, width: 2),
+        ),
+        child: Center(
+          child: Text(
+            number.toString().padLeft(2, '0'),
+            style: roundText(
+              context,
+              color: textOn(context, SurfaceStyle.organic),
+              size: TypeScale.caption,
+              weight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }

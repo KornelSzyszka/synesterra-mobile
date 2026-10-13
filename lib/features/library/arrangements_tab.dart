@@ -5,7 +5,7 @@ import '../../data/repositories/arrangement_library_repository.dart';
 import '../../data/repositories/loop.dart';
 import '../../data/repositories/loop_library_repository.dart';
 import '../../shared/theme/design_scale.dart';
-import '../../shared/theme/synesterra_theme.dart';
+import '../../shared/widgets/round_components.dart';
 import 'library_widgets.dart';
 
 typedef OpenArrangement = void Function(Arrangement arrangement);
@@ -94,7 +94,6 @@ class _ArrangementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
     final id = arrangement.id;
     final names = [
       for (final section in arrangement.sections)
@@ -105,16 +104,8 @@ class _ArrangementCard extends StatelessWidget {
         .length;
     return LibraryCard(
       key: Key('arrangement-tile-$id'),
-      leading: Container(
-        width: 56,
-        height: 56,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(Radii.sm),
-          border: Border.all(color: tokens.accent.withValues(alpha: .5)),
-        ),
-        child: Icon(Icons.queue_music, color: tokens.accent),
-      ),
+      leading: const CardBadge(icon: Icons.queue_music),
+      seed: id.hashCode & 0xff,
       title: arrangement.name,
       lines: [
         CardLine(arrangementSummary(arrangement)),
@@ -127,16 +118,16 @@ class _ArrangementCard extends StatelessWidget {
       ],
       onTap: onTap,
       actions: [
-        IconButton(
+        RoundIconButton(
           key: Key('arrangement-rename-$id'),
-          tooltip: 'Rename ${arrangement.name}',
-          icon: const Icon(Icons.edit_outlined),
+          label: 'Rename ${arrangement.name}',
+          icon: Icons.edit_outlined,
           onPressed: onRename,
         ),
-        IconButton(
+        RoundIconButton(
           key: Key('arrangement-delete-$id'),
-          tooltip: 'Delete ${arrangement.name}',
-          icon: const Icon(Icons.delete_outline),
+          label: 'Delete ${arrangement.name}',
+          icon: Icons.delete_outline,
           onPressed: onDelete,
         ),
       ],
