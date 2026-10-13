@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../shared/theme/ambient_scope.dart';
@@ -10,6 +8,7 @@ import '../../shared/theme/surfaces.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import '../../shared/widgets/round_components.dart';
+import '../../shared/widgets/round_screen.dart';
 import '../../shared/widgets/tap_glitch.dart';
 
 // Visual language v2 (Blend on the app palette) for the Editor shell and the
@@ -172,82 +171,6 @@ class GlassLensBorder extends ShapeBorder {
 
   @override
   int get hashCode => surfaces.palette.hashCode;
-}
-
-/// The ground behind the Editor: the palette's ground and two soft clouds of
-/// mist that drift very slowly with [drift] (still without one). Sits behind
-/// its own [RepaintBoundary], so the drift repaints nothing else.
-class EditorAura extends StatelessWidget {
-  const EditorAura({super.key, required this.palette, this.drift});
-
-  final GroundPalette palette;
-  final Animation<double>? drift;
-
-  @override
-  Widget build(BuildContext context) => RepaintBoundary(
-    child: CustomPaint(
-      key: const Key('editor-aura'),
-      painter: EditorAuraPainter(palette: palette, drift: drift),
-      child: const SizedBox.expand(),
-    ),
-  );
-}
-
-class EditorAuraPainter extends CustomPainter {
-  EditorAuraPainter({required this.palette, this.drift})
-    : super(repaint: drift);
-
-  final GroundPalette palette;
-  final Animation<double>? drift;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = palette.ground);
-    final phase = breathPhase(drift);
-    final w = size.width;
-    // No cloud is stronger than the palette's mist alpha: the contrast tests
-    // check text over exactly that.
-    void cloud(Color color, Offset centre, double radius, double strength) {
-      final rect = Rect.fromCircle(center: centre, radius: radius);
-      final alpha = palette.auraAlpha * strength;
-      canvas.drawCircle(
-        centre,
-        radius,
-        Paint()
-          ..shader = RadialGradient(
-            colors: [
-              color.withValues(alpha: alpha),
-              color.withValues(alpha: alpha * .4),
-              color.withValues(alpha: 0),
-            ],
-            stops: const [0, .45, 1],
-          ).createShader(rect),
-      );
-    }
-
-    cloud(
-      palette.aura,
-      Offset(
-        w * (.22 + .08 * math.sin(phase)),
-        size.height * (.16 + .03 * math.cos(phase)),
-      ),
-      w * .9,
-      .7,
-    );
-    cloud(
-      palette.accent,
-      Offset(
-        w * (.86 - .06 * math.cos(phase)),
-        size.height * (.78 + .04 * math.sin(phase)),
-      ),
-      w * .75,
-      1,
-    );
-  }
-
-  @override
-  bool shouldRepaint(EditorAuraPainter old) =>
-      old.palette != palette || old.drift != drift;
 }
 
 /// A quiet section header: a small gold light and a tracked-out label.
@@ -532,7 +455,17 @@ List<ContrastRule> editorTextRules(SynesterraTokens tokens, Color error) {
   void add(String name, Color text, List<Color> on, {double minimum = 4.5}) =>
       rules.add((pair: TextContrastPair(name, text, on), minimum: minimum));
 
-  final grounds = ground.groundSamples;
+  // The ground under the shared RoundScreen mist (MistGroundPainter): the
+  // plain ground, its gold light, its cool light and, conservatively, both at
+  // full strength on top of each other.
+  final gold = MistGroundPainter.goldAlpha;
+  final cool = MistGroundPainter.coolAlpha;
+  final grounds = [
+    ground.ground,
+    ...veiled(ground.accent, gold, [ground.ground]),
+    ...veiled(ground.text, cool, [ground.ground]),
+    ...veiled(ground.text, cool, veiled(ground.accent, gold, [ground.ground])),
+  ];
   final tray = s.fillSamples(SurfaceStyle.tray);
   final glass = s.fillSamples(SurfaceStyle.glass);
   final tactile = s.fillSamples(SurfaceStyle.tactile);

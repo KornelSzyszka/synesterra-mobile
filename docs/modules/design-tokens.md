@@ -158,11 +158,12 @@ Screenshots (Graphite, rendered by a widget test with real fonts):
 [sound sheet](../assets/v2/loop-dark-sheet.png),
 [Arrangement playing](../assets/v2/arrangement-dark-playing.png).
 
-- **Shell**: the panels float on the ground and its mist (`EditorAura`: two
-  soft clouds, never stronger than the palette's mist alpha). The mist drifts
-  only while something plays and never under reduce motion: a silent Editor
-  is completely still. Tabs are quiet words with a small gold light under the
-  current one (it follows the swipe) and the tap glitch.
+- **Shell**: the shared `RoundScreen` frame from UX-118 (the ground with its
+  still mist, a round Back with the tooltip "Back", the title "Editor"); the
+  tabs, below the header, are quiet words with a small gold light under the
+  current one (it follows the swipe) and the tap glitch. Like Library and
+  Learn, the Editor has no drift of its own: a silent Editor schedules no
+  frames; only the loop picture moves while something plays.
 - **Round theme** (`editorRoundTheme`, on the Loop and Arrangement tabs and
   their dialogs): dialogs are pebbles, bottom sheets a glass lens over an
   opaque glass tone (text never sits on what lies under the sheet), fields,
@@ -182,8 +183,9 @@ Screenshots (Graphite, rendered by a widget test with real fonts):
 
 Tested (`test/features/editor/editor_v2_look_test.dart`,
 `test/features/arrangement/arrangement_v2_look_test.dart`): the components
-in place, 48 dp and labels (Android guidelines), the step flash through the
-gate and its reduce-motion fade, the drift only while playing, no
+in place, 48 dp and labels (Android guidelines), the 320 dp / text scale 1.5
+layouts, the step flash through the gate and its reduce-motion fade, the
+still frame, no
 `BackdropFilter`, and the contrast of every text colour drawn
 (`editorTextRules`). The contrast tests found three colours below 4.5:1 that
 are now the text colour: a layer number in its own colour on the lit card,

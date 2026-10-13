@@ -223,7 +223,7 @@ class _ArrangementPanelState extends State<ArrangementPanel> {
               _Note(reason, color: palette.muted),
             if (model.saveError case final saveError?)
               _Note(saveError, color: error),
-            const SizedBox(height: Space.lg),
+            const SizedBox(height: Space.md),
             // Transport: Play/Stop and Repeat all on glass over the mist.
             GlassPanel(
               key: const Key('arrangement-transport'),
@@ -288,7 +288,7 @@ class _ArrangementPanelState extends State<ArrangementPanel> {
                 source: widget.position,
               ),
             ],
-            const SizedBox(height: Space.lg),
+            const SizedBox(height: Space.md),
             _Header(
               'Sections ${model.sections.length} of ${Arrangement.maxSections}',
             ),

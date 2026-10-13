@@ -1,7 +1,7 @@
 // Visual language v2 on the Editor shell and the Loop panel (UX-119): the
 // round components are in place, every control is 48 dp and labelled, the
-// tap flash of the steps goes through the flash gate, the mist drifts only
-// while something plays and never under reduce motion, and every text colour
+// tap flash of the steps goes through the flash gate, the Editor sits in the
+// shared still frame, and every text colour
 // keeps 4.5:1 on what it is drawn on.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +18,7 @@ import 'package:synesterra/shared/theme/surfaces.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
 import 'package:synesterra/shared/theme/tap_effect.dart';
 import 'package:synesterra/shared/widgets/round_components.dart';
+import 'package:synesterra/shared/widgets/round_screen.dart';
 
 import 'loop_fakes.dart';
 
@@ -73,11 +74,6 @@ StepPainter _step(WidgetTester tester, String key) =>
             )
             .painter!
         as StepPainter;
-
-Animation<double>? _drift(WidgetTester tester) =>
-    (tester.widget<CustomPaint>(find.byKey(const Key('editor-aura'))).painter!
-            as EditorAuraPainter)
-        .drift;
 
 Future<void> _frames(WidgetTester tester) async {
   for (var i = 0; i < 5; i++) {
@@ -262,34 +258,28 @@ void main() {
     expect(_step(tester, 'step-1-0').glitch!.mode, GlitchMode.fade);
   });
 
-  testWidgets('the mist drifts only while the loop plays', (tester) async {
+  testWidgets('the Editor sits in the shared still frame', (tester) async {
     await _pumpEditor(tester);
-    final drift = _drift(tester)! as AnimationController;
-    expect(drift.isAnimating, isFalse, reason: 'a silent Editor is still');
+    expect(find.byType(RoundScreen), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(RoundScreen),
+        matching: find.text('Editor'),
+      ),
+      findsOneWidget,
+    );
+    // A silent Editor schedules no frames: nothing drifts, nothing ticks.
+    expect(tester.binding.hasScheduledFrame, isFalse);
 
+    // Playing moves only the picture; stopping brings everything to rest,
+    // and the frame goes away cleanly with the Editor.
     await tester.tap(find.byKey(const Key('loop-play')));
     await _frames(tester);
-    expect(drift.isAnimating, isTrue);
-
     await tester.tap(find.byKey(const Key('loop-play')));
     await tester.pumpAndSettle();
-    expect(drift.isAnimating, isFalse);
-
-    // The drift's controller goes with the Editor.
-    await tester.tap(find.byKey(const Key('loop-play')));
-    await _frames(tester);
+    expect(tester.binding.hasScheduledFrame, isFalse);
     await tester.pumpWidget(const SizedBox());
     expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('under reduce motion the mist never drifts', (tester) async {
-    await _pumpEditor(tester, reduceMotion: true);
-    expect(_drift(tester), isNull);
-    await tester.tap(find.byKey(const Key('loop-play')));
-    await _frames(tester);
-    expect(_drift(tester), isNull);
-    await tester.tap(find.byKey(const Key('loop-play')));
-    await tester.pumpAndSettle();
   });
 
   testWidgets('dialogs are pebbles and sheets are glass lenses', (

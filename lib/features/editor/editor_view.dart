@@ -13,8 +13,8 @@ import '../../shared/theme/ambient_scope.dart';
 import '../../shared/theme/ground_palette.dart';
 import '../../shared/theme/round_shapes.dart';
 import '../../shared/theme/synesterra_theme.dart';
-import '../../shared/theme/tap_effect.dart';
 import '../../shared/widgets/round_components.dart';
+import '../../shared/widgets/round_screen.dart';
 import '../../shared/widgets/tap_glitch.dart';
 import 'arrangement_tab_placeholder.dart';
 import 'editor_style.dart';
@@ -76,8 +76,8 @@ typedef EditorPanelBuilder = Widget Function(
 
 /// Editor with three panels: Instrument, Loop and Arrangement.
 ///
-/// Visual language v2: the panels float on the ground and its mist, which
-/// drifts very slowly while something plays (never under reduce motion). The
+/// Visual language v2: the shared [RoundScreen] frame (the ground and its
+/// still mist, a round Back and the title) with the panels as quiet tabs. The
 /// Loop and Arrangement panels get the round theme ([editorRoundTheme]); the
 /// Instrument panel keeps its own look.
 class EditorView extends StatefulWidget {
@@ -126,7 +126,7 @@ class EditorView extends StatefulWidget {
 }
 
 class _EditorViewState extends State<EditorView>
-    with TickerProviderStateMixin
+    with SingleTickerProviderStateMixin
     implements EditorShell {
   late final InstrumentEditorViewModel _instrument = InstrumentEditorViewModel(
     repository: widget.instrumentLibrary,
@@ -153,36 +153,10 @@ class _EditorViewState extends State<EditorView>
   /// Nothing keeps playing when the app goes to the background.
   late final AppLifecycleListener _lifecycle;
 
-  /// The mist's slow drift. It runs only while something plays, so a silent
-  /// Editor is completely still, and never under reduce motion. It moves the
-  /// picture only; it is no clock for anything else.
-  late final AnimationController _drift = AnimationController(
-    vsync: this,
-    duration: driftPeriod,
-  );
-  bool _reduceMotion = false;
-
   @override
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(onHide: _appHidden);
-    widget.playback.status.addListener(_syncDrift);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    _syncDrift();
-  }
-
-  void _syncDrift() {
-    final playing = widget.playback.status.value.state == PlaybackState.playing;
-    if (playing && !_reduceMotion) {
-      if (!_drift.isAnimating) _drift.repeat();
-    } else if (_drift.isAnimating) {
-      _drift.stop();
-    }
   }
 
   /// Stops whatever plays, the loop or an arrangement started in the
@@ -194,8 +168,6 @@ class _EditorViewState extends State<EditorView>
 
   @override
   void dispose() {
-    widget.playback.status.removeListener(_syncDrift);
-    _drift.dispose();
     _lifecycle.dispose();
     _guard?.changes.removeListener(_onGuard);
     _guardChanges.dispose();
@@ -313,7 +285,6 @@ class _EditorViewState extends State<EditorView>
     final palette = editorPalette(SynesterraTokens.of(context));
     final round = _roundThemeFor(Theme.of(context), palette);
     final outer = AmbientScope.maybeOf(context);
-    final drift = _reduceMotion ? null : _drift;
     return ListenableBuilder(
       listenable: Listenable.merge([_instrument, _loop, _guardChanges]),
       builder: (context, _) => PopScope(
@@ -321,52 +292,32 @@ class _EditorViewState extends State<EditorView>
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) _confirmLeave();
         },
-        child: AmbientScope(
-          palette: palette,
-          drift: drift,
-          tapStrength: outer?.tapStrength,
-          gate: outer?.gate,
-          child: Scaffold(
-            backgroundColor: palette.ground,
-            extendBodyBehindAppBar: true,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              title: const Text('Editor'),
-              bottom: _EditorTabs(controller: _tabs, palette: palette),
-            ),
-            body: Stack(
+        child: RoundScreen(
+          title: 'Editor',
+          below: _EditorTabs(controller: _tabs, palette: palette),
+          // Passes on a flash gate and tap strength given from outside.
+          child: AmbientScope(
+            palette: palette,
+            tapStrength: outer?.tapStrength,
+            gate: outer?.gate,
+            child: TabBarView(
+              controller: _tabs,
               children: [
-                Positioned.fill(
-                  child: EditorAura(palette: palette, drift: drift),
+                _KeepAlive(child: InstrumentPanel(viewModel: _instrument)),
+                _KeepAlive(
+                  child: Theme(
+                    data: round,
+                    child: LoopPanel(viewModel: _loop, position: _position),
+                  ),
                 ),
-                SafeArea(
-                  bottom: false,
-                  child: TabBarView(
-                    controller: _tabs,
-                    children: [
-                      _KeepAlive(
-                        child: InstrumentPanel(viewModel: _instrument),
-                      ),
-                      _KeepAlive(
-                        child: Theme(
-                          data: round,
-                          child: LoopPanel(
-                            viewModel: _loop,
-                            position: _position,
-                          ),
-                        ),
-                      ),
-                      _KeepAlive(
-                        child: Theme(
-                          data: round,
-                          child: Builder(
-                            builder: (context) =>
-                                widget.arrangementPanel?.call(context, this) ??
-                                const ArrangementTabPlaceholder(),
-                          ),
-                        ),
-                      ),
-                    ],
+                _KeepAlive(
+                  child: Theme(
+                    data: round,
+                    child: Builder(
+                      builder: (context) =>
+                          widget.arrangementPanel?.call(context, this) ??
+                          const ArrangementTabPlaceholder(),
+                    ),
                   ),
                 ),
               ],
@@ -380,14 +331,11 @@ class _EditorViewState extends State<EditorView>
 
 /// The three panels as quiet words on the ground; a small gold light under
 /// the current one follows the swipe. Each word answers a tap with the glitch.
-class _EditorTabs extends StatelessWidget implements PreferredSizeWidget {
+class _EditorTabs extends StatelessWidget {
   const _EditorTabs({required this.controller, required this.palette});
 
   final TabController controller;
   final GroundPalette palette;
-
-  @override
-  Size get preferredSize => const Size.fromHeight(50);
 
   @override
   Widget build(BuildContext context) {
