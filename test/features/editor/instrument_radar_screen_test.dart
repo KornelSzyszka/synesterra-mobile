@@ -7,21 +7,26 @@ import 'package:synesterra/data/repositories/impl/noop_playback_repository.dart'
 import 'package:synesterra/features/editor/editor_view.dart';
 import 'package:synesterra/features/editor/envelope_editor.dart';
 import 'package:synesterra/features/editor/eq_editor.dart';
+import 'package:synesterra/features/editor/instrument_panel.dart';
 import 'package:synesterra/features/editor/instrument_radar_view.dart';
 import 'package:synesterra/features/editor/spectrum_editor.dart';
 import 'package:synesterra/shared/instrument_figure/instrument_sound_view.dart';
+import 'package:synesterra/shared/instrument_mist/mist_spec.dart';
 import 'package:synesterra/shared/instrument_radar/radar_geometry.dart';
 import 'package:synesterra/shared/instrument_radar/radar_painter.dart';
 import 'package:synesterra/shared/theme/ambient_scope.dart';
 import 'package:synesterra/shared/theme/ground_palette.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
 import 'package:synesterra/shared/theme/tap_effect.dart';
+import 'package:synesterra/shared/widgets/round_components.dart';
 import 'package:synesterra/shared/widgets/tap_glitch.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 import 'audition_fakes.dart';
 
 const radarKey = Key('instrument-radar');
+const saveKey = Key('instrument-save');
+const nameKey = Key('instrument-name');
 final ids = [for (final d in defaultTraitDefinitions) d.id];
 final labels = [for (final d in defaultTraitDefinitions) d.label];
 
@@ -77,10 +82,15 @@ Future<void> open(
   await tester.pumpAndSettle();
 }
 
+/// The traits the panel holds (continuous; the wheel shows them snapped).
 InstrumentTraits shownTraits(WidgetTester tester) =>
     tester.widget<InstrumentRadar>(find.byKey(radarKey)).traits;
 
-List<double> painted(WidgetTester tester) => tester
+List<double> values(InstrumentTraits traits) => [
+  for (final id in ids) traits[id],
+];
+
+T painter<T>(WidgetTester tester) => tester
     .widgetList<CustomPaint>(
       find.descendant(
         of: find.byKey(radarKey),
@@ -88,28 +98,28 @@ List<double> painted(WidgetTester tester) => tester
       ),
     )
     .map((w) => w.painter)
-    .whereType<RadarShapePainter>()
-    .single
-    .values;
+    .whereType<T>()
+    .single;
+
+List<double> painted(WidgetTester tester) =>
+    painter<RadarShapePainter>(tester).values;
 
 Rect radarRect(WidgetTester tester) => tester.getRect(find.byKey(radarKey));
 
-/// The screen position of [value] on axis [index].
+double reachOf(WidgetTester tester) =>
+    WheelLayout.of(radarRect(tester).size).reach;
+
+/// The screen position of [value] on spoke [index].
 Offset at(WidgetTester tester, int index, double value) {
   final rect = radarRect(tester);
-  final reach = radarReach(rect.size, ids.length);
-  return radarPoint(index, ids.length, value, rect.size, reach) + rect.topLeft;
+  return radarPoint(index, ids.length, value, rect.size, reachOf(tester)) +
+      rect.topLeft;
 }
 
-Instrument shownInMist(WidgetTester tester) => tester
-    .widget<InstrumentSoundView>(find.byType(InstrumentSoundView))
+Instrument draft(WidgetTester tester) => tester
+    .widget<InstrumentPanel>(find.byType(InstrumentPanel))
+    .viewModel
     .instrument;
-
-TraitPreset preset(String name) =>
-    traitPresets.singleWhere((p) => p.name == name);
-
-Finder chip(String name) =>
-    find.byKey(Key('radar-preset-${name.replaceAll(' ', '-')}'));
 
 SemanticsNode axisNode(String label) =>
     find.semantics.byLabel(label).evaluate().single;
@@ -121,212 +131,260 @@ bool flashing(WidgetTester tester) => tester
     .widgetList<CustomPaint>(find.byType(CustomPaint))
     .any((w) => w.painter is TapGlitchPainter);
 
+bool onSteps(Iterable<double> values) =>
+    values.every((v) => (v * rankSteps - (v * rankSteps).round()).abs() < 1e-9);
+
 void main() {
-  testWidgets('the screen shows the radar, the presets, the mist, the name '
-      'and Save', (tester) async {
-    await open(tester);
-    expect(find.byKey(radarKey), findsOneWidget);
-    for (final p in traitPresets) {
-      expect(chip(p.name), findsOneWidget, reason: p.name);
-    }
-    expect(find.byKey(const Key('instrument-preview-mist')), findsOneWidget);
-    expect(find.byKey(const Key('instrument-name')), findsOneWidget);
-    expect(find.byKey(const Key('instrument-save')), findsOneWidget);
-    expect(find.byKey(const Key('instrument-radar-hint')), findsOneWidget);
-    expect(find.byKey(const Key('instrument-radar-approximate')), findsNothing);
-  });
-
-  testWidgets('a new instrument starts on the shape of the plain Sine', (
-    tester,
-  ) async {
-    await open(tester);
-    final sine = traitsForInstrument(factoryInstruments[1]);
-    expect(shownTraits(tester), sine);
-    expect(painted(tester), [for (final id in ids) sine[id]]);
-  });
-
-  testWidgets('the axes are labelled with the plain trait names', (
-    tester,
-  ) async {
-    await open(tester);
-    final field = tester
-        .widgetList<CustomPaint>(find.byType(CustomPaint))
-        .map((w) => w.painter)
-        .whereType<RadarFieldPainter>()
-        .single;
-    expect(field.labels, labels);
-    expect(field.count, 6);
-  });
-
-  testWidgets('the painters sit behind their own repaint boundaries and '
-      'nothing blurs the backdrop', (tester) async {
-    await open(tester);
-    for (final painter in [RadarFieldPainter, RadarShapePainter]) {
-      final paint = find.byWidgetPredicate(
-        (w) => w is CustomPaint && w.painter.runtimeType == painter,
+  group('only the wheel', () {
+    testWidgets('the panel is the name, the wheel and one round Save: no '
+        'sliders, chips, hints or notes', (tester) async {
+      await open(
+        tester,
+        instrument: factoryInstruments[2].copyWith(id: 'b', name: 'Bell'),
+        existing: true,
       );
+      final panel = find.byType(InstrumentPanel);
+      Finder inPanel(Finder f) => find.descendant(of: panel, matching: f);
+
+      expect(find.byKey(radarKey), findsOneWidget);
+      expect(find.byKey(nameKey), findsOneWidget);
       expect(
-        find.ancestor(of: paint, matching: find.byType(RepaintBoundary)),
-        findsWidgets,
+        inPanel(find.byType(RoundActionButton)),
+        findsOneWidget,
+        reason: 'one round Save button',
       );
-    }
-    expect(find.byType(BackdropFilter), findsNothing);
+      expect(find.byKey(saveKey), findsOneWidget);
+      for (final type in [
+        Slider,
+        RoundSlider,
+        TactileChip,
+        ActionChip,
+        ChoiceChip,
+        FilterChip,
+        InputChip,
+        RoundSegmented<bool>,
+        InstrumentSoundView,
+      ]) {
+        expect(inPanel(find.byType(type)), findsNothing, reason: '$type');
+      }
+      // No line of text at all: no hint, no preset name, no note (the Bell
+      // is approximated; that is said to screen readers only).
+      expect(inPanel(find.byType(Text)), findsNothing);
+      for (final key in const [
+        'instrument-radar-hint',
+        'instrument-radar-presets',
+        'instrument-radar-approximate',
+        'instrument-status',
+        'instrument-preview',
+      ]) {
+        expect(find.byKey(Key(key)), findsNothing, reason: key);
+      }
+    });
+
+    testWidgets('the wheel: names on the ring, rank letters, the mist as a '
+        'glow behind it', (tester) async {
+      await open(tester);
+      final field = painter<RadarFieldPainter>(tester);
+      expect(field.labels, labels);
+      expect(field.count, 6);
+      expect(field.bare, isFalse);
+      expect(painter<RadarRankPainter>(tester).count, 6);
+      expect(
+        painter<RadarGlowPainter>(tester).spec,
+        buildMistSpec(draft(tester)),
+      );
+    });
+
+    testWidgets('the painters sit behind their own repaint boundaries and '
+        'nothing blurs the backdrop', (tester) async {
+      await open(tester);
+      for (final type in [
+        RadarGlowPainter,
+        RadarFieldPainter,
+        RadarShapePainter,
+        RadarRankPainter,
+      ]) {
+        final paint = find.byWidgetPredicate(
+          (w) => w is CustomPaint && w.painter.runtimeType == type,
+        );
+        expect(paint, findsOneWidget, reason: '$type');
+        expect(
+          find.ancestor(of: paint, matching: find.byType(RepaintBoundary)),
+          findsWidgets,
+          reason: '$type',
+        );
+      }
+      expect(find.byType(BackdropFilter), findsNothing);
+    });
   });
 
-  testWidgets('dragging a handle changes that trait only, along its axis', (
-    tester,
-  ) async {
+  testWidgets('a new instrument starts on the neutral shape', (tester) async {
     await open(tester);
-    final before = shownTraits(tester);
-    // Warmth is axis 2 (lower right). Push it out, wandering across the
-    // axis too: only the part along the axis counts.
-    final direction = radarAxisDirection(2, ids.length);
-    final across = Offset(-direction.dy, direction.dx) * 14;
-    final gesture = await tester.startGesture(at(tester, 2, 0.5));
-    await gesture.moveTo(at(tester, 2, 0.7) + across);
-    await gesture.moveTo(at(tester, 2, 0.9) - across);
-    await tester.pump();
-
-    final traits = shownTraits(tester);
-    expect(traits[TraitIds.warmth], closeTo(0.9, 0.01));
-    for (final id in ids) {
-      if (id == TraitIds.warmth) continue;
-      expect(traits[id], before[id], reason: id);
-    }
-    await gesture.up();
-    await tester.pump(const Duration(seconds: 1));
-  });
-
-  testWidgets('a handle drag past the edge or the centre stays in 0..1', (
-    tester,
-  ) async {
-    await open(tester);
-    final gesture = await tester.startGesture(at(tester, 0, 0.5));
-    await gesture.moveTo(at(tester, 0, 0.5) + const Offset(0, -900));
-    await tester.pump();
-    expect(shownTraits(tester)[TraitIds.brightness], 1);
-    await gesture.moveTo(at(tester, 0, 0.5) + const Offset(0, 900));
-    await tester.pump();
-    expect(shownTraits(tester)[TraitIds.brightness], 0);
-    await gesture.up();
-    await tester.pump(const Duration(seconds: 1));
-  });
-
-  testWidgets('the mist follows the drag live and nothing plays until the '
-      'lift, then once', (tester) async {
-    await open(tester);
-    final gesture = await tester.startGesture(at(tester, 1, 0.5));
-    await gesture.moveTo(at(tester, 1, 0.8));
-    await tester.pump();
-    final mid = shownInMist(tester);
-    await gesture.moveTo(at(tester, 1, 0.2));
-    await tester.pump();
-    final end = shownInMist(tester);
-    expect(mid.harmonics, isNot(end.harmonics));
+    final neutral = traitPresets.singleWhere((p) => p.name == 'neutral');
+    expect(shownTraits(tester), neutral.traits);
+    expect(painted(tester), values(neutral.traits));
     expect(
-      end,
+      draft(tester),
       instrumentForTraits(
-        shownTraits(tester),
-        id: end.id,
+        neutral.traits,
+        id: draft(tester).id,
         name: 'New instrument',
       ),
     );
-    expect(audition.played, isEmpty, reason: 'nothing plays under the finger');
-
-    await gesture.up();
-    await tester.pump(const Duration(seconds: 1));
-    expect(audition.played, hasLength(1));
-    expect(audition.played.single, end);
   });
 
-  testWidgets('a tap on a handle plays once and moves nothing', (tester) async {
-    await open(tester);
-    final before = shownTraits(tester);
-    await tester.tapAt(at(tester, 2, before[TraitIds.warmth]));
-    await tester.pump(const Duration(seconds: 1));
-    expect(audition.played, hasLength(1));
-    expect(shownTraits(tester), before);
-  });
-
-  testWidgets('a touch away from every axis does nothing', (tester) async {
-    await open(tester);
-    final before = shownTraits(tester);
-    final rect = radarRect(tester);
-    // Between the first two axes, outside the shape's reach.
-    final reach = radarReach(rect.size, 6);
-    final between = radarAxisDirection(0, 6) + radarAxisDirection(1, 6);
-    await tester.tapAt(rect.center + between / between.distance * (reach + 20));
-    await tester.pump(const Duration(seconds: 1));
-    expect(audition.played, isEmpty);
-    expect(shownTraits(tester), before);
-  });
-
-  testWidgets('touching the radar does not scroll the page', (tester) async {
-    await open(tester);
-    final scrollable = tester.state<ScrollableState>(
-      find.byType(Scrollable).first,
-    );
-    await tester.dragFrom(at(tester, 3, 0.5), const Offset(0, -200));
-    await tester.pump(const Duration(seconds: 1));
-    expect(scrollable.position.pixels, 0);
-  });
-
-  group('presets', () {
-    testWidgets('each chip sets its traits, is selected and plays once', (
+  group('dragging a vertex', () {
+    testWidgets('changes that trait only, along its spoke, snapped to a step', (
       tester,
     ) async {
       await open(tester);
-      for (final (i, p) in traitPresets.reversed.indexed) {
-        await tester.ensureVisible(chip(p.name));
-        await tester.tap(chip(p.name));
-        await tester.pumpAndSettle();
-        expect(shownTraits(tester), p.traits, reason: p.name);
-        expect(audition.played, hasLength(i + 1));
-        expect(
-          tester.getSemantics(chip(p.name)),
-          isSemantics(isSelected: true, isButton: true),
-        );
+      final before = shownTraits(tester);
+      // Warmth is spoke 2 (lower right). Push it out, wandering across the
+      // spoke too: only the part along it counts.
+      final direction = radarAxisDirection(2, ids.length);
+      final across = Offset(-direction.dy, direction.dx) * 14;
+      final gesture = await tester.startGesture(at(tester, 2, 0.5));
+      await gesture.moveTo(at(tester, 2, 0.7) + across);
+      await gesture.moveTo(at(tester, 2, 0.87) - across);
+      await tester.pump();
+
+      final traits = shownTraits(tester);
+      expect(traits[TraitIds.warmth], 0.9, reason: 'snapped to the step');
+      for (final id in ids) {
+        if (id == TraitIds.warmth) continue;
+        expect(traits[id], before[id], reason: id);
       }
+      await gesture.up();
+      await tester.pump(const Duration(seconds: 1));
+      expect(painted(tester)[2], 0.9);
     });
 
-    testWidgets('choosing one glides the shape there with a short ease', (
+    testWidgets('every value it sends is on a step', (tester) async {
+      await open(tester);
+      final seen = <double>[];
+      final gesture = await tester.startGesture(at(tester, 4, 0.5));
+      for (var i = 1; i <= 30; i++) {
+        await gesture.moveTo(at(tester, 4, 0.5 + 0.3 * i / 30));
+        await tester.pump();
+        seen.add(shownTraits(tester)[TraitIds.softness]);
+      }
+      expect(onSteps(seen), isTrue, reason: '$seen');
+      expect(seen.toSet(), {0.5, 0.6, 0.7, 0.8});
+      await gesture.up();
+      await tester.pump(const Duration(seconds: 1));
+    });
+
+    testWidgets('past the edge or the centre it stays in 0..1', (tester) async {
+      await open(tester);
+      final gesture = await tester.startGesture(at(tester, 0, 0.5));
+      await gesture.moveTo(at(tester, 0, 0.5) + const Offset(0, -900));
+      await tester.pump();
+      expect(shownTraits(tester)[TraitIds.brightness], 1);
+      await gesture.moveTo(at(tester, 0, 0.5) + const Offset(0, 900));
+      await tester.pump();
+      expect(shownTraits(tester)[TraitIds.brightness], 0);
+      await gesture.up();
+      await tester.pump(const Duration(seconds: 1));
+    });
+
+    testWidgets('the glow follows the drag live; nothing plays until the '
+        'lift, then once', (tester) async {
+      await open(tester);
+      final gesture = await tester.startGesture(at(tester, 1, 0.5));
+      await gesture.moveTo(at(tester, 1, 0.8));
+      await tester.pump();
+      final mid = painter<RadarGlowPainter>(tester).spec;
+      await gesture.moveTo(at(tester, 1, 0.2));
+      await tester.pump();
+      final end = draft(tester);
+      expect(painter<RadarGlowPainter>(tester).spec, buildMistSpec(end));
+      expect(mid, isNot(buildMistSpec(end)));
+      expect(
+        end,
+        instrumentForTraits(
+          shownTraits(tester),
+          id: end.id,
+          name: 'New instrument',
+        ),
+      );
+      expect(
+        audition.played,
+        isEmpty,
+        reason: 'nothing plays under the finger',
+      );
+
+      await gesture.up();
+      await tester.pump(const Duration(seconds: 1));
+      expect(audition.played, hasLength(1));
+      expect(audition.played.single, end);
+    });
+
+    testWidgets('a tap on a handle plays once and moves nothing', (
       tester,
     ) async {
       await open(tester);
-      final from = painted(tester);
-      final bass = preset('bass');
-      await tester.ensureVisible(chip('bass'));
-      await tester.tap(chip('bass'));
-      await tester.pump();
-      await tester.pump(InstrumentRadar.glide ~/ 3);
-
-      final mid = painted(tester);
-      final target = [for (final id in ids) bass.traits[id]];
-      var between = 0;
-      for (var i = 0; i < ids.length; i++) {
-        if (target[i] == from[i]) continue;
-        final lo = target[i] < from[i] ? target[i] : from[i];
-        final hi = target[i] < from[i] ? from[i] : target[i];
-        expect(mid[i], inInclusiveRange(lo, hi), reason: ids[i]);
-        if (mid[i] > lo && mid[i] < hi) between++;
-      }
-      expect(between, greaterThan(0), reason: 'it is on its way');
-
-      await tester.pump(InstrumentRadar.glide);
-      expect(painted(tester), target);
-      expect(InstrumentRadar.glide, lessThan(const Duration(seconds: 1)));
+      final before = shownTraits(tester);
+      await tester.tapAt(at(tester, 2, before[TraitIds.warmth]));
+      await tester.pump(const Duration(seconds: 1));
+      expect(audition.played, hasLength(1));
+      expect(shownTraits(tester), before);
     });
 
-    testWidgets('under reduce motion it jumps there, without the glide', (
-      tester,
-    ) async {
-      await open(tester, reduceMotion: true);
-      await tester.ensureVisible(chip('click'));
-      await tester.tap(chip('click'));
-      await tester.pump();
-      expect(painted(tester), [
-        for (final id in ids) preset('click').traits[id],
-      ]);
+    testWidgets('a touch away from every spoke does nothing', (tester) async {
+      await open(tester);
+      final before = shownTraits(tester);
+      final rect = radarRect(tester);
+      final between = radarAxisDirection(0, 6) + radarAxisDirection(1, 6);
+      await tester.tapAt(
+        rect.center + between / between.distance * (reachOf(tester) + 20),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(audition.played, isEmpty);
+      expect(shownTraits(tester), before);
+    });
+
+    testWidgets('handles stacked at the centre: the first move picks the '
+        'spoke it points along', (tester) async {
+      // Everything at the centre but Brightness (which the core reads as
+      // the middle once Fullness is this low).
+      final flat = instrumentForTraits(
+        InstrumentTraits({for (final id in ids) id: 0.0}),
+        id: 'flat',
+        name: 'Flat',
+      );
+      await open(tester, instrument: flat, existing: true);
+      expect(painted(tester), [0.5, 0.0, 0.0, 0.0, 0.0, 0.0]);
+      final centre = radarRect(tester).center;
+      final gesture = await tester.startGesture(centre);
+      final direction = radarAxisDirection(3, 6);
+      for (final share in [0.05, 0.2, 0.4]) {
+        await gesture.moveTo(centre + direction * reachOf(tester) * share);
+        await tester.pump();
+      }
+      final traits = shownTraits(tester);
+      expect(traits[TraitIds.air], 0.4, reason: 'Air points straight down');
+      for (final id in ids.skip(1)) {
+        if (id == TraitIds.air) continue;
+        expect(traits[id], closeTo(0, 1e-9), reason: id);
+      }
+      await gesture.up();
+      await tester.pump(const Duration(seconds: 1));
+      expect(audition.played, hasLength(1));
+    });
+
+    testWidgets('touching the wheel does not scroll the page', (tester) async {
+      await open(tester);
+      final scrollable = tester.state<ScrollableState>(
+        find
+            .descendant(
+              of: find.byType(InstrumentPanel),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.dragFrom(at(tester, 3, 0.5), const Offset(0, -200));
+      await tester.pump(const Duration(seconds: 1));
+      expect(scrollable.position.pixels, 0);
     });
   });
 
@@ -343,19 +401,20 @@ void main() {
       expect(
         gate.tryFlash(Duration.zero),
         isFalse,
-        reason: 'the radar used the gate in scope',
+        reason: 'the wheel used the gate in scope',
       );
+      await tester.pump(const Duration(seconds: 1));
     });
 
     testWidgets('a second release inside the gate interval does not flash '
         'again', (tester) async {
       await open(tester);
-      // The gate's clock never moves, so after this nothing may flash.
       expect(gate.tryFlash(Duration.zero), isTrue);
       await tester.tapAt(at(tester, 0, 0.5));
       await tester.pump(const Duration(milliseconds: 40));
       expect(flashing(tester), isFalse);
       expect(audition.played, hasLength(1), reason: 'the sound still plays');
+      await tester.pump(const Duration(seconds: 1));
     });
 
     testWidgets('with the effect off nothing flashes', (tester) async {
@@ -363,18 +422,58 @@ void main() {
       await tester.tapAt(at(tester, 0, 0.5));
       await tester.pump(const Duration(milliseconds: 40));
       expect(flashing(tester), isFalse);
+      await tester.pump(const Duration(seconds: 1));
+    });
+
+    testWidgets('the glow swells after a release, but never under reduce '
+        'motion', (tester) async {
+      await open(tester);
+      final swell = painter<RadarGlowPainter>(tester).swell!;
+      await tester.tapAt(at(tester, 0, 0.5));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(swell.value, inExclusiveRange(0, 1));
+      await tester.pump(const Duration(seconds: 1));
+
+      await open(tester, reduceMotion: true);
+      expect(painter<RadarGlowPainter>(tester).swell, isNull);
+      expect(painter<RadarShapePainter>(tester).breath, isNull);
+    });
+  });
+
+  group('changes from outside', () {
+    testWidgets('a screen-reader step glides the shape there with a short '
+        'ease', (tester) async {
+      final handle = tester.ensureSemantics();
+      await open(tester);
+      adjust(tester, 'Fullness', SemanticsAction.increase);
+      await tester.pump();
+      await tester.pump(InstrumentRadar.glide ~/ 3);
+      expect(painted(tester)[1], inExclusiveRange(0.5, 0.6));
+      await tester.pump(InstrumentRadar.glide);
+      expect(painted(tester)[1], 0.6);
+      expect(InstrumentRadar.glide, lessThan(const Duration(seconds: 1)));
+      handle.dispose();
+    });
+
+    testWidgets('under reduce motion it jumps there, without the glide', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await open(tester, reduceMotion: true);
+      adjust(tester, 'Fullness', SemanticsAction.increase);
+      await tester.pump();
+      expect(painted(tester)[1], 0.6);
+      handle.dispose();
     });
   });
 
   group('semantics', () {
-    testWidgets('every axis is an adjustable control with its plain name and '
-        'level, at least 48 dp', (tester) async {
+    testWidgets('every spoke is an adjustable control with its plain name '
+        'and rank, at least 48 dp', (tester) async {
       final handle = tester.ensureSemantics();
-      await open(tester, instrument: factoryInstruments[2], existing: true);
-      final traits = shownTraits(tester);
-      String level(double v) => '${radarPercent(v)} percent';
-      for (final (i, label) in labels.indexed) {
-        final value = traits[ids[i]];
+      await open(tester);
+      for (final label in labels) {
         final node = axisNode(label);
         expect(
           node,
@@ -382,9 +481,9 @@ void main() {
             isSlider: true,
             hasIncreaseAction: true,
             hasDecreaseAction: true,
-            value: level(value),
-            increasedValue: level(radarStep(value, 1)),
-            decreasedValue: level(radarStep(value, -1)),
+            value: 'C',
+            increasedValue: 'C plus',
+            decreasedValue: 'D plus',
           ),
           reason: label,
         );
@@ -394,28 +493,25 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('increase and decrease step one trait and play once each', (
-      tester,
-    ) async {
+    testWidgets('increase and decrease move one step of one trait, speak the '
+        'rank and play once each', (tester) async {
       final handle = tester.ensureSemantics();
       await open(tester);
       final before = shownTraits(tester);
 
       adjust(tester, 'Air', SemanticsAction.increase);
       await tester.pumpAndSettle();
-      final air = radarStep(before[TraitIds.air], 1);
-      expect(shownTraits(tester)[TraitIds.air], air);
-      expect(axisNode('Air').value, '${radarPercent(air)} percent');
+      expect(shownTraits(tester)[TraitIds.air], 0.6);
+      expect(axisNode('Air').value, 'C plus');
+      expect(axisNode('Air').label, 'Air');
       expect(audition.played, hasLength(1));
 
       adjust(tester, 'Length', SemanticsAction.decrease);
       await tester.pumpAndSettle();
+      expect(axisNode('Length').value, 'D plus');
       expect(
         shownTraits(tester),
-        before.withValues({
-          TraitIds.air: air,
-          TraitIds.length: radarStep(before[TraitIds.length], -1),
-        }),
+        before.withValues({TraitIds.air: 0.6, TraitIds.length: 0.4}),
         reason: 'each step moved its own trait only',
       );
       expect(audition.played, hasLength(2));
@@ -431,6 +527,14 @@ void main() {
       }
       await tester.pumpAndSettle();
       expect(shownTraits(tester)[TraitIds.fullness], 1);
+      expect(axisNode('Fullness').value, 'A plus');
+      for (var i = 0; i < 12; i++) {
+        adjust(tester, 'Fullness', SemanticsAction.decrease);
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      expect(shownTraits(tester)[TraitIds.fullness], 0);
+      expect(axisNode('Fullness').value, 'none');
       expect(tester.takeException(), isNull);
       handle.dispose();
     });
@@ -438,32 +542,42 @@ void main() {
     testWidgets('the shape is described in plain words', (tester) async {
       final handle = tester.ensureSemantics();
       await open(tester);
-      final traits = shownTraits(tester);
-      expect(
-        find.semantics.byLabel(
-          describeRadar(labels, [for (final id in ids) traits[id]]),
-        ),
-        findsOne,
-      );
-      await tester.ensureVisible(chip('neutral'));
-      await tester.tap(chip('neutral'));
-      await tester.pumpAndSettle();
       expect(
         find.semantics.byLabel(
           'Sound shape, neutral: everything in the middle',
         ),
         findsOne,
       );
-      await tester.ensureVisible(chip('warm drone'));
-      await tester.tap(chip('warm drone'));
-      await tester.pumpAndSettle();
+      handle.dispose();
+    });
+
+    testWidgets('an approximated sound is said to screen readers, not shown', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      final bell = factoryInstruments[2].copyWith(id: 'b', name: 'Bell');
+      await open(tester, instrument: bell, existing: true);
+      final shown = [for (final v in values(traitsForInstrument(bell))) v];
       expect(
         find.semantics.byLabel(
-          'Sound shape, warm drone: high Softness and Length, '
-          'low Brightness, Fullness and Air, the rest in the middle',
+          describeRadar(labels, [
+            for (final v in shown) snapToRank(v),
+          ], approximate: true),
         ),
         findsOne,
       );
+      expect(find.text(radarApproximateNote), findsNothing);
+      handle.dispose();
+    });
+
+    testWidgets('the name and Save are labelled', (tester) async {
+      final handle = tester.ensureSemantics();
+      await open(tester);
+      expect(
+        tester.getSemantics(find.byKey(saveKey)),
+        isSemantics(label: 'Save', isButton: true, isEnabled: true),
+      );
+      expect(find.semantics.byLabel('Name'), findsWidgets);
       handle.dispose();
     });
   });
@@ -523,36 +637,35 @@ void main() {
   group('opening a saved instrument', () {
     final saved = factoryInstruments[2].copyWith(id: 'saved-1', name: 'Bell');
 
-    testWidgets('shows its approximate shape with a plain note and changes '
-        'nothing', (tester) async {
+    testWidgets('shows its shape snapped to the steps and changes nothing', (
+      tester,
+    ) async {
       await open(tester, instrument: saved, existing: true);
-      expect(shownTraits(tester), traitsForInstrument(saved));
+      final read = traitsForInstrument(saved);
+      expect(shownTraits(tester), read, reason: 'the model stays continuous');
+      expect(painted(tester), [for (final v in values(read)) snapToRank(v)]);
+      expect(draft(tester), saved, reason: 'the recipe is untouched');
       expect(
-        find.byKey(const Key('instrument-radar-approximate')),
-        findsOneWidget,
+        tester.widget<RoundActionButton>(find.byKey(saveKey)).onPressed,
+        isNull,
+        reason: 'nothing to save yet',
       );
-      expect(find.text('Saved'), findsOneWidget);
-      expect(shownInMist(tester), saved);
+      expect(library.snapshot.value.instruments.single, saved);
     });
 
-    testWidgets('the first move replaces the draft and clears the note, the '
-        'library changes only on Save', (tester) async {
+    testWidgets('the first move replaces the draft; the library changes only '
+        'on Save', (tester) async {
       await open(tester, instrument: saved, existing: true);
-      final gesture = await tester.startGesture(
-        at(tester, 5, traitsForInstrument(saved)[TraitIds.length]),
-      );
+      final length = snapToRank(traitsForInstrument(saved)[TraitIds.length]);
+      final gesture = await tester.startGesture(at(tester, 5, length));
       await gesture.moveTo(at(tester, 5, 0.2));
       await gesture.up();
       await tester.pump(const Duration(seconds: 1));
 
-      expect(
-        find.byKey(const Key('instrument-radar-approximate')),
-        findsNothing,
-      );
-      expect(find.text('Unsaved changes'), findsOneWidget);
+      expect(shownTraits(tester)[TraitIds.length], 0.2);
       expect(library.snapshot.value.instruments.single, saved);
 
-      await tester.tap(find.byKey(const Key('instrument-save')));
+      await tester.tap(find.byKey(saveKey));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       final stored = library.snapshot.value.instruments.single;
@@ -569,50 +682,74 @@ void main() {
       );
     });
 
-    testWidgets('an instrument made on the radar opens without the note', (
+    testWidgets('an instrument made on the wheel opens on its steps', (
       tester,
     ) async {
+      final airy = traitPresets.singleWhere((p) => p.name == 'airy pad');
       final made = instrumentForTraits(
-        preset('airy pad').traits,
+        airy.traits,
         id: 'saved-2',
         name: 'Haze',
       );
       await open(tester, instrument: made, existing: true);
-      expect(
-        find.byKey(const Key('instrument-radar-approximate')),
-        findsNothing,
-      );
-      expect(shownTraits(tester), preset('airy pad').traits);
+      expect(shownTraits(tester), airy.traits);
+      expect(painted(tester), [
+        for (final v in values(airy.traits)) snapToRank(v),
+      ]);
     });
   });
 
-  testWidgets('a new instrument can be named and saved from the radar', (
-    tester,
-  ) async {
-    await open(tester);
-    await tester.enterText(find.byKey(const Key('instrument-name')), 'Glow');
-    await tester.ensureVisible(chip('guitar'));
-    await tester.tap(chip('guitar'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('instrument-save')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+  group('name and Save', () {
+    testWidgets('tapping the name renames it in place; Save stores it', (
+      tester,
+    ) async {
+      await open(tester);
+      final field = tester.widget<TextField>(find.byKey(nameKey));
+      expect(field.controller!.text, 'New instrument');
+      expect(field.decoration!.labelText, isNull, reason: 'a title, no label');
 
-    final stored = library.snapshot.value.instruments.single;
-    expect(stored.name, 'Glow');
-    expect(
-      stored.harmonics,
-      instrumentForTraits(
-        preset('guitar').traits,
-        id: 'x',
-        name: 'x',
-      ).harmonics,
-    );
+      await tester.tap(find.byKey(nameKey));
+      await tester.pump();
+      expect(tester.testTextInput.isVisible, isTrue);
+      await tester.enterText(find.byKey(nameKey), 'Glow');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      final gesture = await tester.startGesture(at(tester, 0, 0.5));
+      await gesture.moveTo(at(tester, 0, 0.8));
+      await gesture.up();
+      await tester.pump(const Duration(seconds: 1));
+
+      await tester.tap(find.byKey(saveKey));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final stored = library.snapshot.value.instruments.single;
+      expect(stored.name, 'Glow');
+      expect(
+        stored,
+        instrumentForTraits(shownTraits(tester), id: stored.id, name: 'Glow'),
+      );
+      expect(find.text('Saved "Glow"'), findsOneWidget);
+      expect(
+        tester.widget<RoundActionButton>(find.byKey(saveKey)).onPressed,
+        isNull,
+        reason: 'saved: nothing more to save',
+      );
+    });
+
+    testWidgets('an empty name asks for one and Save waits', (tester) async {
+      await open(tester);
+      await tester.enterText(find.byKey(nameKey), '');
+      await tester.pump();
+      expect(find.text('Give it a name'), findsOneWidget);
+      expect(
+        tester.widget<RoundActionButton>(find.byKey(saveKey)).onPressed,
+        isNull,
+      );
+    });
   });
 
-  testWidgets('when sound is unavailable the screen says so without Play', (
-    tester,
-  ) async {
+  testWidgets('when sound is unavailable the screen says so', (tester) async {
     await open(tester);
     audition.isAvailable = false;
     await tester.pump();
@@ -630,8 +767,8 @@ void main() {
       'Sound shape, x: high A, B and C',
     );
     expect(
-      describeRadar(['A', 'B', 'C'], [0.5, 0.4, 0.6]),
-      'Sound shape: everything in the middle',
+      describeRadar(['A', 'B', 'C'], [0.5, 0.4, 0.6], approximate: true),
+      'Sound shape: everything in the middle. $radarApproximateNote',
     );
   });
 }

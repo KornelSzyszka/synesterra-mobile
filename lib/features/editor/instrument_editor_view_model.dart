@@ -8,6 +8,12 @@ import '../../data/repositories/instrument_audition_repository.dart';
 import '../../data/repositories/instrument_library_repository.dart';
 import 'test_sound.dart';
 
+/// The recipe a brand-new instrument starts from instead of the neutral
+/// shape. Only the tests of the hidden technical controls set it (to the
+/// plain Sine, whose single harmonic those tests are written around).
+@visibleForTesting
+Instrument? newInstrumentTemplate;
+
 /// Edits one instrument. The draft is always a valid [Instrument]; only the
 /// name can be temporarily invalid, and then saving is disabled.
 class InstrumentEditorViewModel extends ChangeNotifier {
@@ -25,13 +31,19 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     bool existing = false,
     String Function()? newId,
   }) : _newId = newId ?? _defaultId {
+    final template = newInstrumentTemplate;
     final draft = instrument == null
         // A brand-new instrument starts untagged on the neutral shape.
-        ? instrumentForTraits(
-            InstrumentTraits.neutral(),
-            id: _newId(),
-            name: 'New instrument',
-          )
+        ? template?.copyWith(
+                id: _newId(),
+                name: 'New instrument',
+                tags: const [],
+              ) ??
+              instrumentForTraits(
+                InstrumentTraits.neutral(),
+                id: _newId(),
+                name: 'New instrument',
+              )
         : existing
         ? instrument
         // A copy of a preset keeps the preset's tags.

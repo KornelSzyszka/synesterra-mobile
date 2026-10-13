@@ -27,9 +27,18 @@ bool showTechnicalControls = false;
 /// Shape the sound of one instrument on the stat wheel: the name above it
 /// (tap to rename), the wheel, and one round Save button. Nothing else.
 class InstrumentPanel extends StatefulWidget {
-  const InstrumentPanel({super.key, required this.viewModel});
+  const InstrumentPanel({
+    super.key,
+    required this.viewModel,
+    this.stepFeedback,
+  });
 
   final InstrumentEditorViewModel viewModel;
+
+  /// A light haptic tick for each step a vertex snaps to, given by whoever
+  /// may reach the platform (the UI may not, decision 0001 R5). Null: no
+  /// tick.
+  final VoidCallback? stepFeedback;
 
   @override
   State<InstrumentPanel> createState() => _InstrumentPanelState();
@@ -96,7 +105,11 @@ class _InstrumentPanelState extends State<InstrumentPanel> {
       listenable: vm,
       builder: (context, _) {
         if (!showTechnicalControls) {
-          return _WheelBody(viewModel: vm, name: _name);
+          return _WheelBody(
+            viewModel: vm,
+            name: _name,
+            stepFeedback: widget.stepFeedback,
+          );
         }
         final tokens = SynesterraTokens.of(context);
         final instrument = vm.instrument;
@@ -403,10 +416,15 @@ int _sliderToMs(double t) =>
 /// rest (how to use it, that a shape approximates a sound) is said to
 /// screen readers only.
 class _WheelBody extends StatelessWidget {
-  const _WheelBody({required this.viewModel, required this.name});
+  const _WheelBody({
+    required this.viewModel,
+    required this.name,
+    this.stepFeedback,
+  });
 
   final InstrumentEditorViewModel viewModel;
   final TextEditingController name;
+  final VoidCallback? stepFeedback;
 
   Future<void> _save(BuildContext context) async {
     final vm = viewModel;
@@ -452,7 +470,9 @@ class _WheelBody extends StatelessWidget {
               ),
               const SizedBox(height: Space.sm),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
+                constraints: BoxConstraints(
+                  maxWidth: wheelSide(constraints.biggest),
+                ),
                 child: InstrumentRadar(
                   key: const Key('instrument-radar'),
                   traits: vm.traits,
@@ -462,6 +482,7 @@ class _WheelBody extends StatelessWidget {
                   approximated: vm.approximated,
                   onChanged: vm.setTrait,
                   onRelease: vm.releaseTraits,
+                  onStep: stepFeedback,
                 ),
               ),
               ValueListenableBuilder<bool>(
@@ -502,6 +523,20 @@ class _WheelBody extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The side of the wheel on a screen of [size] (the panel): as large as
+/// fits beside the name and Save without scrolling, at most 420 dp and at
+/// least 260 dp (a very short screen scrolls).
+@visibleForTesting
+double wheelSide(Size size) {
+  // The name, Save and the paddings around them.
+  const reserved = 190.0;
+  final byHeight = size.height.isFinite ? size.height - reserved : 420.0;
+  return math.min(
+    size.width - 2 * Space.lg,
+    math.min(420, math.max(260, byHeight)),
+  );
 }
 
 /// The instrument's name above the wheel, written like a title. Tapping it

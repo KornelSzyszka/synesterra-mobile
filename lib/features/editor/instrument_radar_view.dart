@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../shared/instrument_mist/mist_spec.dart';
@@ -58,7 +56,8 @@ String describeRadar(
 /// written along it, and inside it one spoke per trait, graduated in ten
 /// steps with the rank letters E (centre) to A (edge). Drag a vertex along
 /// its spoke (only along it: the touch is projected onto the spoke); it snaps
-/// to the steps with a light haptic tick, the shape follows live through
+/// to the steps, calling [onStep] on each new one (for a light haptic tick),
+/// the shape follows live through
 /// [onChanged] (always a snapped value) and [onRelease] is called once when
 /// the finger lifts. It holds no trait state of its own: [traits] may be
 /// continuous (an opened sound) and are shown snapped.
@@ -79,6 +78,7 @@ class InstrumentRadar extends StatefulWidget {
     required this.color,
     required this.onChanged,
     required this.onRelease,
+    this.onStep,
     this.glow,
     this.preset,
     this.approximated = false,
@@ -100,6 +100,11 @@ class InstrumentRadar extends StatefulWidget {
   final bool approximated;
   final void Function(String id, double value) onChanged;
   final VoidCallback onRelease;
+
+  /// Called each time the finger brings a vertex onto another step: the
+  /// place for a light haptic tick. The UI never reaches the platform itself
+  /// (decision 0001, R5), so the tick is given from outside.
+  final VoidCallback? onStep;
 
   /// The glide to a new shape set from outside.
   static const glide = Duration(milliseconds: 320);
@@ -237,11 +242,11 @@ class _InstrumentRadarState extends State<InstrumentRadar>
   String _id(int index) => widget.traits.definitions[index].id;
 
   /// Sends [value] snapped for spoke [axis] when it lands on another step,
-  /// with a light haptic tick.
+  /// with a tick ([InstrumentRadar.onStep]).
   void _send(int axis, double value) {
     final snapped = snapToRank(value);
     if (rankStep(snapped) == rankStep(_to[axis])) return;
-    unawaited(HapticFeedback.selectionClick());
+    widget.onStep?.call();
     widget.onChanged(_id(axis), snapped);
   }
 
@@ -368,7 +373,10 @@ class _InstrumentRadarState extends State<InstrumentRadar>
     final glow = widget.glow;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final side = constraints.maxWidth;
+        // Square: as wide as it may be, and no taller than it may be.
+        final side = constraints.hasBoundedHeight
+            ? math.min(constraints.maxWidth, constraints.maxHeight)
+            : constraints.maxWidth;
         final size = Size.square(side);
         final layout = WheelLayout.of(size);
         final reach = layout.reach;

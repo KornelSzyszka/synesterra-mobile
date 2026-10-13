@@ -20,6 +20,9 @@ Future<void> openEditor(
   // The technical controls are hidden in v1; these tests still cover them.
   showTechnicalControls = true;
   addTearDown(() => showTechnicalControls = false);
+  // These tests are written around the plain Sine (one harmonic).
+  newInstrumentTemplate = factoryInstruments[1];
+  addTearDown(() => newInstrumentTemplate = null);
   tester.view
     ..devicePixelRatio = 1
     ..physicalSize = size;

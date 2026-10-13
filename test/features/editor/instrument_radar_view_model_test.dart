@@ -27,15 +27,24 @@ void main() {
     library = InMemoryInstrumentLibraryRepository();
   });
 
-  test('a new instrument starts from the plain Sine, which sits exactly on '
-      'the radar', () {
+  test('a new instrument starts from the neutral preset shape', () {
     final vm = create();
     addTearDown(vm.dispose);
-    final sine = factoryInstruments[1];
-    expect(vm.instrument.harmonics, sine.harmonics);
-    expect(vm.traits, traitsForInstrument(sine));
+    final neutral = preset('neutral');
+    expect(vm.traits, neutral.traits);
+    expect(
+      vm.instrument,
+      instrumentForTraits(
+        neutral.traits,
+        id: vm.instrument.id,
+        name: 'New instrument',
+      ),
+    );
+    expect(vm.instrument.tags, isEmpty);
     expect(vm.approximated, isFalse);
-    expect(vm.activePreset, isNull);
+    expect(vm.activePreset, neutral);
+    expect(vm.dirty, isFalse);
+    expect(vm.canSave, isTrue, reason: 'a new instrument can be saved as is');
   });
 
   test('setTrait changes that trait only and maps the recipe, keeping id, '
@@ -105,34 +114,21 @@ void main() {
     expect(vm.auditionCount, 1);
   });
 
-  test('every preset sets its traits and plays once', () {
+  test('a shape that matches a preset names it (for screen readers)', () {
     final vm = create();
     addTearDown(vm.dispose);
-    for (final (i, p) in traitPresets.indexed) {
-      vm.applyPreset(p);
-      expect(vm.traits, p.traits, reason: p.name);
-      expect(vm.activePreset, p);
-      expect(
-        vm.instrument,
-        instrumentForTraits(
-          p.traits,
-          id: vm.instrument.id,
-          name: vm.instrument.name,
-        ),
-      );
-      expect(audition.played, hasLength(i + 1));
+    final airy = preset('airy pad');
+    for (final definition in defaultTraitDefinitions) {
+      vm.setTrait(definition.id, airy.traits[definition.id]);
     }
+    expect(vm.traits, airy.traits);
+    expect(vm.activePreset, airy);
+    expect(audition.played, isEmpty, reason: 'setting traits never plays');
   });
 
-  test('a preset keeps the name and tags', () {
-    final vm = create();
-    addTearDown(vm.dispose);
-    vm
-      ..setName('Soft one')
-      ..addTag('pad')
-      ..applyPreset(preset('airy pad'));
-    expect(vm.instrument.name, 'Soft one');
-    expect(vm.instrument.tags, ['pad']);
+  test('the presets stay data in the core; the view model offers none', () {
+    expect(traitPresets.map((p) => p.name), contains('neutral'));
+    expect(traitPresets.length, greaterThan(1));
   });
 
   group('opening a saved instrument', () {
