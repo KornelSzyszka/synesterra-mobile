@@ -52,8 +52,9 @@ const wheelNameHeight = 14.0;
 /// value 1 and its glow.
 const wheelNameGap = 16.0;
 
-/// Margin of a bare wheel (a thumbnail) around its chart.
-const wheelBareMargin = 3.0;
+/// Margin of a bare wheel (a thumbnail) around its chart: room for the
+/// shape's soft halo.
+const wheelBareMargin = 12.0;
 
 /// The radii of the wheel in a field: the tick ring from [ringInner] to
 /// [outer], the names centred on [nameRadius], and the chart with value 1 at
@@ -83,7 +84,7 @@ class WheelLayout {
     );
   }
 
-  /// Only the chart, nearly filling [size]: for thumbnails.
+  /// Only the chart, [wheelBareMargin] inside [size]: for thumbnails.
   factory WheelLayout.bare(Size size) {
     final reach = max(0.0, size.shortestSide / 2 - wheelBareMargin);
     return WheelLayout._(
