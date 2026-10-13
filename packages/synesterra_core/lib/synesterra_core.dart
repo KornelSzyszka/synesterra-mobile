@@ -19,6 +19,7 @@ export 'src/sound/instrument_envelope.dart';
 export 'src/sound/instrument_pad.dart';
 export 'src/sound/instrument_renderer.dart';
 export 'src/sound/instrument_response.dart';
+export 'src/sound/instrument_traits.dart';
 export 'src/session/session_document.dart';
 export 'src/session/session_migration.dart';
 export 'src/session/session_parser.dart';

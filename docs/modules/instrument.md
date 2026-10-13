@@ -70,6 +70,25 @@ Since `SessionDocument v3` ([session document](session-document.md)) a loop laye
 
 The UI is `InstrumentPad` in `lib/features/editor/instrument_pad_view.dart` (a disc with hint rings and rim labels; touch, drag, sound on lift; two adjustable semantics controls for character and strength) with the pure helpers `padPointAt`, `padOffsetOf`, `stepPadPoint` and `padCharacterName` in `pad_geometry.dart`. The editor view model keeps the last touched `PadPoint` and plays on lift.
 
+## Traits
+
+`instrument_traits.dart` is the radar-chart view on the recipe (Founder, 2026-10-13, issue #111): a few plain-language traits, each 0 (centre) to 1 (edge), produce an ordinary `Instrument`. The recipe and JSON v2 do not change; traits are not saved. The traits are **data**: `defaultTraitDefinitions` is a list of `TraitDefinition(id, label, defaultValue, effect)`, and `InstrumentTraits(Map<String, double>, {definitions})` holds immutable, validated values (unknown id, NaN, infinity or a value outside 0..1 throw `ArgumentError`; a missing id takes its default). Each definition declares a `TraitEffect` (`harmonicTilt`, `harmonicCount`, `lowShelf`, `highShelf`, `attack`, `decay`), the recipe field it drives, so a trait added to the list works without code; two definitions with the same effect are rejected, and an effect no trait drives stays neutral (0.5). Equality of `InstrumentTraits` includes the definitions. The values below are **untuned**; the Founder judges the sound by ear.
+
+| Trait | Recipe field | Forward mapping |
+|---|---|---|
+| Brightness | harmonic amplitudes | harmonic `k` has amplitude `k^-slope`, slope 2 (dark) down to 0 (bright) |
+| Fullness | harmonic count | `1 + 31 * fullness` harmonics; the last, partial one fades in (continuous) |
+| Warmth | low shelf EQ | -12..+12 dB, linear |
+| Air | high shelf EQ | -12..+12 dB, linear |
+| Softness | `attackMs` | 0..500 ms, exponential (`20 * (exp(s * ln 26) - 1)`) |
+| Length | `decayMs` | 20..5000 ms, exponential |
+
+`instrumentForTraits(traits, id:, name:, tags:)` is deterministic, always valid and non-silent (the fundamental is 1), monotonic in every trait with the others held fixed, and continuous up to the whole milliseconds of attack and decay. The mid EQ band stays 0 dB.
+
+`traitsForInstrument(instrument)` is an **approximate inverse** so a saved or factory instrument can be shown on the chart. Fullness is the last harmonic above 1e-4 of the strongest (with the fractional last harmonic recovered from the measured slope); brightness is the amplitude-weighted harmonic centroid `sum(k * a_k) / sum(a_k)`, matched by bisection against the forward mapping at the measured count (below fullness 0.1 it is not observable and reads 0.5); warmth and air are the shelf gains; softness and length invert the attack and decay scales. Everything is clamped into 0..1. Tested bound: for an instrument made by `instrumentForTraits`, every trait comes back within **0.02** (measured worst case on 30 000 random vectors: 0.016, fullness; the largest part of it is the 2-harmonic case, where the fade of the second harmonic cannot be told from its slope and the midpoint is taken, an error of at most 0.5/31 = 0.016; softness from whole-millisecond attack is 0.008; brightness is checked from fullness 0.1 up). For other recipes the result is the nearest reading, not a promise of the same sound.
+
+`traitPresets` are named shapes: `neutral` and the five characters `warm drone`, `airy pad`, `bass`, `guitar`, `click` (dark soft long, bright soft, dark hard, bright hard, hardest and shortest). The old pad (`instrument_pad.dart`) is untouched here because the UI still uses it; the radar screen and the removal of the pad are a follow-up task. Tests: `test/instrument_traits_test.dart` (validation, presets, seeded vectors and cube corners, monotonicity, continuity, round trip, factory instruments). This is not evidence of how it sounds.
+
 ## Not here yet
 
 A true sustain (note length and release), noise and a pitch drop, the inverse mapping from an instrument to a pad point and saving the pad position. Also the UI to choose an instrument or a pitch in the Loop panel, and resolving a missing instrument against the library. So is a progression as a test sound (it needs timing).
