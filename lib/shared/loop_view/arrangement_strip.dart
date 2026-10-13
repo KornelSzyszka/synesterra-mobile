@@ -114,9 +114,36 @@ class ArrangementStripPainter extends CustomPainter {
   final SynesterraTokens tokens;
   final TextStyle labelStyle;
 
+  /// The top and bottom of a section's capsule.
+  static (Color, Color) capsuleStops(SynesterraTokens tokens) => (
+    Color.lerp(tokens.surface, Colors.white, .045)!,
+    Color.lerp(tokens.surface, Colors.black, .18)!,
+  );
+
+  /// Alpha of the gold progress over the current section.
+  static const progressAlpha = .24;
+
+  /// Every opaque colour a section's label can sit on: the capsule's
+  /// gradient and, for the [current] section, also the gold progress over
+  /// it. A missing section is skipped, so it is never current.
+  static List<Color> labelGrounds(
+    SynesterraTokens tokens, {
+    required bool current,
+  }) {
+    final (top, bottom) = capsuleStops(tokens);
+    final plain = [top, Color.lerp(top, bottom, .5)!, bottom];
+    return [
+      ...plain,
+      if (current)
+        for (final c in plain)
+          Color.alphaBlend(tokens.accent.withValues(alpha: progressAlpha), c),
+    ];
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     if (sections.isEmpty) return;
+    final (top, bottom) = capsuleStops(tokens);
     final position = source.value;
     final totalRepeats = sections.fold<int>(0, (sum, s) => sum + s.repeats);
     final room = size.width - Space.xs * (sections.length - 1);
@@ -125,15 +152,32 @@ class ArrangementStripPainter extends CustomPainter {
       final section = sections[i];
       final width = room * section.repeats / totalRepeats;
       final rect = Rect.fromLTWH(x, 0, width, size.height);
-      final rrect = RRect.fromRectAndRadius(
+      // A capsule per section (a circle when narrow), lit from the top.
+      final capsule = RRect.fromRectAndRadius(
         rect,
-        const Radius.circular(Radii.sm),
+        Radius.circular(math.min(rect.width, rect.height) / 2),
       );
       final current = position.playing && position.sectionIndex == i;
-      canvas.drawRRect(rrect, Paint()..color = tokens.surface);
+      if (current) {
+        canvas.drawRRect(
+          capsule,
+          Paint()
+            ..color = tokens.accent.withValues(alpha: .28)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+        );
+      }
+      canvas.drawRRect(
+        capsule,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [top, bottom],
+          ).createShader(rect),
+      );
       if (current) {
         canvas.save();
-        canvas.clipRRect(rrect);
+        canvas.clipRRect(capsule);
         canvas.drawRect(
           Rect.fromLTWH(
             x,
@@ -141,33 +185,37 @@ class ArrangementStripPainter extends CustomPainter {
             width * sectionProgress(position, section.repeats),
             size.height,
           ),
-          Paint()..color = tokens.accent.withValues(alpha: .28),
+          Paint()..color = tokens.accent.withValues(alpha: progressAlpha),
         );
         canvas.restore();
       }
       canvas.drawRRect(
-        rrect,
+        capsule,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = current ? 2 : 1
-          ..color = current ? tokens.accent : tokens.border,
+          ..strokeWidth = current ? 1.6 : 1
+          ..color = current
+              ? tokens.accent
+              : Colors.white.withValues(alpha: .08),
       );
+      final inset = math.max(Space.md, math.min(capsule.tlRadiusX * .62, 18.0));
       final text = TextPainter(
         text: TextSpan(
           text:
               '${(i + 1).toString().padLeft(2, '0')} ${section.label}'
               '${section.missing ? ' (missing)' : ''}\n×${section.repeats}',
           style: labelStyle.copyWith(
-            color: section.missing
-                ? tokens.muted
-                : (current ? tokens.accentText : tokens.text),
+            // The current section shows by its gold rim, fill and glow; its
+            // label stays in the text colour (gold text on the gold fill
+            // fell to 3.9:1 on Autumn).
+            color: section.missing ? tokens.muted : tokens.text,
           ),
         ),
         textDirection: TextDirection.ltr,
         maxLines: 2,
         ellipsis: '…',
-      )..layout(maxWidth: math.max(1, width - Space.md * 2));
-      text.paint(canvas, Offset(x + Space.md, (size.height - text.height) / 2));
+      )..layout(maxWidth: math.max(1, width - inset * 2));
+      text.paint(canvas, Offset(x + inset, (size.height - text.height) / 2));
       x += width + Space.xs;
     }
   }

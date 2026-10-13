@@ -8,6 +8,7 @@ import 'package:synesterra/features/editor/editor_view.dart';
 import 'package:synesterra/features/editor/loop_edits.dart';
 import 'package:synesterra/shared/loop_view/loop_view.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
+import 'package:synesterra/shared/widgets/round_components.dart';
 
 import 'loop_fakes.dart';
 
@@ -157,7 +158,7 @@ void main() {
     await tester.ensureVisible(slider);
     await tester.tapAt(tester.getTopLeft(slider) + const Offset(30, 24));
     await tester.pumpAndSettle();
-    expect(tester.widget<Slider>(slider).value, lessThan(0.5));
+    expect(tester.widget<RoundSlider>(slider).value, lessThan(0.5));
 
     await tapAndSettle(tester, inside('loop-cycle', Icons.add));
     expect(

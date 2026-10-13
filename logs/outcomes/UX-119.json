@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-13",
+  "task": "UX-119",
+  "prefix": "UX",
+  "size": "L",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-opus-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "author above the minimum class (M); visual change only, two existing tests adapted visual finders only; new look tests written after the first implementation commit, the contrast tests were red first and found three text colours below 4.5:1 (fixed); one library test (outside scope, unchanged) caught a taller arrangement layout, fixed in the layout; tests ran in a soloud-free scratch copy; screenshots from a widget test, not a device; look, feel and phone frame rate not judged; Codex review pending"
+}

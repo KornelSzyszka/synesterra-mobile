@@ -21,3 +21,18 @@ A hit pulse is a function of the position (`stepPulse`), so a stopped view is st
 `ArrangementStrip` takes `StripSection {label, repeats, missing}` and highlights `sectionIndex`, filling the current section by `(cycleIndex mod repeats + cyclePosition) / repeats`.
 
 `LoopViewDemo` is a debug harness (no route in the app shell) showing the 3:2 and 5:4 examples.
+
+## Look (UX-119)
+
+Visual language v2, painting style only: geometry, layouts and the tested draw
+points (playhead line, step and dot centres) are unchanged. Steps are small
+lit pearls that bloom into a soft halo on their hit; rings are a hairline over
+a faint band; timeline steps are capsules; polygons have a faint fill, a soft
+band and a fine edge with round joins; the playhead is a thin gold line over a
+glow with a small light at its tip, which also marks the polygons' travelling
+dot. Glows use small blurs only, since a playing view repaints every frame.
+The mode switch is the shared `RoundSegmented`; the legend is a small light
+and the number per layer. The strip draws a capsule per section; the current
+one has a gold rim, glow and progress, and its label stays in the text
+colour (`ArrangementStripPainter.labelGrounds` lists what labels sit on, for
+the contrast test).

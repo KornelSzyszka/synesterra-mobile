@@ -38,9 +38,10 @@ one BPM. The UI timer only handles input and does not drive playback timing.
 
 The shared foundation for the blend of glass, organic and material chosen after the
 design lab (Founder, 2026-10-13). The Start screen, Library, Learn and the rhythm
-screen use it since UX-118 (see *Screens on v2* below); the Editor, Loop and
-Arrangement screens still keep the rounded-rectangle `Radii` until their own task.
-Code: `lib/shared/theme/` and `lib/shared/widgets/`.
+screen use it since UX-118 (see *Screens on v2* below), the Editor shell, Loop and
+Arrangement panels since UX-119 (see *Adopted: the Editor* below); the Instrument
+panel keeps its own look until its task. Code: `lib/shared/theme/` and
+`lib/shared/widgets/`.
 
 ### Tokens (`lib/shared/theme/`)
 
@@ -143,6 +144,53 @@ rendered by a widget test with real fonts, drift at rest):
   palette menu, `NumberStepper` and the `LoopView` and `ArrangementStrip` controls
   are still the Material or first-language look; they belong to the theme and to the
   Editor/Loop tasks.
+
+## Adopted: the Editor shell, Loop and Arrangement panels (UX-119)
+
+The first screens in visual language v2 (Founder, 2026-10-14). Code:
+`lib/features/editor/editor_style.dart`, `step_grid.dart`, `editor_view.dart`,
+`loop_panel.dart` and `lib/features/arrangement/arrangement_panel.dart`. The
+Instrument panel keeps its own look (the radar task restyles it).
+Screenshots (Graphite, rendered by a widget test with real fonts):
+[Loop playing](../assets/v2/loop-dark-playing.png),
+[Loop, polygons](../assets/v2/loop-dark-polygons.png),
+[Loop, whole length](../assets/v2/loop-dark-full.png),
+[sound sheet](../assets/v2/loop-dark-sheet.png),
+[Arrangement playing](../assets/v2/arrangement-dark-playing.png).
+
+- **Shell**: the shared `RoundScreen` frame from UX-118 (the ground with its
+  still mist, a round Back with the tooltip "Back", the title "Editor"); the
+  tabs, below the header, are quiet words with a small gold light under the
+  current one (it follows the swipe) and the tap glitch. Like Library and
+  Learn, the Editor has no drift of its own: a silent Editor schedules no
+  frames; only the loop picture moves while something plays.
+- **Round theme** (`editorRoundTheme`, on the Loop and Arrangement tabs and
+  their dialogs): dialogs are pebbles, bottom sheets a glass lens over an
+  opaque glass tone (text never sits on what lies under the sheet), fields,
+  text buttons, snack bars and tooltips are capsules.
+- **Loop panel**: Play/Stop is the gold disc with its word under it, on a
+  glass capsule with the tempo; steppers sit in tactile trays; actions are
+  chips; layers are organic pebble cards with a faint halo of the layer's
+  colour; the volume is the gold groove slider.
+- **Steps** (`StepGrid`): an empty well (off), a raised disc with a coloured
+  core (on), a glazed disc full of colour with a soft glow (strong); same 48
+  dp buttons and labels as before. Cheap for long patterns: plain painters
+  without their own layers or controllers, one glitch controller per grid
+  through the scope's `FlashGate`.
+- **Arrangement panel**: Play/Stop and Repeat all (a round toggle) on a glass
+  capsule with the tempo note, sections as organic pebble cards with round
+  buttons and a tray stepper.
+
+Tested (`test/features/editor/editor_v2_look_test.dart`,
+`test/features/arrangement/arrangement_v2_look_test.dart`): the components
+in place, 48 dp and labels (Android guidelines), the 320 dp / text scale 1.5
+layouts, the step flash through the gate and its reduce-motion fade, the
+still frame, no
+`BackdropFilter`, and the contrast of every text colour drawn
+(`editorTextRules`). The contrast tests found three colours below 4.5:1 that
+are now the text colour: a layer number in its own colour on the lit card,
+a section number in gold, and the current section's gold label on the
+strip's gold progress (Autumn).
 
 ## Colour roles: three colours, 60 : 30 : 10
 

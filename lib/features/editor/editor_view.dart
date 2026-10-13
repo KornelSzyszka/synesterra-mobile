@@ -9,7 +9,15 @@ import '../../data/repositories/loop.dart';
 import '../../data/repositories/loop_library_repository.dart';
 import '../../data/repositories/playback_repository.dart';
 import '../../shared/loop_view/position_source.dart';
+import '../../shared/theme/ambient_scope.dart';
+import '../../shared/theme/ground_palette.dart';
+import '../../shared/theme/round_shapes.dart';
+import '../../shared/theme/synesterra_theme.dart';
+import '../../shared/widgets/round_components.dart';
+import '../../shared/widgets/round_screen.dart';
+import '../../shared/widgets/tap_glitch.dart';
 import 'arrangement_tab_placeholder.dart';
+import 'editor_style.dart';
 import 'instrument_editor_view_model.dart';
 import 'instrument_panel.dart';
 import 'loop_editor_view_model.dart';
@@ -67,6 +75,11 @@ typedef EditorPanelBuilder = Widget Function(
 );
 
 /// Editor with three panels: Instrument, Loop and Arrangement.
+///
+/// Visual language v2: the shared [RoundScreen] frame (the ground and its
+/// still mist, a round Back and the title) with the panels as quiet tabs. The
+/// Loop and Arrangement panels get the round theme ([editorRoundTheme]); the
+/// Instrument panel keeps its own look.
 class EditorView extends StatefulWidget {
   const EditorView({
     super.key,
@@ -211,29 +224,32 @@ class _EditorViewState extends State<EditorView>
         (guard == null || guard.canSave());
     final choice = await showDialog<_LeaveChoice>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unsaved changes'),
-        content: Text('Save $what before leaving?'),
-        actions: [
-          TextButton(
-            key: const Key('leave-discard'),
-            onPressed: () => Navigator.pop(context, _LeaveChoice.discard),
-            child: const Text('Discard'),
-          ),
-          TextButton(
-            key: const Key('leave-cancel'),
-            autofocus: true,
-            onPressed: () => Navigator.pop(context, _LeaveChoice.cancel),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            key: const Key('leave-save'),
-            onPressed: canSave
-                ? () => Navigator.pop(context, _LeaveChoice.save)
-                : null,
-            child: const Text('Save'),
-          ),
-        ],
+      builder: (context) => roundDialog(
+        context,
+        AlertDialog(
+          title: const Text('Unsaved changes'),
+          content: Text('Save $what before leaving?'),
+          actions: [
+            TextButton(
+              key: const Key('leave-discard'),
+              onPressed: () => Navigator.pop(context, _LeaveChoice.discard),
+              child: const Text('Discard'),
+            ),
+            TextButton(
+              key: const Key('leave-cancel'),
+              autofocus: true,
+              onPressed: () => Navigator.pop(context, _LeaveChoice.cancel),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              key: const Key('leave-save'),
+              onPressed: canSave
+                  ? () => Navigator.pop(context, _LeaveChoice.save)
+                  : null,
+              child: const Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
     switch (choice) {
@@ -249,8 +265,26 @@ class _EditorViewState extends State<EditorView>
     }
   }
 
+  ThemeData? _themeBase;
+  GroundPalette? _themePalette;
+  ThemeData? _roundTheme;
+
+  /// The round theme for the Loop and Arrangement panels, made once per app
+  /// theme rather than on every rebuild.
+  ThemeData _roundThemeFor(ThemeData base, GroundPalette palette) {
+    if (!identical(base, _themeBase) || palette != _themePalette) {
+      _themeBase = base;
+      _themePalette = palette;
+      _roundTheme = editorRoundTheme(base, palette);
+    }
+    return _roundTheme!;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final palette = editorPalette(SynesterraTokens.of(context));
+    final round = _roundThemeFor(Theme.of(context), palette);
+    final outer = AmbientScope.maybeOf(context);
     return ListenableBuilder(
       listenable: Listenable.merge([_instrument, _loop, _guardChanges]),
       builder: (context, _) => PopScope(
@@ -258,37 +292,118 @@ class _EditorViewState extends State<EditorView>
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) _confirmLeave();
         },
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Editor'),
-            bottom: TabBar(
+        child: RoundScreen(
+          title: 'Editor',
+          below: _EditorTabs(controller: _tabs, palette: palette),
+          // Passes on a flash gate and tap strength given from outside.
+          child: AmbientScope(
+            palette: palette,
+            tapStrength: outer?.tapStrength,
+            gate: outer?.gate,
+            child: TabBarView(
               controller: _tabs,
-              tabs: const [
-                Tab(key: Key('editor-tab-instrument'), text: 'Instrument'),
-                Tab(key: Key('editor-tab-loop'), text: 'Loop'),
-                Tab(key: Key('editor-tab-arrangement'), text: 'Arrangement'),
+              children: [
+                _KeepAlive(child: InstrumentPanel(viewModel: _instrument)),
+                _KeepAlive(
+                  child: Theme(
+                    data: round,
+                    child: LoopPanel(viewModel: _loop, position: _position),
+                  ),
+                ),
+                _KeepAlive(
+                  child: Theme(
+                    data: round,
+                    child: Builder(
+                      builder: (context) =>
+                          widget.arrangementPanel?.call(context, this) ??
+                          const ArrangementTabPlaceholder(),
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-          body: TabBarView(
-            controller: _tabs,
-            children: [
-              _KeepAlive(child: InstrumentPanel(viewModel: _instrument)),
-              _KeepAlive(
-                child: LoopPanel(viewModel: _loop, position: _position),
-              ),
-              _KeepAlive(
-                child: Builder(
-                  builder: (context) =>
-                      widget.arrangementPanel?.call(context, this) ??
-                      const ArrangementTabPlaceholder(),
-                ),
-              ),
-            ],
           ),
         ),
       ),
     );
+  }
+}
+
+/// The three panels as quiet words on the ground; a small gold light under
+/// the current one follows the swipe. Each word answers a tap with the glitch.
+class _EditorTabs extends StatelessWidget {
+  const _EditorTabs({required this.controller, required this.palette});
+
+  final TabController controller;
+  final GroundPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    Tab tab(String key, String label) => Tab(
+      key: Key(key),
+      height: 48,
+      child: TapGlitch(
+        shape: RoundShape.capsule,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(label),
+        ),
+      ),
+    );
+    return TabBar(
+      controller: controller,
+      dividerColor: Colors.transparent,
+      indicator: _GlowDot(palette.accent),
+      indicatorSize: TabBarIndicatorSize.label,
+      labelPadding: EdgeInsets.zero,
+      labelColor: palette.text,
+      unselectedLabelColor: palette.muted,
+      labelStyle: roundText(
+        context,
+        color: palette.text,
+        weight: FontWeight.w600,
+      ),
+      unselectedLabelStyle: roundText(context, color: palette.muted),
+      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+      splashFactory: NoSplash.splashFactory,
+      tabs: [
+        tab('editor-tab-instrument', 'Instrument'),
+        tab('editor-tab-loop', 'Loop'),
+        tab('editor-tab-arrangement', 'Arrangement'),
+      ],
+    );
+  }
+}
+
+/// The tab indicator: a small gold light with a soft glow.
+class _GlowDot extends Decoration {
+  const _GlowDot(this.color);
+
+  final Color color;
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) =>
+      _GlowDotPainter(color);
+}
+
+class _GlowDotPainter extends BoxPainter {
+  _GlowDotPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final rect = offset & (configuration.size ?? Size.zero);
+    final at = Offset(rect.center.dx, rect.bottom - 4);
+    canvas
+      ..drawCircle(
+        at,
+        5,
+        Paint()
+          ..color = color.withValues(alpha: .45)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.5),
+      )
+      ..drawCircle(at, 2.2, Paint()..color = color);
   }
 }
 
