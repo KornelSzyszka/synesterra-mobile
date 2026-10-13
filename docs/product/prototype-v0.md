@@ -4,7 +4,7 @@ Status: decided by the coordinator on the Founder's brief of 2026-10-07 ("a work
 
 ## What the prototype is
 
-A phone app where a user can: shape an instrument on the circular pad (shipped in #86, made round in #107; see [instrument pad](instrument-pad.md)), build a **loop** from 2-4 layers (each with an instrument, a pitch and a beat pattern), see it as moving pictures, save loops and instruments in a **library**, chain loops into an **arrangement** and play it, and open a **Learn** tab that explains polyrhythm with live examples.
+A phone app where a user can: shape an instrument on the radar of traits (#115, replacing the dot pad of #86 and #107; see [instrument radar](instrument-radar.md)), build a **loop** from 2-4 layers (each with an instrument, a pitch and a beat pattern), see it as moving pictures, save loops and instruments in a **library**, chain loops into an **arrangement** and play it, and open a **Learn** tab that explains polyrhythm with live examples.
 
 It is a prototype: the audio path is the ADR 0002 phase-1 engine (`flutter_soloud` behind the ports) and its timing is not yet measured on a device (issue #43, gates G2-G10). Do not claim timing quality. Nothing is published.
 
@@ -42,7 +42,7 @@ A list of short lessons, each: a title, 2-4 plain sentences, a live visualizatio
 
 ## Out of scope for v0
 
-True sustain and the drone, noise and pitch-drop instruments, export/import files and sharing, free/pro, iOS, localization (#25), background playback, tuning the pad anchors and the factory instruments (Founder `musical` gate), measuring timing on a device (#43).
+True sustain and the drone, noise and pitch-drop instruments, export/import files and sharing, free/pro, iOS, localization (#25), background playback, tuning the trait mapping, the radar presets and the factory instruments (Founder `musical` gate), measuring timing on a device (#43).
 
 ## Tasks (in dependency order)
 
