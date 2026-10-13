@@ -6,6 +6,8 @@ import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_r
 import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
 import 'package:synesterra/data/repositories/impl/noop_playback_repository.dart';
 import 'package:synesterra/data/repositories/playback_repository.dart';
+import 'package:synesterra/features/home/home_view.dart';
+import 'package:synesterra/shared/widgets/tap_glitch.dart';
 
 Future<void> _pumpApp(WidgetTester tester) async {
   await tester.pumpWidget(
@@ -34,8 +36,8 @@ void main() {
     expect(find.text('Learn'), findsOneWidget);
     expect(
       find.descendant(
-        of: find.byType(ListView),
-        matching: find.byType(InkWell),
+        of: find.byType(HomeView),
+        matching: find.byType(TapGlitch),
       ),
       findsNWidgets(3),
     );

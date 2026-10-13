@@ -6,8 +6,8 @@ import '../../shared/loop_view/loop_view.dart';
 import '../../shared/loop_view/loop_view_state.dart';
 import '../../shared/loop_view/position_source.dart';
 import '../../shared/theme/design_scale.dart';
-import '../../shared/theme/synesterra_theme.dart';
-import '../../shared/widgets/design_components.dart';
+import '../../shared/widgets/round_components.dart';
+import '../../shared/widgets/round_screen.dart';
 import 'learn_lessons.dart';
 import 'section_clock.dart';
 
@@ -143,25 +143,28 @@ class _LessonPageState extends State<LessonPage>
 
   @override
   Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
     final lesson = widget.lesson;
-    final platform = Theme.of(context).platform;
+    final palette = groundOf(context);
     final clock = _clock;
-    return Scaffold(
-      appBar: AppBar(title: Text(lesson.title)),
-      body: ListView(
+    return RoundScreen(
+      child: ListView(
         key: const Key('lesson-body'),
-        padding: const EdgeInsets.all(Space.lg),
+        padding: const EdgeInsets.fromLTRB(
+          Space.xl,
+          Space.md,
+          Space.xl,
+          Space.xl,
+        ),
         children: [
           Semantics(
             header: true,
             child: Text(
               lesson.title,
-              style: TextStyle(
-                color: tokens.text,
-                fontFamily: SynesterraFonts.serif(platform),
-                fontFamilyFallback: SynesterraFonts.serifFallback(platform),
-                fontSize: TypeScale.headline,
+              style: roundText(
+                context,
+                color: palette.text,
+                size: TypeScale.headline,
+                serif: true,
               ),
             ),
           ),
@@ -169,11 +172,11 @@ class _LessonPageState extends State<LessonPage>
           Text(
             lesson.text,
             key: const Key('lesson-text'),
-            style: TextStyle(
-              color: tokens.text,
-              fontSize: TypeScale.bodyLarge,
-              height: 1.4,
-            ),
+            style: roundText(
+              context,
+              color: palette.text,
+              size: TypeScale.bodyLarge,
+            ).copyWith(height: 1.45),
           ),
           for (final term in lesson.terms) ...[
             const SizedBox(height: Space.md),
@@ -187,7 +190,7 @@ class _LessonPageState extends State<LessonPage>
                   TextSpan(text: term.meaning),
                 ],
               ),
-              style: TextStyle(color: tokens.muted),
+              style: roundText(context, color: palette.muted),
             ),
           ],
           if (clock != null) ...[
@@ -210,35 +213,33 @@ class _LessonPageState extends State<LessonPage>
             const SizedBox(height: Space.lg),
             Wrap(
               spacing: Space.md,
-              runSpacing: Space.md,
+              runSpacing: Space.sm,
               children: [
                 if (_loop != null)
-                  OutlinedButton.icon(
+                  TactileChip(
                     key: const Key('lesson-hear'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(48, 48),
-                    ),
+                    selected: _sound,
                     onPressed: _toggleSound,
-                    icon: Icon(_sound ? Icons.stop : Icons.volume_up_outlined),
-                    label: Text(_sound ? 'Stop sound' : 'Hear it'),
+                    label: _sound ? 'Stop sound' : 'Hear it',
                   ),
-                OutlinedButton.icon(
+                TactileChip(
                   key: const Key('lesson-motion'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(48, 48),
-                  ),
+                  selected: _running,
                   onPressed: _toggleMotion,
-                  icon: Icon(_running ? Icons.pause : Icons.play_arrow),
-                  label: Text(_running ? 'Pause picture' : 'Run picture'),
+                  label: _running ? 'Pause picture' : 'Run picture',
                 ),
               ],
             ),
             const SizedBox(height: Space.xl),
             if (_loop != null)
-              GoldPrimaryButton(
-                key: const Key('lesson-try-it'),
-                label: 'Try it',
-                onPressed: _tryIt,
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TactileChip(
+                  key: const Key('lesson-try-it'),
+                  label: 'Try it',
+                  primary: true,
+                  onPressed: _tryIt,
+                ),
               ),
           ],
         ],

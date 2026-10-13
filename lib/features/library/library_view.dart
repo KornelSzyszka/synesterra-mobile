@@ -5,10 +5,14 @@ import '../../data/repositories/arrangement_library_repository.dart';
 import '../../data/repositories/instrument_library_repository.dart';
 import '../../data/repositories/loop_library_repository.dart';
 import '../../shared/instrument_radar/instrument_radar_thumbnail.dart';
-import '../../shared/theme/synesterra_theme.dart';
-import '../../shared/widgets/design_components.dart';
 import '../../shared/theme/design_scale.dart';
+import '../../shared/theme/round_shapes.dart';
+import '../../shared/theme/surfaces.dart';
+import '../../shared/widgets/round_components.dart';
+import '../../shared/widgets/round_screen.dart';
 import 'arrangements_tab.dart';
+import 'library_tabs.dart';
+import 'library_widgets.dart';
 import 'loops_tab.dart';
 
 export 'arrangements_tab.dart' show OpenArrangement;
@@ -41,18 +45,16 @@ class LibraryView extends StatelessWidget {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Library'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(key: Key('library-tab-instruments'), text: 'Instruments'),
-              Tab(key: Key('library-tab-loops'), text: 'Loops'),
-              Tab(key: Key('library-tab-arrangements'), text: 'Arrangements'),
-            ],
-          ),
+      child: RoundScreen(
+        title: 'Library',
+        below: const LibraryTabs(
+          tabs: [
+            (Key('library-tab-instruments'), 'Instruments'),
+            (Key('library-tab-loops'), 'Loops'),
+            (Key('library-tab-arrangements'), 'Arrangements'),
+          ],
         ),
-        body: TabBarView(
+        child: TabBarView(
           children: [
             _InstrumentsTab(
               library: instrumentLibrary,
@@ -87,7 +89,6 @@ class _InstrumentsTabState extends State<_InstrumentsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
     return ValueListenableBuilder<InstrumentLibrarySnapshot>(
       valueListenable: widget.library.snapshot,
       builder: (context, snapshot, _) {
@@ -104,52 +105,36 @@ class _InstrumentsTabState extends State<_InstrumentsTab> {
         return ListView(
           padding: const EdgeInsets.all(Space.lg),
           children: [
-            if (snapshot.unreadableCount > 0)
-              Padding(
-                padding: const EdgeInsets.only(bottom: Space.md),
-                child: Text(
-                  key: const Key('unreadable-note'),
-                  '${snapshot.unreadableCount} stored '
-                  '${snapshot.unreadableCount == 1 ? 'file' : 'files'} could '
-                  'not be read. They were left untouched.',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
+            UnreadableNote(count: snapshot.unreadableCount),
             if (tags.isNotEmpty) ...[
-              const SectionLabel('Filter by tag'),
-              const SizedBox(height: Space.sm),
+              const RoundSectionHeader('Filter by tag'),
               Wrap(
                 spacing: Space.sm,
                 runSpacing: Space.xs,
                 children: [
-                  FilterChip(
+                  TactileChip(
                     key: const Key('filter-all'),
-                    label: const Text('All'),
+                    label: 'All',
                     selected: tag == null,
-                    onSelected: (_) => setState(() => _tag = null),
+                    onPressed: () => setState(() => _tag = null),
                   ),
                   for (final option in tags)
-                    FilterChip(
+                    TactileChip(
                       key: Key('filter-$option'),
-                      label: Text(option),
+                      label: option,
                       selected: option == tag,
-                      onSelected: (_) => setState(() => _tag = option),
+                      onPressed: () => setState(() => _tag = option),
                     ),
                 ],
               ),
               const SizedBox(height: Space.lg),
             ],
-            const SectionLabel('My instruments'),
-            const SizedBox(height: Space.sm),
+            const RoundSectionHeader('My instruments'),
             if (mine.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Space.md),
-                child: Text(
-                  tag == null
-                      ? 'No instruments yet. Save one from the Editor.'
-                      : 'None of your instruments has the tag "$tag".',
-                  style: TextStyle(color: tokens.muted),
-                ),
+              EmptyNote(
+                tag == null
+                    ? 'No instruments yet. Save one from the Editor.'
+                    : 'None of your instruments has the tag "$tag".',
               ),
             for (final instrument in mine)
               _InstrumentTile(
@@ -160,8 +145,7 @@ class _InstrumentsTabState extends State<_InstrumentsTab> {
               ),
             if (presets.isNotEmpty) ...[
               const SizedBox(height: Space.lg),
-              const SectionLabel('Factory'),
-              const SizedBox(height: Space.sm),
+              const RoundSectionHeader('Factory'),
               for (final preset in presets)
                 _InstrumentTile(
                   key: Key('factory-tile-${preset.id}'),
@@ -208,69 +192,47 @@ class _InstrumentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Space.sm),
-      child: Material(
-        color: tokens.surface,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: tokens.border),
-          borderRadius: BorderRadius.circular(Radii.sm),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.sm),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 72),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                Space.md,
-                Space.sm,
-                Space.xs,
-                Space.sm,
-              ),
-              child: Row(
-                children: [
-                  InstrumentRadarThumbnail(instrument: instrument, size: 56),
-                  const SizedBox(width: Space.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(instrument.name),
-                        Text(
-                          '${instrument.harmonics.length} harmonics · '
-                          '${instrument.decayMs} ms',
-                          style: TextStyle(
-                            color: tokens.muted,
-                            fontSize: TypeScale.caption,
-                          ),
-                        ),
-                        if (instrument.tags.isNotEmpty)
-                          Text(
-                            key: Key('tags-${instrument.id}'),
-                            instrument.tags.join(' · '),
-                            style: TextStyle(
-                              color: tokens.accent,
-                              fontSize: TypeScale.caption,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (onDelete != null)
-                    IconButton(
-                      key: Key('delete-${instrument.id}'),
-                      tooltip: 'Delete ${instrument.name}',
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: onDelete,
-                    ),
-                ],
-              ),
-            ),
+    return LibraryCard(
+      seed: instrument.id.hashCode & 0xff,
+      leading: SizedBox.square(
+        dimension: 60,
+        child: RoundSurface(
+          style: SurfaceStyle.glass,
+          shape: RoundShape.circle,
+          child: Center(
+            child: InstrumentRadarThumbnail(instrument: instrument, size: 48),
           ),
         ),
       ),
+      title: instrument.name,
+      lines: [
+        CardLine(
+          '${instrument.harmonics.length} harmonics · '
+          '${instrument.decayMs} ms',
+        ),
+        if (instrument.tags.isNotEmpty)
+          Text(
+            key: Key('tags-${instrument.id}'),
+            instrument.tags.join(' · '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: roundText(
+              context,
+              color: textOn(context, SurfaceStyle.organic),
+              size: TypeScale.caption,
+            ),
+          ),
+      ],
+      onTap: onTap,
+      actions: [
+        if (onDelete != null)
+          RoundIconButton(
+            key: Key('delete-${instrument.id}'),
+            icon: Icons.delete_outline,
+            label: 'Delete ${instrument.name}',
+            onPressed: onDelete,
+          ),
+      ],
     );
   }
 }

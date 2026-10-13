@@ -10,6 +10,7 @@ import 'package:synesterra/data/repositories/instrument_library_repository.dart'
 import 'package:synesterra/features/library/library_view.dart';
 import 'package:synesterra/shared/instrument_radar/radar_painter.dart';
 import 'package:synesterra/shared/theme/synesterra_theme.dart';
+import 'package:synesterra/shared/widgets/round_components.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 Instrument mine(String id, String name, {List<String> tags = const []}) =>
@@ -235,7 +236,7 @@ void main() {
       expect(find.byKey(const Key('filter-zzz-mine')), findsOneWidget);
       // Factory tags are filterable too.
       expect(find.byKey(const Key('filter-bell')), findsOneWidget);
-      final all = tester.widget<FilterChip>(
+      final all = tester.widget<TactileChip>(
         find.byKey(const Key('filter-all')),
       );
       expect(all.selected, isTrue);

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../data/repositories/library_item.dart';
 import '../../shared/theme/design_scale.dart';
-import '../../shared/theme/synesterra_theme.dart';
+import '../../shared/theme/round_shapes.dart';
+import '../../shared/theme/surfaces.dart';
+import '../../shared/widgets/round_components.dart';
 
 // Pieces shared by the Loops and Arrangements tabs.
 
@@ -29,7 +31,8 @@ class UnreadableNote extends StatelessWidget {
   }
 }
 
-/// Muted explanatory text for an empty list.
+/// An empty list explains itself in a quiet glass capsule: a small gold
+/// light and a muted line.
 class EmptyNote extends StatelessWidget {
   const EmptyNote(this.text, {super.key});
 
@@ -38,15 +41,58 @@ class EmptyNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: Space.md),
-    child: Text(
-      text,
-      style: TextStyle(color: SynesterraTokens.of(context).muted),
+    child: GlassPanel(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Space.xl,
+        vertical: Space.lg,
+      ),
+      child: Row(
+        children: [
+          CustomPaint(
+            size: const Size.square(14),
+            painter: _LightPainter(groundOf(context).accent),
+          ),
+          const SizedBox(width: Space.lg),
+          Expanded(
+            child: Text(
+              text,
+              style: roundText(
+                context,
+                color: mutedTextOn(context, SurfaceStyle.glass),
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
 
-/// A tappable card with a leading picture, a title, summary lines and
-/// trailing actions.
+class _LightPainter extends CustomPainter {
+  const _LightPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    canvas
+      ..drawCircle(
+        c,
+        6,
+        Paint()
+          ..color = color.withValues(alpha: .4)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      )
+      ..drawCircle(c, 3, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_LightPainter old) => old.color != color;
+}
+
+/// A library item: a soft organic card with a leading picture, a title,
+/// summary lines and trailing round actions. Tapping it opens the item.
 class LibraryCard extends StatelessWidget {
   const LibraryCard({
     super.key,
@@ -55,6 +101,7 @@ class LibraryCard extends StatelessWidget {
     required this.lines,
     required this.onTap,
     this.actions = const [],
+    this.seed = 7,
   });
 
   final Widget leading;
@@ -63,48 +110,71 @@ class LibraryCard extends StatelessWidget {
   final VoidCallback onTap;
   final List<Widget> actions;
 
+  /// Gives neighbouring cards slightly different edges.
+  final int seed;
+
   @override
   Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: Space.sm),
-      child: Material(
-        color: tokens.surface,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: tokens.border),
-          borderRadius: BorderRadius.circular(Radii.sm),
+      padding: const EdgeInsets.only(bottom: Space.md),
+      child: OrganicCard(
+        label: title,
+        onTap: onTap,
+        seed: seed,
+        padding: const EdgeInsets.fromLTRB(
+          Space.xl,
+          Space.md,
+          Space.md,
+          Space.md,
         ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.sm),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 72),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                Space.md,
-                Space.sm,
-                Space.xs,
-                Space.sm,
-              ),
-              child: Row(
-                children: [
-                  leading,
-                  const SizedBox(width: Space.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [Text(title), ...lines],
+        child: Row(
+          children: [
+            leading,
+            const SizedBox(width: Space.lg),
+            Expanded(
+              child: ExcludeSemantics(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: roundText(
+                        context,
+                        color: textOn(context, SurfaceStyle.organic),
+                        size: TypeScale.bodyLarge,
+                        serif: true,
+                      ),
                     ),
-                  ),
-                  ...actions,
-                ],
+                    ...lines,
+                  ],
+                ),
               ),
             ),
-          ),
+            ...actions,
+          ],
         ),
       ),
     );
   }
+}
+
+/// The round picture at the left of a card: a glass disc with an icon.
+class CardBadge extends StatelessWidget {
+  const CardBadge({super.key, required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: 52,
+    child: RoundSurface(
+      style: SurfaceStyle.glass,
+      shape: RoundShape.circle,
+      child: Center(
+        child: Icon(icon, color: groundOf(context).accent, size: 24),
+      ),
+    ),
+  );
 }
 
 /// A caption-sized line under a card title.
@@ -117,11 +187,12 @@ class CardLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text,
-    maxLines: 1,
+    maxLines: 2,
     overflow: TextOverflow.ellipsis,
-    style: TextStyle(
-      color: color ?? SynesterraTokens.of(context).muted,
-      fontSize: TypeScale.caption,
+    style: roundText(
+      context,
+      color: color ?? mutedTextOn(context, SurfaceStyle.organic),
+      size: TypeScale.caption,
     ),
   );
 }

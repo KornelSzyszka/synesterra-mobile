@@ -4,8 +4,8 @@ import '../../data/repositories/library_item.dart';
 import '../../data/repositories/loop.dart';
 import '../../data/repositories/loop_library_repository.dart';
 import '../../shared/theme/design_scale.dart';
-import '../../shared/theme/synesterra_theme.dart';
-import '../../shared/widgets/design_components.dart';
+import '../../shared/widgets/round_components.dart';
+import '../../shared/widgets/round_screen.dart';
 import 'library_widgets.dart';
 
 /// Opens a loop. [existing] is true for the user's own loops (edited in
@@ -34,8 +34,7 @@ class LoopsTab extends StatelessWidget {
         padding: const EdgeInsets.all(Space.lg),
         children: [
           UnreadableNote(count: snapshot.unreadableCount),
-          const SectionLabel('My loops'),
-          const SizedBox(height: Space.sm),
+          const RoundSectionHeader('My loops'),
           if (snapshot.items.isEmpty)
             const EmptyNote(
               'No loops of your own yet. Copy a factory loop to start one.',
@@ -45,16 +44,16 @@ class LoopsTab extends StatelessWidget {
               loop: loop,
               onTap: () => onOpen(loop, true),
               actions: [
-                IconButton(
+                RoundIconButton(
                   key: Key('loop-rename-${loop.id}'),
-                  tooltip: 'Rename ${loop.name}',
-                  icon: const Icon(Icons.edit_outlined),
+                  label: 'Rename ${loop.name}',
+                  icon: Icons.edit_outlined,
                   onPressed: () => _rename(context, loop),
                 ),
-                IconButton(
+                RoundIconButton(
                   key: Key('loop-delete-${loop.id}'),
-                  tooltip: 'Delete ${loop.name}',
-                  icon: const Icon(Icons.delete_outline),
+                  label: 'Delete ${loop.name}',
+                  icon: Icons.delete_outline,
                   onPressed: () => deleteWithUndo(
                     context,
                     name: loop.name,
@@ -65,17 +64,16 @@ class LoopsTab extends StatelessWidget {
               ],
             ),
           const SizedBox(height: Space.lg),
-          const SectionLabel('Factory'),
-          const SizedBox(height: Space.sm),
+          const RoundSectionHeader('Factory'),
           for (final loop in factoryLoops)
             _LoopCard(
               loop: loop,
               onTap: () => onOpen(loop, false),
               actions: [
-                IconButton(
+                RoundIconButton(
                   key: Key('loop-copy-${loop.id}'),
-                  tooltip: 'Copy ${loop.name} to My loops',
-                  icon: const Icon(Icons.copy_outlined),
+                  label: 'Copy ${loop.name} to My loops',
+                  icon: Icons.copy_outlined,
                   onPressed: () => _copy(context, loop),
                 ),
               ],
@@ -117,19 +115,10 @@ class _LoopCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = SynesterraTokens.of(context);
     return LibraryCard(
       key: Key('loop-tile-${loop.id}'),
-      leading: Container(
-        width: 56,
-        height: 56,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: tokens.accent.withValues(alpha: .5)),
-        ),
-        child: Icon(Icons.autorenew, color: tokens.accent),
-      ),
+      leading: const CardBadge(icon: Icons.autorenew),
+      seed: loop.id.hashCode & 0xff,
       title: loop.name,
       lines: [CardLine(loopSummary(loop))],
       onTap: onTap,
