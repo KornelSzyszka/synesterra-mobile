@@ -27,6 +27,7 @@ Full screen, dark: [radar-screen-dark.png](../assets/instrument-radar/radar-scre
 
 - A touch on a handle (within 24 dp) grabs that axis without moving it; a touch along an axis line (within 24 dp of it) grabs that axis and sets the value there. A touch away from every axis does nothing and plays nothing.
 - While dragging, only the grabbed trait changes: the touch is projected onto the axis (the part across it is ignored) and clamped to 0..1. The whole radar takes the gesture at once (`ImmediatePanDetector`), so touching it never scrolls the page.
+- A drag the system cancels (a call, a system gesture) stops silently: no sound and no accent; the shape keeps its last value.
 - On lift the sound plays once through the existing audition path, and the released handle answers with the polarized tap accent (`TapGlitchPainter`, 220 ms) through the shared `FlashGate`: at most three flashes per second across the screen, a plain fade under reduce motion, nothing with the effect off.
 
 ## Opening and saving
@@ -54,4 +55,4 @@ No `BackdropFilter` and no shaders. The static field and the moving shape are tw
 - `lib/shared/instrument_radar/radar_geometry.dart`: pure helpers (axis angle and direction for any N >= 3, reach that leaves room for labels, label boxes, value to point, projection of a touch onto an axis clamped to 0..1, which axis a touch grabs, tenth steps). Tests: `test/shared/radar_geometry_test.dart`.
 - `lib/shared/instrument_radar/radar_painter.dart` (`RadarFieldPainter`, `RadarShapePainter`) and `instrument_radar_thumbnail.dart`.
 - `lib/features/editor/instrument_radar_view.dart` (`InstrumentRadar`, `describeRadar`); the view model (`traits`, `approximated`, `activePreset`, `setTrait`, `releaseTraits`, `applyPreset`) in `instrument_editor_view_model.dart`.
-- Tests: `test/features/editor/instrument_radar_screen_test.dart`, `instrument_radar_view_model_test.dart`, `pad_removed_test.dart`, `test/features/library/library_view_test.dart`, and the instrument flow in `test/flows/prototype_flows_test.dart`. Widget tests are not evidence of feel, sound or frame rate on a phone.
+- Tests: `test/features/editor/instrument_radar_screen_test.dart`, `instrument_radar_view_model_test.dart`, `pad_removed_test.dart`, `radar_cancel_test.dart`, `test/features/library/library_view_test.dart`, and the instrument flow in `test/flows/prototype_flows_test.dart`. Widget tests are not evidence of feel, sound or frame rate on a phone.
