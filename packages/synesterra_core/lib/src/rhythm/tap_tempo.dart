@@ -12,8 +12,9 @@ class TapTempo {
     this.minBpm = 20,
     this.maxBpm = 300,
   }) {
-    if (minTaps < 2)
+    if (minTaps < 2) {
       throw ArgumentError.value(minTaps, 'minTaps', 'at least 2');
+    }
     if (maxTaps < minTaps) {
       throw ArgumentError.value(maxTaps, 'maxTaps', 'below minTaps');
     }
