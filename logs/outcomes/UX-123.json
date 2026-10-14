@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-14",
+  "task": "UX-123",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-opus-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "author above the minimum class (M); form (ring of sections) chosen by the coordinator by default, Founder judges on the phone; geometry tests red first (missing implementation), ring contrast test red first (muted section numbers under the glow at 3.2:1, fixed by using the text colour); two out-of-scope tests (shell, library at 800x600) caught the ring pushing sections off screen, fixed by a wide layout, tests unchanged; one look test now scrolls to the Add chip; tests ran in a soloud-free scratch copy; screenshots from a widget test, not a device; look, feel and phone frame rate not judged; Codex review pending"
+}

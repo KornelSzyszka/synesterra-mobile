@@ -143,9 +143,24 @@ void main() {
         );
         expect(vm.stripSections, [
           StripSection(label: 'Missing loop', repeats: 3, missing: true),
-          StripSection(label: 'Three against two', repeats: 2),
-          StripSection(label: 'Missing loop', repeats: 1, missing: true),
-          StripSection(label: 'My loop', repeats: 4),
+          StripSection(
+            label: 'Three against two',
+            repeats: 2,
+            colorIndex: 1,
+            layerSteps: const [3, 2],
+          ),
+          StripSection(
+            label: 'Missing loop',
+            repeats: 1,
+            missing: true,
+            colorIndex: 2,
+          ),
+          StripSection(
+            label: 'My loop',
+            repeats: 4,
+            colorIndex: 3,
+            layerSteps: loops.snapshot.value.items.single.hitsPerLayer,
+          ),
         ]);
         expect(vm.canPlay, isTrue);
 
@@ -160,6 +175,17 @@ void main() {
         expect(repeatAll, isFalse);
       },
     );
+
+    test('sections that play the same loop share a colour', () {
+      final vm = model(
+        arrangementOf('a1', 'Song', [
+          ('factory-loop-3-2', 2),
+          ('mine', 1),
+          ('factory-loop-3-2', 4),
+        ]),
+      );
+      expect(vm.stripSections.map((s) => s.colorIndex), [0, 1, 0]);
+    });
 
     test('nothing playable disables Play with a plain reason', () async {
       final vm = model(arrangementOf('a1', 'Song', [('gone', 3), ('gone', 1)]));

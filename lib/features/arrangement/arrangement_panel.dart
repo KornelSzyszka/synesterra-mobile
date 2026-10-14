@@ -6,6 +6,7 @@ import '../../data/repositories/library_item.dart';
 import '../../data/repositories/loop.dart';
 import '../../data/repositories/loop_library_repository.dart';
 import '../../data/repositories/playback_repository.dart';
+import '../../shared/loop_view/arrangement_ring.dart';
 import '../../shared/loop_view/arrangement_strip.dart';
 import '../../shared/loop_view/position_source.dart';
 import '../../shared/theme/design_scale.dart';
@@ -42,7 +43,7 @@ class ArrangementPanel extends StatefulWidget {
   final PlaybackRepository playback;
 
   /// The transport position of [playback] (the Editor shares one adapter
-  /// between its panels). It only feeds the strip; it never drives transport.
+  /// between its panels). It only feeds the ring; it never drives transport.
   final PositionSource position;
 
   /// An arrangement opened from the library; null starts a new one.
@@ -168,170 +169,215 @@ class _ArrangementPanelState extends State<ArrangementPanel> {
         final playable = model.playableSections;
         final blocked = model.playBlockedReason;
         final note = model.playbackNote;
-        return ListView(
-          key: const Key('arrangement-panel'),
-          padding: const EdgeInsets.fromLTRB(
-            Space.lg,
-            Space.lg,
-            Space.lg,
-            Space.xl,
-          ),
-          children: [
-            TextField(
-              key: const Key('arrangement-name'),
-              controller: _name,
-              maxLength: Arrangement.maxNameLength,
-              style: roundText(
-                context,
-                color: palette.text,
-                size: TypeScale.title,
-                serif: true,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Arrangement name',
-                errorText: model.nameValid ? null : 'Enter a name.',
-              ),
-              onChanged: model.setName,
+        final ring = model.stripSections;
+        final top = <Widget>[
+          TextField(
+            key: const Key('arrangement-name'),
+            controller: _name,
+            maxLength: Arrangement.maxNameLength,
+            style: roundText(
+              context,
+              color: palette.text,
+              size: TypeScale.title,
+              serif: true,
             ),
-            Wrap(
-              spacing: Space.sm,
-              runSpacing: Space.sm,
+            decoration: InputDecoration(
+              labelText: 'Arrangement name',
+              errorText: model.nameValid ? null : 'Enter a name.',
+            ),
+            onChanged: model.setName,
+          ),
+          Wrap(
+            spacing: Space.sm,
+            runSpacing: Space.sm,
+            children: [
+              TactileChip(
+                key: const Key('arrangement-new'),
+                label: 'New',
+                onPressed: _startNew,
+              ),
+              TactileChip(
+                key: const Key('arrangement-open'),
+                label: 'Open',
+                onPressed: _open,
+              ),
+              Opacity(
+                // Off until there is something to save; gold when there is.
+                opacity: model.canSave ? 1 : .5,
+                child: TactileChip(
+                  key: const Key('arrangement-save'),
+                  label: model.saving ? 'Saving…' : 'Save',
+                  primary: model.canSave,
+                  onPressed: model.canSave ? _save : null,
+                ),
+              ),
+            ],
+          ),
+          if (model.saveBlockedReason case final reason?)
+            _Note(reason, color: palette.muted),
+          if (model.saveError case final saveError?)
+            _Note(saveError, color: error),
+          const SizedBox(height: Space.md),
+          // Transport: Play/Stop and Repeat all on glass over the mist.
+          GlassPanel(
+            key: const Key('arrangement-transport'),
+            padding: const EdgeInsets.fromLTRB(
+              Space.md,
+              Space.sm,
+              Space.lg,
+              Space.sm,
+            ),
+            child: Row(
               children: [
-                TactileChip(
-                  key: const Key('arrangement-new'),
-                  label: 'New',
-                  onPressed: _startNew,
+                _Captioned(
+                  key: const Key('arrangement-play'),
+                  caption: model.isPlaying ? 'Stop' : 'Play',
+                  child: RoundActionButton(
+                    icon: model.isPlaying
+                        ? Icons.stop_rounded
+                        : Icons.play_arrow_rounded,
+                    label: model.isPlaying ? 'Stop' : 'Play',
+                    size: 56,
+                    onPressed: model.isPlaying
+                        ? model.stop
+                        : (model.canPlay ? model.play : null),
+                  ),
                 ),
-                TactileChip(
-                  key: const Key('arrangement-open'),
-                  label: 'Open',
-                  onPressed: _open,
+                const SizedBox(width: Space.md),
+                Expanded(
+                  child: Text(
+                    blocked ??
+                        'Plays at the tempo of the first loop: '
+                            '${playable.first.document.transport.bpm.round()} BPM.',
+                    key: blocked == null
+                        ? null
+                        : const Key('arrangement-play-reason'),
+                    textAlign: TextAlign.center,
+                    style: roundText(
+                      context,
+                      color: surfaces.mutedOn(SurfaceStyle.glass),
+                      size: TypeScale.caption,
+                    ),
+                  ),
                 ),
-                Opacity(
-                  // Off until there is something to save; gold when there is.
-                  opacity: model.canSave ? 1 : .5,
-                  child: TactileChip(
-                    key: const Key('arrangement-save'),
-                    label: model.saving ? 'Saving…' : 'Save',
-                    primary: model.canSave,
-                    onPressed: model.canSave ? _save : null,
+                const SizedBox(width: Space.md),
+                _Captioned(
+                  caption: 'Repeat all',
+                  child: RoundIconButton(
+                    key: const Key('arrangement-repeat-all'),
+                    icon: Icons.repeat_rounded,
+                    label: 'Repeat all',
+                    selected: model.repeatAll,
+                    onPressed: () => model.setRepeatAll(!model.repeatAll),
                   ),
                 ),
               ],
             ),
-            if (model.saveBlockedReason case final reason?)
-              _Note(reason, color: palette.muted),
-            if (model.saveError case final saveError?)
-              _Note(saveError, color: error),
-            const SizedBox(height: Space.md),
-            // Transport: Play/Stop and Repeat all on glass over the mist.
-            GlassPanel(
-              key: const Key('arrangement-transport'),
+          ),
+          if (note != null) _Note(note, color: error),
+        ];
+        final ringView = ArrangementRing(
+          key: const Key('arrangement-ring'),
+          sections: ring,
+          source: widget.position,
+        );
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= _wideLayoutWidth;
+            return ListView(
+              key: const Key('arrangement-panel'),
               padding: const EdgeInsets.fromLTRB(
-                Space.md,
-                Space.sm,
                 Space.lg,
-                Space.sm,
+                Space.lg,
+                Space.lg,
+                Space.xl,
               ),
-              child: Row(
-                children: [
-                  _Captioned(
-                    key: const Key('arrangement-play'),
-                    caption: model.isPlaying ? 'Stop' : 'Play',
-                    child: RoundActionButton(
-                      icon: model.isPlaying
-                          ? Icons.stop_rounded
-                          : Icons.play_arrow_rounded,
-                      label: model.isPlaying ? 'Stop' : 'Play',
-                      size: 56,
-                      onPressed: model.isPlaying
-                          ? model.stop
-                          : (model.canPlay ? model.play : null),
-                    ),
-                  ),
-                  const SizedBox(width: Space.md),
-                  Expanded(
-                    child: Text(
-                      blocked ??
-                          'Plays at the tempo of the first loop: '
-                              '${playable.first.document.transport.bpm.round()} BPM.',
-                      key: blocked == null
-                          ? null
-                          : const Key('arrangement-play-reason'),
-                      textAlign: TextAlign.center,
-                      style: roundText(
-                        context,
-                        color: surfaces.mutedOn(SurfaceStyle.glass),
-                        size: TypeScale.caption,
+              children: [
+                // Wide (landscape, tablet): the ring beside the controls, so
+                // the sections stay in view. Narrow (a phone upright): the ring
+                // under them, at the top of the sections (UX-123).
+                if (wide && model.sections.isNotEmpty)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: top,
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: Space.md),
-                  _Captioned(
-                    caption: 'Repeat all',
-                    child: RoundIconButton(
-                      key: const Key('arrangement-repeat-all'),
-                      icon: Icons.repeat_rounded,
-                      label: 'Repeat all',
-                      selected: model.repeatAll,
-                      onPressed: () => model.setRepeatAll(!model.repeatAll),
-                    ),
-                  ),
+                      const SizedBox(width: Space.xl),
+                      SizedBox(width: _wideRingSide, child: ringView),
+                    ],
+                  )
+                else ...[
+                  ...top,
+                  if (model.sections.isNotEmpty) ...[
+                    const SizedBox(height: Space.lg),
+                    ringView,
+                  ],
                 ],
-              ),
-            ),
-            if (note != null) _Note(note, color: error),
-            if (model.sections.isNotEmpty) ...[
-              const SizedBox(height: Space.md),
-              ArrangementStrip(
-                sections: model.stripSections,
-                source: widget.position,
-              ),
-            ],
-            const SizedBox(height: Space.md),
-            _Header(
-              'Sections ${model.sections.length} of ${Arrangement.maxSections}',
-            ),
-            const SizedBox(height: Space.md),
-            for (var i = 0; i < model.sections.length; i++)
-              _SectionCard(
-                key: Key('section-$i'),
-                index: i,
-                count: model.sections.length,
-                section: model.sections[i],
-                loop: model.loopAt(i),
-                onChangeLoop: () => _changeLoop(i),
-                onRepeats: (value) => model.setRepeats(i, value),
-                onMoveUp: i > 0 ? () => model.moveSection(i, i - 1) : null,
-                onMoveDown: i < model.sections.length - 1
-                    ? () => model.moveSection(i, i + 1)
-                    : null,
-                onRemove: () => model.removeSection(i),
-              ),
-            const SizedBox(height: Space.sm),
-            Center(
-              child: Opacity(
-                opacity: model.canAddSection ? 1 : .5,
-                child: TactileChip(
-                  key: const Key('arrangement-add-section'),
-                  label: 'Add a loop',
-                  onPressed: model.canAddSection ? _addSection : null,
+                const SizedBox(height: Space.md),
+                _Header(
+                  'Sections ${model.sections.length} of ${Arrangement.maxSections}',
                 ),
-              ),
-            ),
-            if (!model.canAddSection)
-              Center(
-                child: _Note(
-                  'An arrangement has at most ${Arrangement.maxSections} '
-                  'sections.',
-                  color: surfaces.mutedOn(SurfaceStyle.organic),
+                const SizedBox(height: Space.md),
+                for (var i = 0; i < model.sections.length; i++)
+                  _SectionCard(
+                    key: Key('section-$i'),
+                    index: i,
+                    count: model.sections.length,
+                    section: model.sections[i],
+                    loop: model.loopAt(i),
+                    color: _sectionColor(context, ring[i]),
+                    onChangeLoop: () => _changeLoop(i),
+                    onRepeats: (value) => model.setRepeats(i, value),
+                    onMoveUp: i > 0 ? () => model.moveSection(i, i - 1) : null,
+                    onMoveDown: i < model.sections.length - 1
+                        ? () => model.moveSection(i, i + 1)
+                        : null,
+                    onRemove: () => model.removeSection(i),
+                  ),
+                const SizedBox(height: Space.sm),
+                Center(
+                  child: Opacity(
+                    opacity: model.canAddSection ? 1 : .5,
+                    child: TactileChip(
+                      key: const Key('arrangement-add-section'),
+                      label: 'Add a loop',
+                      onPressed: model.canAddSection ? _addSection : null,
+                    ),
+                  ),
                 ),
-              ),
-          ],
+                if (!model.canAddSection)
+                  Center(
+                    child: _Note(
+                      'An arrangement has at most ${Arrangement.maxSections} '
+                      'sections.',
+                      color: surfaces.mutedOn(SurfaceStyle.organic),
+                    ),
+                  ),
+              ],
+            );
+          },
         );
       },
     );
   }
+}
+
+/// From this width the ring sits beside the panel's controls.
+const _wideLayoutWidth = 600.0;
+
+/// The ring's side in the wide layout.
+const _wideRingSide = 260.0;
+
+/// The colour of a section on the ring: its loop's colour, or none when the
+/// loop is missing.
+Color? _sectionColor(BuildContext context, StripSection section) {
+  if (section.missing) return null;
+  final colors = SynesterraTokens.of(context).layerColors;
+  return colors[section.colorIndex % colors.length];
 }
 
 /// `3:2 · 2 beats · 90 BPM`.
@@ -461,6 +507,7 @@ class _SectionCard extends StatelessWidget {
     required this.count,
     required this.section,
     required this.loop,
+    required this.color,
     required this.onChangeLoop,
     required this.onRepeats,
     required this.onMoveUp,
@@ -474,6 +521,10 @@ class _SectionCard extends StatelessWidget {
 
   /// Null when the section's loop is missing.
   final Loop? loop;
+
+  /// The section's colour on the ring, for the rim of its number; null when
+  /// the loop is missing.
+  final Color? color;
   final VoidCallback onChangeLoop;
   final ValueChanged<int> onRepeats;
   final VoidCallback? onMoveUp;
@@ -503,7 +554,7 @@ class _SectionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                _NumberOrb(number: number),
+                _NumberOrb(number: number, rim: color),
                 const SizedBox(width: Space.md),
                 Expanded(
                   child: _LoopButton(
@@ -596,9 +647,12 @@ class _SectionCard extends StatelessWidget {
 
 /// A section's number in a small gold-rimmed circle.
 class _NumberOrb extends StatelessWidget {
-  const _NumberOrb({required this.number});
+  const _NumberOrb({required this.number, this.rim});
 
   final int number;
+
+  /// The section's colour on the ring; gold when null.
+  final Color? rim;
 
   @override
   Widget build(BuildContext context) {
@@ -607,7 +661,7 @@ class _NumberOrb extends StatelessWidget {
     return SizedBox.square(
       dimension: 34,
       child: CustomPaint(
-        painter: _OrbPainter(palette.accent),
+        painter: _OrbPainter(palette.accent, rim ?? palette.accent),
         child: Center(
           child: Text(
             number.toString().padLeft(2, '0'),
@@ -627,9 +681,10 @@ class _NumberOrb extends StatelessWidget {
 }
 
 class _OrbPainter extends CustomPainter {
-  const _OrbPainter(this.accent);
+  const _OrbPainter(this.accent, this.rim);
 
   final Color accent;
+  final Color rim;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -643,12 +698,12 @@ class _OrbPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5
-          ..color = accent.withValues(alpha: .5),
+          ..color = rim.withValues(alpha: rim == accent ? .5 : .8),
       );
   }
 
   @override
-  bool shouldRepaint(_OrbPainter old) => old.accent != accent;
+  bool shouldRepaint(_OrbPainter old) => old.accent != accent || old.rim != rim;
 }
 
 /// The section's loop as a quiet button: tap to pick another loop. Answers

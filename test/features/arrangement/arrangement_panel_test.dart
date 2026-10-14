@@ -276,6 +276,42 @@ void main() {
     await tapKey(tester, 'arrangement-play');
   });
 
+  testWidgets('the ring shows the whole arrangement and follows edits', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await pumpPanel(
+      tester,
+      initial: arrangementOf('a1', 'Song', [
+        ('factory-loop-3-2', 2),
+        ('gone', 1),
+        ('factory-loop-3-2', 3),
+      ]),
+    );
+    expect(find.byKey(const Key('arrangement-ring')), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        '3 sections: 1, Three against two, twice; 2, missing loop, skipped; '
+        '3, Three against two, 3 times.',
+      ),
+      findsOneWidget,
+    );
+    await tapKey(tester, 'section-remove-1');
+    expect(
+      find.bySemanticsLabel(
+        '2 sections: 1, Three against two, twice; '
+        '2, Three against two, 3 times.',
+      ),
+      findsOneWidget,
+    );
+    handle.dispose();
+  });
+
+  testWidgets('an empty arrangement has no ring', (tester) async {
+    await pumpPanel(tester);
+    expect(find.byKey(const Key('arrangement-ring')), findsNothing);
+  });
+
   testWidgets('save names the arrangement and stores it', (tester) async {
     await pumpPanel(tester);
     await addSection(tester, 'mine');

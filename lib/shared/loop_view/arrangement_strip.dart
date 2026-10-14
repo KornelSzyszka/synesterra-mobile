@@ -15,9 +15,15 @@ class StripSection {
     required this.label,
     required this.repeats,
     this.missing = false,
-  }) {
+    this.colorIndex = 0,
+    List<int> layerSteps = const [],
+  }) : layerSteps = List.unmodifiable(layerSteps) {
     if (repeats < 1 || repeats > 32) {
       throw ArgumentError.value(repeats, 'repeats', 'must be in 1..32');
+    }
+    if (colorIndex < 0) throw ArgumentError.value(colorIndex, 'colorIndex');
+    if (this.layerSteps.any((steps) => steps < 1)) {
+      throw ArgumentError.value(layerSteps, 'layerSteps', 'must be >= 1');
     }
   }
 
@@ -29,15 +35,70 @@ class StripSection {
   /// The section's loop is gone: shown and marked, never played.
   final bool missing;
 
+  /// Index into the theme's `layerColors` for the section's loop; sections
+  /// that play the same loop share it (see `loopColorIndexes`). The ring
+  /// uses it; the strip does not.
+  final int colorIndex;
+
+  /// The steps of each layer of the section's loop (`3, 2` for 3:2), for the
+  /// ring's small figure. Empty when unknown or missing.
+  final List<int> layerSteps;
+
   @override
   bool operator ==(Object other) =>
       other is StripSection &&
       label == other.label &&
       repeats == other.repeats &&
-      missing == other.missing;
+      missing == other.missing &&
+      colorIndex == other.colorIndex &&
+      listEquals(layerSteps, other.layerSteps);
 
   @override
-  int get hashCode => Object.hash(label, repeats, missing);
+  int get hashCode => Object.hash(
+    label,
+    repeats,
+    missing,
+    colorIndex,
+    Object.hashAll(layerSteps),
+  );
+}
+
+/// The screen-reader text for where playback is in [sections]: the current
+/// section, its loop and its cycle, or that nothing plays. Shared by the
+/// strip and the ring.
+String describeArrangementPosition(
+  List<StripSection> sections,
+  LoopPosition p,
+) {
+  final count = sections.length;
+  final index = p.sectionIndex;
+  if (!p.playing || index == null || index < 0 || index >= count) {
+    return 'Arrangement of $count sections, '
+        '${p.playing ? 'playing' : 'not playing'}.';
+  }
+  final section = sections[index];
+  return 'Section ${index + 1} of $count, ${section.label}, '
+      'cycle ${(p.cycleIndex % section.repeats) + 1} of ${section.repeats}.';
+}
+
+/// The screen-reader text for the structure of [sections]: `3 sections:
+/// 1, Verse, 4 times; 2, Chorus, twice; 3, missing loop, skipped.`
+String describeArrangement(List<StripSection> sections) {
+  if (sections.isEmpty) return 'No sections.';
+  String times(int n) => switch (n) {
+    1 => 'once',
+    2 => 'twice',
+    _ => '$n times',
+  };
+  final parts = [
+    for (var i = 0; i < sections.length; i++)
+      sections[i].missing
+          ? '${i + 1}, missing loop, skipped'
+          : '${i + 1}, ${sections[i].label}, ${times(sections[i].repeats)}',
+  ];
+  final count = sections.length;
+  return '$count ${count == 1 ? 'section' : 'sections'}: '
+      '${parts.join('; ')}.';
 }
 
 /// How far through a section of [repeats] cycles the position is, in 0..1.
@@ -60,23 +121,12 @@ class ArrangementStrip extends StatelessWidget {
   final List<StripSection> sections;
   final PositionSource source;
 
-  String _label(LoopPosition p) {
-    final count = sections.length;
-    final index = p.sectionIndex;
-    if (!p.playing || index == null || index < 0 || index >= count) {
-      return 'Arrangement of $count sections, ${p.playing ? 'playing' : 'not playing'}.';
-    }
-    final section = sections[index];
-    return 'Section ${index + 1} of $count, ${section.label}, '
-        'cycle ${(p.cycleIndex % section.repeats) + 1} of ${section.repeats}.';
-  }
-
   @override
   Widget build(BuildContext context) {
     final platform = Theme.of(context).platform;
     return SourceSemantics(
       source: source,
-      label: _label,
+      label: (p) => describeArrangementPosition(sections, p),
       child: RepaintBoundary(
         child: CustomPaint(
           key: const ValueKey('arrangement-strip-canvas'),
