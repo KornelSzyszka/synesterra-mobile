@@ -271,38 +271,67 @@ void main() {
       expect(found.single.sweep, greaterThan(6));
     });
 
-    test('a missing loop is dashed in grey, not a band', () {
-      final arcs = paintRing(sixteen, LoopPosition.stopped);
-      final missing = ringArcs([for (final s in sixteen) s.repeats])[5];
-      final inside = [
-        for (final arc in arcs)
-          if (arc.start >= missing.start - 1e-9 &&
-              arc.end <= missing.end + 1e-9)
-            arc,
-      ];
-      expect(inside.length, greaterThan(1), reason: 'several dashes');
-      for (final dash in inside) {
-        expect(_same(dash.color.withValues(alpha: 1), colors.muted), isTrue);
-        expect(dash.strokeWidth, lessThan(m.band));
-        expect(dash.sweep, lessThan(missing.sweep / 3));
+    test('a missing loop is dashed in grey, stopped and while playing', () {
+      List<_Arc>? whenStopped;
+      // Stopped, then two moments in section 4 (before the missing one)
+      // and two in section 10 (after it).
+      for (final position in [
+        LoopPosition.stopped,
+        for (final (section, cycleIndex, cyclePosition) in [
+          (3, 1, .5),
+          (3, 3, .5),
+          (9, 0, .25),
+          (9, 1, .75),
+        ])
+          LoopPosition(
+            playing: true,
+            cyclePosition: cyclePosition,
+            cycleIndex: cycleIndex,
+            sectionIndex: section,
+          ),
+      ]) {
+        final arcs = paintRing(sixteen, position);
+        final missing = ringArcs([for (final s in sixteen) s.repeats])[5];
+        final inside = [
+          for (final arc in arcs)
+            if (arc.start >= missing.start - 1e-9 &&
+                arc.end <= missing.end + 1e-9)
+              arc,
+        ];
+        expect(inside.length, greaterThan(1), reason: 'several dashes');
+        for (final dash in inside) {
+          expect(_same(dash.color.withValues(alpha: 1), colors.muted), isTrue);
+          expect(dash.strokeWidth, lessThan(m.band));
+          expect(dash.sweep, lessThan(missing.sweep / 3));
+        }
+        // The dashes run along the whole arc, evenly: from its start (inside
+        // the round cap) to its end, one dash every two dash lengths, so
+        // together they cover about half of it.
+        final dashCap = (inside.first.strokeWidth / 2) / m.radius;
+        final dash = 4 / m.radius;
+        final from = missing.start + dashCap;
+        final to = missing.end - dashCap;
+        expect(inside.first.start, closeTo(from, 1e-9));
+        for (var i = 1; i < inside.length; i++) {
+          expect(
+            inside[i].start - inside[i - 1].start,
+            closeTo(2 * dash, 1e-9),
+          );
+        }
+        expect(inside.last.end, lessThanOrEqualTo(to + 1e-9));
+        expect(to - inside.last.start, lessThan(2 * dash));
+        final covered = inside.fold<double>(0, (sum, d) => sum + d.sweep);
+        final expectedCount = ((to - from) / (2 * dash)).ceil();
+        expect(inside, hasLength(expectedCount));
+        expect(covered / (to - from), inInclusiveRange(.3, .7));
+        // While playing, the missing arc is drawn exactly as when stopped.
+        whenStopped ??= inside;
+        expect(inside, hasLength(whenStopped.length), reason: '$position');
+        for (var i = 0; i < inside.length; i++) {
+          expect(inside[i].start, closeTo(whenStopped[i].start, 1e-9));
+          expect(inside[i].sweep, closeTo(whenStopped[i].sweep, 1e-9));
+        }
       }
-      // The dashes run along the whole arc, evenly: from its start (inside
-      // the round cap) to its end, one dash every two dash lengths, so
-      // together they cover about half of it.
-      final dashCap = (inside.first.strokeWidth / 2) / m.radius;
-      final dash = 4 / m.radius;
-      final from = missing.start + dashCap;
-      final to = missing.end - dashCap;
-      expect(inside.first.start, closeTo(from, 1e-9));
-      for (var i = 1; i < inside.length; i++) {
-        expect(inside[i].start - inside[i - 1].start, closeTo(2 * dash, 1e-9));
-      }
-      expect(inside.last.end, lessThanOrEqualTo(to + 1e-9));
-      expect(to - inside.last.start, lessThan(2 * dash));
-      final covered = inside.fold<double>(0, (sum, d) => sum + d.sweep);
-      final expectedCount = ((to - from) / (2 * dash)).ceil();
-      expect(inside, hasLength(expectedCount));
-      expect(covered / (to - from), inInclusiveRange(.3, .7));
     });
 
     test('the current section glows, fills and has a gold rim', () {
