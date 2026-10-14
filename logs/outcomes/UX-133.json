@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-14",
+  "task": "UX-133",
+  "prefix": "UX",
+  "size": "S",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "static",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Arrangement tabs hidden in the shipped app behind a showArrangement flag (default true in widgets, false in SynesterraApp); code and tests kept. Tests not run locally (no scratch copy); CI is the evidence."
+}

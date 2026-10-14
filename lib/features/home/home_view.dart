@@ -97,9 +97,7 @@ class HomeView extends StatelessWidget {
                         key: const Key('home-library'),
                         icon: Icons.library_music_outlined,
                         title: 'Library',
-                        description:
-                            'Your saved instruments, loops and '
-                            'arrangements.',
+                        description: 'Your saved instruments and loops.',
                         onTap: onOpenLibrary,
                         size: small,
                         style: SurfaceStyle.organic,

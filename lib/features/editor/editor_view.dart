@@ -93,6 +93,7 @@ class EditorView extends StatefulWidget {
     this.loopExisting = false,
     this.initialTab = EditorTab.instrument,
     this.arrangementPanel,
+    this.showArrangement = true,
     this.stepFeedback,
   });
 
@@ -122,6 +123,9 @@ class EditorView extends StatefulWidget {
   /// Builds the Arrangement tab; null shows [ArrangementTabPlaceholder].
   final EditorPanelBuilder? arrangementPanel;
 
+  /// False hides the Arrangement tab (shelved by the Founder); the code stays.
+  final bool showArrangement;
+
   /// The light haptic tick of the Instrument wheel, given by the app (the
   /// UI may not reach the platform, decision 0001 R5). Null: no tick.
   final VoidCallback? stepFeedback;
@@ -149,9 +153,11 @@ class _EditorViewState extends State<EditorView>
   late final PlaybackPositionSource _position = PlaybackPositionSource(
     widget.playback,
   );
+  int get _tabCount => widget.showArrangement ? 3 : 2;
+
   late final TabController _tabs = TabController(
-    length: EditorTab.values.length,
-    initialIndex: widget.initialTab.index,
+    length: _tabCount,
+    initialIndex: widget.initialTab.index.clamp(0, _tabCount - 1),
     vsync: this,
   );
 
@@ -299,7 +305,11 @@ class _EditorViewState extends State<EditorView>
         },
         child: RoundScreen(
           title: 'Editor',
-          below: _EditorTabs(controller: _tabs, palette: palette),
+          below: _EditorTabs(
+            controller: _tabs,
+            palette: palette,
+            showArrangement: widget.showArrangement,
+          ),
           // Passes on a flash gate and tap strength given from outside.
           child: AmbientScope(
             palette: palette,
@@ -320,16 +330,17 @@ class _EditorViewState extends State<EditorView>
                     child: LoopPanel(viewModel: _loop, position: _position),
                   ),
                 ),
-                _KeepAlive(
-                  child: Theme(
-                    data: round,
-                    child: Builder(
-                      builder: (context) =>
-                          widget.arrangementPanel?.call(context, this) ??
-                          const ArrangementTabPlaceholder(),
+                if (widget.showArrangement)
+                  _KeepAlive(
+                    child: Theme(
+                      data: round,
+                      child: Builder(
+                        builder: (context) =>
+                            widget.arrangementPanel?.call(context, this) ??
+                            const ArrangementTabPlaceholder(),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -342,8 +353,13 @@ class _EditorViewState extends State<EditorView>
 /// The three panels as quiet words on the ground; a small gold light under
 /// the current one follows the swipe. Each word answers a tap with the glitch.
 class _EditorTabs extends StatelessWidget {
-  const _EditorTabs({required this.controller, required this.palette});
+  const _EditorTabs({
+    required this.controller,
+    required this.palette,
+    required this.showArrangement,
+  });
 
+  final bool showArrangement;
   final TabController controller;
   final GroundPalette palette;
 
@@ -379,7 +395,7 @@ class _EditorTabs extends StatelessWidget {
       tabs: [
         tab('editor-tab-instrument', 'Instrument'),
         tab('editor-tab-loop', 'Loop'),
-        tab('editor-tab-arrangement', 'Arrangement'),
+        if (showArrangement) tab('editor-tab-arrangement', 'Arrangement'),
       ],
     );
   }

@@ -33,6 +33,7 @@ class SynesterraApp extends StatefulWidget {
     this.playback,
     this.stepFeedback = hapticStepFeedback,
     @visibleForTesting this.debugHideDesignLab = false,
+    @visibleForTesting this.showArrangement = false,
   });
 
   final InstrumentLibraryRepository instrumentLibrary;
@@ -54,6 +55,9 @@ class SynesterraApp extends StatefulWidget {
   /// Tests only: hides the design lab as a release build would. It can only
   /// hide the lab; nothing can show it outside a debug build ([kDebugMode]).
   final bool debugHideDesignLab;
+
+  /// Arrangements are shelved (Founder, 2026-10-14); only tests turn them on.
+  final bool showArrangement;
 
   @override
   State<SynesterraApp> createState() => _SynesterraAppState();
@@ -94,6 +98,7 @@ class _SynesterraAppState extends State<SynesterraApp> {
                 initialLoop: loop,
                 loopExisting: loopExisting,
                 initialTab: tab,
+                showArrangement: widget.showArrangement,
                 stepFeedback: widget.stepFeedback,
                 // The Arrangement panel is its own feature (R4), so it is built
                 // here; it shares the one playback repository and the
@@ -138,6 +143,7 @@ class _SynesterraAppState extends State<SynesterraApp> {
                   onOpenInstrument: (instrument, existing) =>
                       openEditor(instrument: instrument, existing: existing),
                   onOpenLoop: openLoop,
+                  showArrangements: widget.showArrangement,
                   onOpenArrangement: (arrangement) => openEditor(
                     arrangement: arrangement,
                     tab: EditorTab.arrangement,

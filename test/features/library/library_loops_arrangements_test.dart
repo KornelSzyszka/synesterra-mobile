@@ -338,6 +338,7 @@ void main() {
         'a placeholder', (tester) async {
       await tester.pumpWidget(
         SynesterraApp(
+          showArrangement: true,
           instrumentLibrary: InMemoryInstrumentLibraryRepository(),
           instrumentAudition: NoopInstrumentAuditionRepository(),
           loopLibrary: InMemoryLoopLibraryRepository(),

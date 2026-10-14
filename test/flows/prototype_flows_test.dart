@@ -66,6 +66,7 @@ class Rig {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       SynesterraApp(
+        showArrangement: true,
         instrumentLibrary: instruments,
         instrumentAudition: audition,
         loopLibrary: loops,
