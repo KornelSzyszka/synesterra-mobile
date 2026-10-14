@@ -2,6 +2,8 @@
 
 Code: `packages/synesterra_core/lib/src/randomizer/` (pure Dart, R1 of [decision 0001](../decisions/0001-architecture-style.md)), tests in `packages/synesterra_core/test/randomizer_test.dart`. UI: the dice in the Loop panel (`lib/features/editor/loop_panel.dart`, `LoopEditorViewModel.randomize`). Issue #125. The rules below are coordinator defaults; the Founder tunes them by ear (`founder-review`).
 
+`randomizer` is its own core context. [ADR 0001](../decisions/0001-architecture-style.md) R2 was amended minimally for it (coordinator confirmed, 2026-10-14): it may use `rhythm`, `harmony`, `sound`, `session` and `arrangement`, and no context depends on it.
+
 ## Public API
 
 ```dart
@@ -60,7 +62,7 @@ Draw order: layer count, cycle, step counts, patterns (layer by layer), pitches,
 
 ## Loop panel
 
-A round dice (`RoundIconButton`, label *Randomize loop*) sits under the loop's name. A roll replaces the loop being edited as an unsaved change: the id and the name stay, the status says *Changed, not saved yet*, and nothing starts playing. Each roll asks the generator with the next seed (the first is random per panel, wrapping in uint32). Instruments come from the factory and the user's library. *Undo randomize* appears after a roll and restores the document from before the last roll; any other edit, or opening another loop, ends the chance. The roll and its undo go through the same edit path as any change, so while the loop plays they restart it from the cycle start under a new generation (playback's generation rule). The tap flash is the shared `TapGlitch` and its `FlashGate`.
+A round dice (`RoundIconButton`, label *Randomize loop*) sits under the loop's name. A roll replaces the loop being edited as an unsaved change: the id and the name stay, the status says *Changed, not saved yet*, and nothing starts playing. Each roll asks the generator with the next seed (the first is random per panel, wrapping in uint32). Instruments come from the factory and the user's library. *Undo randomize* appears after a roll and restores the exact document from just before the last roll (edits made after that roll go with it). Every roll keeps its own snapshot, so repeated undo steps back to the loop as it was before the first roll, unsaved edits included: a roll never destroys work. Saving or opening another loop clears the snapshots. The roll and its undo go through the same edit path as any change, so while the loop plays they restart it from the cycle start under a new generation (playback's generation rule). The tap flash is the shared `TapGlitch` and its `FlashGate`.
 
 ## Not here
 

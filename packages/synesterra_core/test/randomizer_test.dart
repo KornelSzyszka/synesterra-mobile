@@ -142,6 +142,43 @@ void main() {
       }
     });
 
+    test('step counts follow the declared polyrhythm ratios', () {
+      // Written out here, independent of the generator's tables
+      // (docs/modules/randomizer.md): larger:smaller in lowest terms.
+      const pairs = {(3, 2), (4, 3), (5, 4), (7, 4), (5, 3), (5, 2), (7, 3)};
+      const relations = {(2, 1), (3, 2), (4, 3), (5, 4), (7, 4), (5, 3)};
+      int gcd(int a, int b) => b == 0 ? a : gcd(b, a % b);
+      (int, int) ratio(int a, int b) {
+        final g = gcd(a, b);
+        return a > b ? (a ~/ g, b ~/ g) : (b ~/ g, a ~/ g);
+      }
+
+      for (final seed in seeds) {
+        final document = randomLoopDocument(seed: seed);
+        final cycle = document.transport.practiceCycleBeats.numerator;
+        final counts = [
+          for (final layer in document.scenes.first.layers)
+            layer.pattern.steps.length,
+        ];
+        final reason = 'seed $seed $counts cycle $cycle';
+        for (var i = 1; i < counts.length; i++) {
+          expect(counts[i], isNot(counts[i - 1]), reason: reason);
+        }
+        // Layers 1 and 2 are one classic pair, scaled.
+        expect(pairs, contains(ratio(counts[0], counts[1])), reason: reason);
+        // Layers 3 and 4 relate to an earlier layer by a small ratio, or
+        // are the beat or the half beat of the cycle.
+        for (var i = 2; i < counts.length; i++) {
+          final related =
+              counts[i] == cycle ||
+              counts[i] == 2 * cycle ||
+              [for (var j = 0; j < i; j++) ratio(counts[i], counts[j])]
+                  .any(relations.contains);
+          expect(related, isTrue, reason: '$reason layer ${i + 1}');
+        }
+      }
+    });
+
     test('density, step counts and pitches have musical shape', () {
       var accents = 0;
       var layersSeen = 0;
