@@ -108,6 +108,7 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
         'session': {'rhythm', 'harmony', 'sound'},
         'playback': {'rhythm', 'harmony', 'sound', 'session'},
         'ports': {'rhythm', 'harmony', 'sound', 'session', 'playback'},
+        'randomizer': {'rhythm', 'harmony', 'sound', 'session', 'arrangement'},
       };
       if (from != null &&
           to != null &&

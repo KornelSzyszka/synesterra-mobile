@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:synesterra_core/synesterra_core.dart';
@@ -30,7 +31,9 @@ class LoopEditorViewModel extends ChangeNotifier {
     required this._playback,
     Loop? loop,
     bool existing = false,
-  }) {
+    int? firstRollSeed,
+  }) : _nextRollSeed = firstRollSeed ?? math.Random().nextInt(1 << 32) {
+    checkRandomSeed(_nextRollSeed, 'firstRollSeed');
     _load(loop ?? factoryLoops.first, existing: existing);
     _instruments.snapshot.addListener(notifyListeners);
     _playback.status.addListener(_onStatus);
@@ -75,6 +78,7 @@ class LoopEditorViewModel extends ChangeNotifier {
     _name = loop.name;
     _persisted = keep;
     _saveError = null;
+    _beforeRolls.clear();
   }
 
   /// The loop as edited, under the last valid name.
@@ -119,6 +123,7 @@ class LoopEditorViewModel extends ChangeNotifier {
     );
     final documentAtSave = _document;
     final session = _session;
+    final rollsAtSave = _rolls;
     _savingSession = session;
     _saveError = null;
     notifyListeners();
@@ -134,6 +139,9 @@ class LoopEditorViewModel extends ChangeNotifier {
           ? saved.document
           : edits.withTitle(_document, name);
       _persisted = true;
+      // Only rolls made before the save began; a roll made while it ran is
+      // not in the saved loop and stays undoable.
+      _beforeRolls.removeWhere((entry) => entry.$1 <= rollsAtSave);
       return true;
     } catch (_) {
       if (session == _session) {
@@ -228,6 +236,62 @@ class LoopEditorViewModel extends ChangeNotifier {
 
   void removeLayer(int index) {
     if (canRemoveLayer) _apply(edits.removeLoopLayer(_document, index));
+  }
+
+  // Randomize.
+
+  /// The seed of the next roll; each roll takes the next one (uint32, so it
+  /// wraps). Random per panel unless given, which makes tests exact.
+  int _nextRollSeed;
+
+  /// The document just before each roll, the last roll last. Kept through
+  /// other edits, so a roll never loses unsaved work; cleared on save and
+  /// when another loop is opened (a save clears only the rolls made before
+  /// it began). Each entry is numbered by [_rolls].
+  final List<(int, SessionDocument)> _beforeRolls = [];
+
+  /// How many rolls this panel has made.
+  int _rolls = 0;
+
+  bool get canUndoRandomize => _beforeRolls.isNotEmpty;
+
+  /// Replaces the loop with a random one from the core generator
+  /// (docs/modules/randomizer.md), drawn from the factory instruments and
+  /// mine. It is an unsaved change like any edit: the id and the name stay,
+  /// nothing starts playing, and a loop that plays restarts with it.
+  void randomize() {
+    final seed = _nextRollSeed;
+    _nextRollSeed = (seed + 1) & maxRandomSeed;
+    _beforeRolls.add((++_rolls, _document));
+    final next = randomLoopDocument(
+      seed: seed,
+      instrumentIds: [
+        for (final instrument in availableInstruments) instrument.id,
+      ],
+      title: _document.title,
+    );
+    if (next == _document) {
+      notifyListeners();
+    } else {
+      _apply(next);
+    }
+  }
+
+  /// Back to the exact document from just before the last roll (edits made
+  /// after it are undone with it). Repeated, it steps back through every
+  /// roll to the loop as it was before the first one.
+  void undoRandomize() {
+    if (_beforeRolls.isEmpty) return;
+    // The title follows the loop as it is now: a save that finished after
+    // the roll renamed it, and the snapshot must not bring the old name back
+    // (then a restored saved loop is not "changed").
+    final (_, snapshot) = _beforeRolls.removeLast();
+    final before = edits.withTitle(snapshot, _document.title);
+    if (before == _document) {
+      notifyListeners();
+    } else {
+      _apply(before);
+    }
   }
 
   void _apply(SessionDocument next) {

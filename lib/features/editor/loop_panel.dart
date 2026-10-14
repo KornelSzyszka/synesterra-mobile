@@ -96,7 +96,9 @@ class _LoopPanelState extends State<LoopPanel> {
               ),
               children: [
                 _header(context),
-                const SizedBox(height: Space.xl),
+                const SizedBox(height: Space.md),
+                _dice(context),
+                const SizedBox(height: Space.lg),
                 LoopView(
                   key: const Key('loop-view'),
                   state: LoopViewState.fromDocument(_vm.document),
@@ -208,6 +210,38 @@ class _LoopPanelState extends State<LoopPanel> {
       ],
     );
   }
+
+  /// The dice: a new random loop replaces this one as an unsaved change
+  /// (never played by itself); undo brings back the loop before the last
+  /// roll.
+  Widget _dice(BuildContext context) => Row(
+    children: [
+      RoundIconButton(
+        key: const Key('loop-randomize'),
+        icon: Icons.casino_outlined,
+        label: 'Randomize loop',
+        onPressed: _vm.randomize,
+      ),
+      const SizedBox(width: Space.sm),
+      Expanded(
+        child: Text(
+          'Roll a new loop. Nothing is kept until you save.',
+          style: roundText(
+            context,
+            color: groundOf(context).muted,
+            size: TypeScale.caption,
+          ),
+        ),
+      ),
+      if (_vm.canUndoRandomize)
+        RoundIconButton(
+          key: const Key('loop-randomize-undo'),
+          icon: Icons.undo_rounded,
+          label: 'Undo randomize',
+          onPressed: _vm.undoRandomize,
+        ),
+    ],
+  );
 
   Widget _cycle(BuildContext context) {
     final tokens = SynesterraTokens.of(context);

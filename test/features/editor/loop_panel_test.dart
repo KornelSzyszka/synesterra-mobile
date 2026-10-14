@@ -266,6 +266,45 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
   });
 
+  testWidgets('the dice rolls a new loop as an unsaved change, and undo '
+      'steps back through the rolls', (tester) async {
+    await pumpEditor(tester, loop: mine('m1'), existing: true);
+    expect(find.text('Saved'), findsOneWidget);
+    final undo = find.byKey(const Key('loop-randomize-undo'));
+    expect(undo, findsNothing);
+
+    await tapAndSettle(tester, find.byKey(const Key('loop-randomize')));
+    expect(find.text('Changed, not saved yet'), findsOneWidget);
+    expect(find.text('Mine'), findsOneWidget, reason: 'the name stays');
+    expect(playback.commands, isEmpty, reason: 'a roll never plays');
+    expect(undo, findsOneWidget);
+    // Re-roll, then undo twice: back through both rolls to the saved loop.
+    await tapAndSettle(tester, find.byKey(const Key('loop-randomize')));
+    await tapAndSettle(tester, undo);
+    expect(undo, findsOneWidget, reason: 'one more roll to undo');
+    expect(find.text('Changed, not saved yet'), findsOneWidget);
+    await tapAndSettle(tester, undo);
+    expect(undo, findsNothing);
+    expect(find.text('Saved'), findsOneWidget);
+    expect(playback.commands, isEmpty);
+  });
+
+  testWidgets('undo right after one roll restores the saved loop', (
+    tester,
+  ) async {
+    await pumpEditor(tester, loop: mine('m1'), existing: true);
+    final before = [
+      for (var layer = 0; layer < 2; layer++) stepLabels(tester, layer),
+    ];
+    await tapAndSettle(tester, find.byKey(const Key('loop-randomize')));
+    await tapAndSettle(tester, find.byKey(const Key('loop-randomize-undo')));
+    expect(find.text('Saved'), findsOneWidget);
+    expect(find.byKey(const Key('layer-2')), findsNothing);
+    expect([
+      for (var layer = 0; layer < 2; layer++) stepLabels(tester, layer),
+    ], before);
+  });
+
   testWidgets('save a copy, then open a factory loop as a new copy', (
     tester,
   ) async {

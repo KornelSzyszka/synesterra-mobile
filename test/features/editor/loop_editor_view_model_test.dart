@@ -75,13 +75,18 @@ void main() {
   late InMemoryInstrumentLibraryRepository instruments;
   late RecordingPlayback playback;
 
-  LoopEditorViewModel create({Loop? loop, bool existing = false}) {
+  LoopEditorViewModel create({
+    Loop? loop,
+    bool existing = false,
+    int? firstRollSeed,
+  }) {
     final vm = LoopEditorViewModel(
       library: loops,
       instruments: instruments,
       playback: playback,
       loop: loop,
       existing: existing,
+      firstRollSeed: firstRollSeed,
     );
     addTearDown(vm.dispose);
     return vm;
@@ -272,6 +277,160 @@ void main() {
     });
   });
 
+  group('randomize', () {
+    const factoryIds = ['factory-wood', 'factory-sine', 'factory-bell'];
+
+    test('a roll replaces the loop as an unsaved change and never plays', () {
+      final vm = create(loop: mine('m1'), existing: true, firstRollSeed: 41);
+      expect(vm.canUndoRandomize, isFalse);
+      final title = vm.document.title;
+      vm.randomize();
+      expect(
+        vm.document,
+        randomLoopDocument(seed: 41, instrumentIds: factoryIds, title: title),
+      );
+      expect(vm.loop.id, 'm1');
+      expect(vm.name, 'Mine');
+      expect(vm.dirty, isTrue);
+      expect(vm.canSave, isTrue);
+      expect(vm.canUndoRandomize, isTrue);
+      expect(playback.commands, isEmpty, reason: 'a roll never plays');
+      // A valid library loop: whole-beat cycle, layers one cycle long.
+      expect(() => vm.loop, returnsNormally);
+    });
+
+    test('a re-roll asks the generator with the next seed', () {
+      final vm = create(firstRollSeed: 0xffffffff);
+      vm
+        ..randomize()
+        ..randomize();
+      expect(
+        vm.document,
+        randomLoopDocument(
+          seed: 0,
+          instrumentIds: factoryIds,
+          title: vm.document.title,
+        ),
+        reason: 'the seed wraps around inside uint32',
+      );
+    });
+
+    test('my instruments take part in the roll', () async {
+      final mineInstrument = factoryInstruments.first.copyWith(
+        id: 'my-sound',
+        name: 'My sound',
+      );
+      await instruments.save(mineInstrument);
+      final vm = create(firstRollSeed: 3);
+      vm.randomize();
+      expect(
+        vm.document,
+        randomLoopDocument(
+          seed: 3,
+          instrumentIds: [...factoryIds, 'my-sound'],
+          title: vm.document.title,
+        ),
+      );
+    });
+
+    test('undo steps back through every roll to the document before it', () {
+      final vm = create(loop: mine('m1'), existing: true, firstRollSeed: 7);
+      final original = vm.document;
+      vm.randomize();
+      final first = vm.document;
+      vm.randomize();
+      vm.undoRandomize();
+      expect(vm.document, first);
+      expect(vm.canUndoRandomize, isTrue);
+      vm.undoRandomize();
+      expect(vm.document, original);
+      expect(vm.canUndoRandomize, isFalse);
+      vm.undoRandomize(); // nothing left to undo
+      expect(vm.document, original);
+      expect(original, isNot(first));
+    });
+
+    test('a roll never destroys unsaved edits: edit, roll, roll, undo, '
+        'undo returns the edited loop', () {
+      final vm = create(loop: mine('m1'), existing: true, firstRollSeed: 7);
+      vm
+        ..toggleStep(0, 1)
+        ..setLayerPitch(1, 72);
+      final edited = vm.document;
+      vm
+        ..randomize()
+        ..randomize()
+        ..undoRandomize()
+        ..undoRandomize();
+      expect(vm.document, edited);
+      expect(vm.dirty, isTrue);
+      expect(vm.canUndoRandomize, isFalse);
+    });
+
+    test('undo restores the exact state before the last roll, edits made '
+        'after an earlier roll included', () {
+      final vm = create(firstRollSeed: 7);
+      vm
+        ..randomize()
+        ..toggleStep(0, 0);
+      final editedRoll = vm.document;
+      expect(vm.canUndoRandomize, isTrue, reason: 'an edit keeps the undo');
+      vm
+        ..randomize()
+        ..undoRandomize();
+      expect(vm.document, editedRoll);
+    });
+
+    test('undo right after one roll leaves the loop unchanged', () {
+      final vm = create(loop: mine('m1'), existing: true, firstRollSeed: 7);
+      vm
+        ..randomize()
+        ..undoRandomize();
+      expect(vm.dirty, isFalse);
+    });
+
+    test('saving or opening another loop clears the undo', () async {
+      final vm = create(firstRollSeed: 7);
+      vm.randomize();
+      expect(await vm.save(), isTrue);
+      expect(vm.canUndoRandomize, isFalse);
+      vm.randomize();
+      vm.open(factoryLoops[1], existing: false);
+      expect(vm.canUndoRandomize, isFalse);
+    });
+
+    test('a save clears only the rolls made before it began', () async {
+      final slow = SlowLoops();
+      loops = slow;
+      final vm = create(firstRollSeed: 11);
+      vm.randomize(); // before the save: cleared by it
+      final saved = vm.document;
+      final saving = vm.save();
+      vm.randomize(); // during the save: still unsaved, still undoable
+      slow.gate.complete();
+      expect(await saving, isTrue);
+      expect(vm.dirty, isTrue);
+      expect(vm.canUndoRandomize, isTrue);
+      vm.undoRandomize();
+      // Back to exactly the saved loop, title included, and not changed.
+      expect(vm.document, slow.snapshot.value.items.single.document);
+      expect(vm.document.scenes, saved.scenes);
+      expect(vm.dirty, isFalse);
+      expect(vm.canSave, isFalse);
+      expect(vm.canUndoRandomize, isFalse);
+    });
+
+    test('while playing, a roll and its undo are sent like any edit', () async {
+      final vm = create(firstRollSeed: 9);
+      await vm.play();
+      vm.randomize();
+      expect(playback.played.last, vm.document);
+      vm.undoRandomize();
+      expect(playback.played, hasLength(3));
+      expect(playback.played.last, vm.document);
+    });
+  });
+
   group('transport', () {
     test('play sends the document; edits while playing are sent too', () async {
       final vm = create();
@@ -430,6 +589,19 @@ void main() {
       expect(now().cycleIndex, before.cycleIndex);
       expect(h.repository.status.value.bpm, 130);
     });
+
+    test(
+      'a roll restarts from the cycle start, like a structural edit',
+      () async {
+        final before = now();
+        vm.randomize();
+        await pumpEventQueue();
+        final after = now();
+        expect(after.generation, greaterThan(before.generation));
+        expect(after.cyclePosition, lessThan(0.05));
+        expect(after.cycleIndex, 0);
+      },
+    );
 
     test('a structural edit restarts from the cycle start', () async {
       final before = now();

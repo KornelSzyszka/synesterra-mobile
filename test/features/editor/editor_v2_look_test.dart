@@ -19,6 +19,7 @@ import 'package:synesterra/shared/theme/synesterra_theme.dart';
 import 'package:synesterra/shared/theme/tap_effect.dart';
 import 'package:synesterra/shared/widgets/round_components.dart';
 import 'package:synesterra/shared/widgets/round_screen.dart';
+import 'package:synesterra/shared/widgets/tap_glitch.dart';
 
 import 'loop_fakes.dart';
 
@@ -182,8 +183,63 @@ void main() {
           reason: key,
         );
       }
+      // Rolled loops (up to four layers of up to 16 hits) still fit, and so
+      // do the dice and undo. The seeds are random, so roll several.
+      for (var roll = 0; roll < 10; roll++) {
+        await tester.tap(find.byKey(const Key('loop-randomize')));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull, reason: 'roll $roll');
+      }
+      for (final key in ['loop-randomize', 'loop-randomize-undo']) {
+        expect(
+          tester.getRect(find.byKey(Key(key))).right,
+          lessThanOrEqualTo(320),
+          reason: key,
+        );
+      }
     });
   }
+
+  testWidgets('the dice is a round button labelled for screen readers whose '
+      'flash goes through the shared gate', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await _pumpEditor(tester);
+    final dice = find.byKey(const Key('loop-randomize'));
+    expect(tester.widget(dice), isA<RoundIconButton>());
+    expect(tester.getSemantics(dice).label, 'Randomize loop');
+    expect(find.byKey(const Key('loop-randomize-undo')), findsNothing);
+
+    await tester.tap(dice);
+    await tester.pump(const Duration(milliseconds: 16));
+    final glitch =
+        tester
+                .widget<CustomPaint>(
+                  find
+                      .descendant(
+                        of: find.descendant(
+                          of: dice,
+                          matching: find.byType(TapGlitch),
+                        ),
+                        matching: find.byType(CustomPaint),
+                      )
+                      .first,
+                )
+                .foregroundPainter!
+            as TapGlitchPainter;
+    expect(glitch.flash.isAnimating, isTrue);
+    final undo = find.byKey(const Key('loop-randomize-undo'));
+    expect(tester.widget(undo), isA<RoundIconButton>());
+    expect(tester.getSemantics(undo).label, 'Undo randomize');
+
+    // The same gate: a step tapped within a third of a second edits
+    // without a flash of its own.
+    _now += const Duration(milliseconds: 100);
+    await tester.tap(find.byKey(const Key('step-0-0')));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(_step(tester, 'step-0-0').glitch, isNull);
+    await tester.pumpAndSettle();
+    semantics.dispose();
+  });
 
   testWidgets('every control of the shell and the Loop panel is 48 dp and '
       'labelled', (tester) async {
