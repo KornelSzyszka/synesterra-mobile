@@ -856,16 +856,33 @@ class _TransportBar extends StatelessWidget {
                     playing: vm.playing,
                     onPressed: vm.togglePlay,
                   ),
-                  const Spacer(),
-                  TrayStepper(
-                    key: const Key('loop-tempo'),
-                    value: vm.tempo,
-                    min: 20,
-                    max: 300,
-                    label: 'BPM',
-                    color: tokens.accent,
-                    repeatOnHold: true,
-                    onChanged: vm.setTempo,
+                  // Tap and BPM share a line; on a very narrow screen or a
+                  // large text size the tap button moves above the BPM.
+                  Expanded(
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: Space.sm,
+                      runSpacing: Space.xs,
+                      children: [
+                        RoundIconButton(
+                          key: const Key('loop-tap-tempo'),
+                          icon: Icons.touch_app_outlined,
+                          label: 'Tap tempo',
+                          onPressed: vm.tapTempo,
+                        ),
+                        TrayStepper(
+                          key: const Key('loop-tempo'),
+                          value: vm.tempo,
+                          min: 20,
+                          max: 300,
+                          label: 'BPM',
+                          color: tokens.accent,
+                          repeatOnHold: true,
+                          onChanged: vm.setTempo,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

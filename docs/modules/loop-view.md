@@ -14,11 +14,13 @@
 |---|---|---|
 | Circle | a ring (first layer outermost), a dot per step | rotating line from 12 o'clock, clockwise |
 | Timeline | a row, a block per step | vertical line |
-| Polygons | a regular polygon with one vertex per **step** (3: triangle, 2: line, 4: square, 5: pentagon) | a dot on the perimeter, on vertex `k` exactly when step `k` hits |
+| Polygons | a regular polygon with one vertex per **step** (3: triangle, 2: line, 4: square, 5: pentagon). The layers' polygons are **nested around one shared centre** like a spider chart (UX-131): the first layer is outermost, the others step inwards like the circle's rings (`polygonLayerRadius` = `ringRadius`), and each layer's number sits left of its top vertex | a dot on the perimeter, on vertex `k` exactly when step `k` hits |
 
 A hit pulse is a function of the position (`stepPulse`), so a stopped view is still. The mode switch is UI state; Polygons is never stored (`presentation.visualMode` stays `circle` or `timeline`). Geometry lives in `loop_geometry.dart` with unit tests; `describeLoop` gives the screen-reader text ("Loop of 4 beats with 2 layers, 3 against 2. ...").
 
 `ArrangementStrip` takes `StripSection {label, repeats, missing, colorIndex, layerSteps}` (the last two feed only the ring) and highlights `sectionIndex`, filling the current section by `(cycleIndex mod repeats + cyclePosition) / repeats`.
+
+The Loop panel's hit buttons (`StepGrid`, `lib/features/editor/step_grid.dart`, not part of the views) wrap at **4 per row** (UX-131): the 48 dp cells sit left-aligned in a column no wider than four cells and their gaps, whatever the screen width.
 
 `LoopViewDemo` is a debug harness (no route in the app shell) showing the 3:2 and 5:4 examples.
 

@@ -289,6 +289,37 @@ void main() {
     expect(playback.commands, isEmpty);
   });
 
+  testWidgets('the hits wrap at four per row', (tester) async {
+    await pumpEditor(tester, loop: mine('m1'), existing: true);
+    for (var i = 0; i < 6; i++) {
+      await tapAndSettle(tester, inside('layer-hits-0', Icons.add));
+    }
+    expect(stepLabels(tester, 0), hasLength(9));
+    final rows = <double, int>{};
+    for (var s = 0; s < 9; s++) {
+      final y = tester.getTopLeft(find.byKey(Key('step-0-$s'))).dy;
+      rows[y] = (rows[y] ?? 0) + 1;
+    }
+    expect(rows.values.toList(), [4, 4, 1]);
+  });
+
+  testWidgets('tap tempo: three taps set the BPM, fewer do not', (
+    tester,
+  ) async {
+    await pumpEditor(tester, loop: mine('m1'), existing: true);
+    final tap = find.byKey(const Key('loop-tap-tempo'));
+    expect(tap, findsOneWidget);
+    expect(tester.getSize(tap), const Size(48, 48));
+    expect(find.text('120'), findsOneWidget);
+    await tapAndSettle(tester, tap);
+    await tapAndSettle(tester, tap);
+    expect(find.text('120'), findsOneWidget);
+    await tapAndSettle(tester, tap);
+    // The taps came a frame apart, far faster than the BPM range allows.
+    expect(find.text('300'), findsOneWidget);
+    expect(find.text('Changed, not saved yet'), findsOneWidget);
+  });
+
   testWidgets('undo right after one roll restores the saved loop', (
     tester,
   ) async {

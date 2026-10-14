@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-14",
+  "task": "UX-131",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Four editor changes: polygons nested on one centre (geometry helpers replace the per-layer cells), hit grid wraps at 4 per row, instrument dice with seeded core generator and undo (plays the sound once), tap tempo with a pure core calculator and injected timestamps. Core tests written with the code (one wrong expectation of mine fixed in the tap-tempo test). The first transport layout overflowed 22 px on a 320 dp screen (caught by the existing fit test); fixed with a Wrap so the tap button moves above the BPM when narrow. App tests ran in a soloud-free scratch copy (876 passed); core tests ran natively. Look, feel and phone behaviour not judged. Review pending (Codex)."
+}

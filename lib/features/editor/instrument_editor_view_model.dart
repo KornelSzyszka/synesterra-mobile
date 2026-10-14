@@ -30,7 +30,10 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     Instrument? instrument,
     bool existing = false,
     String Function()? newId,
-  }) : _newId = newId ?? _defaultId {
+    int? firstRollSeed,
+  }) : _newId = newId ?? _defaultId,
+       _nextRollSeed = firstRollSeed ?? math.Random().nextInt(1 << 32) {
+    checkRandomSeed(_nextRollSeed, 'firstRollSeed');
     final template = newInstrumentTemplate;
     final draft = instrument == null
         // A brand-new instrument starts untagged on the neutral shape.
@@ -177,6 +180,10 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   void setTrait(String id, double value) {
     final next = _traits.withValues({id: _clampDouble(value, 0, 1)});
     if (next == _traits && !_approximated) return;
+    _applyTraits(next);
+  }
+
+  void _applyTraits(InstrumentTraits next) {
     _traits = next;
     _approximated = false;
     final mapped = instrumentForTraits(
@@ -187,6 +194,40 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     );
     _brightness = fitBrightness(mapped.harmonics);
     _edit((_) => mapped);
+  }
+
+  // Randomize.
+
+  /// The seed of the next roll; each roll takes the next one (uint32, so it
+  /// wraps). Random per panel unless given, which makes tests exact.
+  int _nextRollSeed;
+
+  /// The recipe just before each roll, the last roll last.
+  final List<Instrument> _beforeRolls = [];
+
+  bool get canUndoRandomize => _beforeRolls.isNotEmpty;
+
+  /// Rolls new random trait values (`randomInstrumentTraits`) and replaces
+  /// the recipe with the mapped one, keeping id, name and tags. It is an
+  /// unsaved change like any edit and plays the new sound once.
+  void randomize() {
+    final seed = _nextRollSeed;
+    _nextRollSeed = (seed + 1) & maxRandomSeed;
+    _beforeRolls.add(_draft);
+    _applyTraits(randomInstrumentTraits(seed: seed));
+    audition();
+  }
+
+  /// Back to the exact recipe from just before the last roll (the name and
+  /// tags stay as they are now). Repeated, it steps back through every roll.
+  void undoRandomize() {
+    if (_beforeRolls.isEmpty) return;
+    final before = _beforeRolls.removeLast();
+    _draft = before.copyWith(name: _draft.name, tags: _draft.tags);
+    _brightness = fitBrightness(_draft.harmonics);
+    _readTraits();
+    _changed();
+    audition();
   }
 
   /// The finger left the radar: plays the sound once.
@@ -378,6 +419,7 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     _name = _draft.name;
     _brightness = fitBrightness(_draft.harmonics);
     _readTraits();
+    _beforeRolls.clear();
     _saveError = null;
     notifyListeners();
   }

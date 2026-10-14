@@ -321,8 +321,9 @@ class TimelinePainter extends LoopPainter {
   }
 }
 
-/// A polygon per layer with one vertex per step: 3 steps give a triangle,
-/// 2 a line, 4 a square, 5 a pentagon. A dot travels along each polygon and
+/// A polygon per layer with one vertex per step, nested around one shared
+/// centre like a spider chart (the first layer outermost): 3 steps give a
+/// triangle, 2 a line, 4 a square, 5 a pentagon. A dot travels along each polygon and
 /// is on a vertex exactly when that step hits. The polygon is a soft shape of
 /// light: a faint fill, a glowing band and a fine edge with round joins.
 class PolygonsPainter extends LoopPainter {
@@ -335,15 +336,12 @@ class PolygonsPainter extends LoopPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final cells = polygonCells(size, state.layers.length);
+    final center = size.center(Offset.zero);
+    final outer = polygonOuterRadius(size);
     for (var l = 0; l < state.layers.length; l++) {
       final layer = state.layers[l];
-      final cell = cells[l];
-      final vertices = polygonVertices(
-        cell.center,
-        polygonRadius(cell),
-        layer.stepCount,
-      );
+      final radius = polygonLayerRadius(l, state.layers.length, outer);
+      final vertices = polygonVertices(center, radius, layer.stepCount);
       final color = shown(layer);
       if (vertices.length > 1) {
         final path = Path()..moveTo(vertices.first.dx, vertices.first.dy);
@@ -396,7 +394,8 @@ class PolygonsPainter extends LoopPainter {
       paintNumber(
         canvas,
         layer,
-        cell.topLeft + const Offset(Space.md, Space.md),
+        Offset(vertices.first.dx - 9, vertices.first.dy),
+        alignX: 1,
       );
     }
   }

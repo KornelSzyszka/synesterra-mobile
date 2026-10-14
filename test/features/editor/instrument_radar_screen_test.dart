@@ -794,4 +794,45 @@ void main() {
       'Sound shape: everything in the middle. $radarApproximateNote',
     );
   });
+
+  group('instrument dice', () {
+    testWidgets('rolls the traits, plays the sound, and undo steps back', (
+      tester,
+    ) async {
+      await open(tester);
+      const dice = Key('instrument-randomize');
+      const undo = Key('instrument-randomize-undo');
+      expect(tester.getSize(find.byKey(dice)), const Size(48, 48));
+      expect(find.byKey(undo), findsNothing);
+      final before = shownTraits(tester);
+      final plays = audition.played.length;
+
+      await tester.tap(find.byKey(dice));
+      await tester.pumpAndSettle();
+      expect(shownTraits(tester), isNot(before));
+      expect(audition.played.length, plays + 1);
+      expect(find.byKey(undo), findsOneWidget);
+      expect(tester.getSize(find.byKey(undo)), const Size(48, 48));
+      expect(
+        tester.widget<RoundActionButton>(find.byKey(saveKey)).onPressed,
+        isNotNull,
+        reason: 'a roll is an unsaved change',
+      );
+
+      await tester.tap(find.byKey(undo));
+      await tester.pumpAndSettle();
+      expect(shownTraits(tester), before);
+      expect(find.byKey(undo), findsNothing);
+    });
+
+    testWidgets('both buttons are labelled for screen readers', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await open(tester);
+      await tester.tap(find.byKey(const Key('instrument-randomize')));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Randomize instrument'), findsOneWidget);
+      expect(find.bySemanticsLabel('Undo randomize'), findsOneWidget);
+      semantics.dispose();
+    });
+  });
 }

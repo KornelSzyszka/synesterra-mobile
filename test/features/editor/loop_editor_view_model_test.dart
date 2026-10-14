@@ -79,6 +79,7 @@ void main() {
     Loop? loop,
     bool existing = false,
     int? firstRollSeed,
+    Duration Function()? clock,
   }) {
     final vm = LoopEditorViewModel(
       library: loops,
@@ -87,6 +88,7 @@ void main() {
       loop: loop,
       existing: existing,
       firstRollSeed: firstRollSeed,
+      clock: clock,
     );
     addTearDown(vm.dispose);
     return vm;
@@ -274,6 +276,54 @@ void main() {
       vm.open(factoryLoops[2], existing: false);
       expect(vm.name, 'Three layers copy');
       expect(vm.persisted, isFalse);
+    });
+  });
+
+  group('tap tempo', () {
+    test('sets the tempo from the third tap, from the average interval', () {
+      var now = Duration.zero;
+      final vm = create(loop: mine('m1'), existing: true, clock: () => now);
+      expect(vm.tempo, 120);
+      for (final ms in [0, 600]) {
+        now = Duration(milliseconds: ms);
+        vm.tapTempo();
+      }
+      expect(vm.tempo, 120, reason: 'two taps change nothing');
+      now = const Duration(milliseconds: 1200);
+      vm.tapTempo();
+      expect(vm.tempo, 100);
+      expect(vm.dirty, isTrue);
+    });
+
+    test('opening another loop forgets earlier taps', () {
+      var now = Duration.zero;
+      final vm = create(loop: mine('m1'), existing: true, clock: () => now);
+      for (final ms in [0, 600]) {
+        now = Duration(milliseconds: ms);
+        vm.tapTempo();
+      }
+      vm.open(mine('m2'), existing: true);
+      now = const Duration(milliseconds: 1200);
+      vm.tapTempo();
+      expect(vm.tempo, 120, reason: 'one tap in the new loop changes nothing');
+    });
+
+    test('is clamped to the BPM range and restarts after silence', () {
+      var now = Duration.zero;
+      final vm = create(loop: mine('m1'), existing: true, clock: () => now);
+      for (final ms in [0, 20, 40]) {
+        now = Duration(milliseconds: ms);
+        vm.tapTempo();
+      }
+      expect(vm.tempo, maxLoopTempo);
+      now = const Duration(seconds: 10); // silence: a new count
+      vm.tapTempo();
+      now = const Duration(seconds: 10, milliseconds: 500);
+      vm.tapTempo();
+      expect(vm.tempo, maxLoopTempo, reason: 'only two taps in the new count');
+      now = const Duration(seconds: 11);
+      vm.tapTempo();
+      expect(vm.tempo, 120);
     });
   });
 

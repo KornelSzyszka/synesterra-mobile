@@ -514,11 +514,37 @@ class _WheelBody extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: Space.lg),
-              RoundActionButton(
-                key: const Key('instrument-save'),
-                icon: Icons.check_rounded,
-                label: 'Save',
-                onPressed: vm.canSave ? () => _save(context) : null,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  RoundIconButton(
+                    key: const Key('instrument-randomize'),
+                    icon: Icons.casino_outlined,
+                    label: 'Randomize instrument',
+                    onPressed: vm.randomize,
+                  ),
+                  const SizedBox(width: Space.md),
+                  RoundActionButton(
+                    key: const Key('instrument-save'),
+                    icon: Icons.check_rounded,
+                    label: 'Save',
+                    onPressed: vm.canSave ? () => _save(context) : null,
+                  ),
+                  const SizedBox(width: Space.md),
+                  // The slot keeps Save centred while there is nothing to
+                  // undo.
+                  SizedBox.square(
+                    dimension: 48,
+                    child: vm.canUndoRandomize
+                        ? RoundIconButton(
+                            key: const Key('instrument-randomize-undo'),
+                            icon: Icons.undo_rounded,
+                            label: 'Undo randomize',
+                            onPressed: vm.undoRandomize,
+                          )
+                        : null,
+                  ),
+                ],
               ),
             ],
           ),
