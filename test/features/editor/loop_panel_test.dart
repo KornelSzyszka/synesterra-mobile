@@ -267,7 +267,7 @@ void main() {
   });
 
   testWidgets('the dice rolls a new loop as an unsaved change, and undo '
-      'brings the old one back', (tester) async {
+      'steps back through the rolls', (tester) async {
     await pumpEditor(tester, loop: mine('m1'), existing: true);
     expect(find.text('Saved'), findsOneWidget);
     final undo = find.byKey(const Key('loop-randomize-undo'));
@@ -278,15 +278,14 @@ void main() {
     expect(find.text('Mine'), findsOneWidget, reason: 'the name stays');
     expect(playback.commands, isEmpty, reason: 'a roll never plays');
     expect(undo, findsOneWidget);
-    // Re-roll: still one step back to the loop before the last roll.
+    // Re-roll, then undo twice: back through both rolls to the saved loop.
     await tapAndSettle(tester, find.byKey(const Key('loop-randomize')));
-    expect(undo, findsOneWidget);
-
     await tapAndSettle(tester, undo);
-    await tapAndSettle(tester, find.byKey(const Key('loop-randomize')));
+    expect(undo, findsOneWidget, reason: 'one more roll to undo');
+    expect(find.text('Changed, not saved yet'), findsOneWidget);
     await tapAndSettle(tester, undo);
     expect(undo, findsNothing);
-    expect(find.text('Changed, not saved yet'), findsOneWidget);
+    expect(find.text('Saved'), findsOneWidget);
     expect(playback.commands, isEmpty);
   });
 

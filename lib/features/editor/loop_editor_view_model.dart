@@ -78,7 +78,7 @@ class LoopEditorViewModel extends ChangeNotifier {
     _name = loop.name;
     _persisted = keep;
     _saveError = null;
-    _beforeRoll = null;
+    _beforeRolls.clear();
   }
 
   /// The loop as edited, under the last valid name.
@@ -138,6 +138,7 @@ class LoopEditorViewModel extends ChangeNotifier {
           ? saved.document
           : edits.withTitle(_document, name);
       _persisted = true;
+      _beforeRolls.clear();
       return true;
     } catch (_) {
       if (session == _session) {
@@ -240,10 +241,12 @@ class LoopEditorViewModel extends ChangeNotifier {
   /// wraps). Random per panel unless given, which makes tests exact.
   int _nextRollSeed;
 
-  /// The document before the last roll, while that roll can be undone.
-  SessionDocument? _beforeRoll;
+  /// The document just before each roll, the last roll last. Kept through
+  /// other edits, so a roll never loses unsaved work; cleared on save and
+  /// when another loop is opened.
+  final List<SessionDocument> _beforeRolls = [];
 
-  bool get canUndoRandomize => _beforeRoll != null;
+  bool get canUndoRandomize => _beforeRolls.isNotEmpty;
 
   /// Replaces the loop with a random one from the core generator
   /// (docs/modules/randomizer.md), drawn from the factory instruments and
@@ -252,31 +255,37 @@ class LoopEditorViewModel extends ChangeNotifier {
   void randomize() {
     final seed = _nextRollSeed;
     _nextRollSeed = (seed + 1) & maxRandomSeed;
-    _apply(
-      randomLoopDocument(
-        seed: seed,
-        instrumentIds: [
-          for (final instrument in availableInstruments) instrument.id,
-        ],
-        title: _document.title,
-      ),
-      undo: _document,
+    _beforeRolls.add(_document);
+    final next = randomLoopDocument(
+      seed: seed,
+      instrumentIds: [
+        for (final instrument in availableInstruments) instrument.id,
+      ],
+      title: _document.title,
     );
+    if (next == _document) {
+      notifyListeners();
+    } else {
+      _apply(next);
+    }
   }
 
-  /// Back to the loop from before the last roll. Only right after a roll:
-  /// any other edit, or another loop, ends the chance.
+  /// Back to the exact document from just before the last roll (edits made
+  /// after it are undone with it). Repeated, it steps back through every
+  /// roll to the loop as it was before the first one.
   void undoRandomize() {
-    final before = _beforeRoll;
-    if (before != null) _apply(before);
+    if (_beforeRolls.isEmpty) return;
+    final before = _beforeRolls.removeLast();
+    if (before == _document) {
+      notifyListeners();
+    } else {
+      _apply(before);
+    }
   }
 
-  /// Every change of the document goes through here. [undo] is what a roll
-  /// replaced; any other change forgets it.
-  void _apply(SessionDocument next, {SessionDocument? undo}) {
+  void _apply(SessionDocument next) {
     if (next == _document) return;
     _document = next;
-    _beforeRoll = undo;
     notifyListeners();
     if (playing) _send();
   }

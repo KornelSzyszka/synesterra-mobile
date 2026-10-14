@@ -333,7 +333,7 @@ void main() {
       );
     });
 
-    test('undo restores the document from before the last roll', () {
+    test('undo steps back through every roll to the document before it', () {
       final vm = create(loop: mine('m1'), existing: true, firstRollSeed: 7);
       final original = vm.document;
       vm.randomize();
@@ -341,13 +341,44 @@ void main() {
       vm.randomize();
       vm.undoRandomize();
       expect(vm.document, first);
+      expect(vm.canUndoRandomize, isTrue);
+      vm.undoRandomize();
+      expect(vm.document, original);
       expect(vm.canUndoRandomize, isFalse);
       vm.undoRandomize(); // nothing left to undo
-      expect(vm.document, first);
-      vm.randomize();
-      vm.undoRandomize();
-      expect(vm.document, first);
+      expect(vm.document, original);
       expect(original, isNot(first));
+    });
+
+    test('a roll never destroys unsaved edits: edit, roll, roll, undo, '
+        'undo returns the edited loop', () {
+      final vm = create(loop: mine('m1'), existing: true, firstRollSeed: 7);
+      vm
+        ..toggleStep(0, 1)
+        ..setLayerPitch(1, 72);
+      final edited = vm.document;
+      vm
+        ..randomize()
+        ..randomize()
+        ..undoRandomize()
+        ..undoRandomize();
+      expect(vm.document, edited);
+      expect(vm.dirty, isTrue);
+      expect(vm.canUndoRandomize, isFalse);
+    });
+
+    test('undo restores the exact state before the last roll, edits made '
+        'after an earlier roll included', () {
+      final vm = create(firstRollSeed: 7);
+      vm
+        ..randomize()
+        ..toggleStep(0, 0);
+      final editedRoll = vm.document;
+      expect(vm.canUndoRandomize, isTrue, reason: 'an edit keeps the undo');
+      vm
+        ..randomize()
+        ..undoRandomize();
+      expect(vm.document, editedRoll);
     });
 
     test('undo right after one roll leaves the loop unchanged', () {
@@ -358,11 +389,10 @@ void main() {
       expect(vm.dirty, isFalse);
     });
 
-    test('another edit or another loop ends the chance to undo', () {
+    test('saving or opening another loop clears the undo', () async {
       final vm = create(firstRollSeed: 7);
-      vm
-        ..randomize()
-        ..toggleStep(0, 0);
+      vm.randomize();
+      expect(await vm.save(), isTrue);
       expect(vm.canUndoRandomize, isFalse);
       vm.randomize();
       vm.open(factoryLoops[1], existing: false);
