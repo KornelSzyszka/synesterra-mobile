@@ -280,7 +280,15 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
       springSettled(_swell, _swellTarget);
 
   @override
-  bool get busy => _moving && (!_settled || _entranceIndex != null);
+  bool get busy =>
+      _moving && (!_settled || (_animated && _entranceIndex != null));
+
+  @override
+  void finishEntrance() {
+    if (_entranceIndex == null) return;
+    entranceIndex = null;
+    _sync();
+  }
 
   @override
   set animated(bool value) {

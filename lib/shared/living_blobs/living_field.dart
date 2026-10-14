@@ -60,6 +60,10 @@ abstract interface class LivingMember {
 
   /// Its place in the staggered entrance, given when it joins.
   set entranceIndex(int? value);
+
+  /// Ends the entrance at once: a blob without a slot (offscreen, or beyond
+  /// the cap) shows its full card and never ticks for the entrance.
+  void finishEntrance();
 }
 
 /// Runs the living blobs below it (library cards): one ticker for all of
@@ -251,7 +255,9 @@ class LivingFieldState extends State<LivingField>
       cap: widget.cap,
     );
     for (final member in _members) {
-      member.animated = chosen.contains(member);
+      final slot = chosen.contains(member);
+      if (!slot) member.finishEntrance();
+      member.animated = slot;
     }
     _animated = chosen;
   }
