@@ -111,6 +111,8 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
         'randomizer': {'rhythm', 'harmony', 'sound', 'session', 'arrangement'},
         // Training uses SeededRandom only, nothing else.
         'training': {'randomizer'},
+        // Tuner (pitch detection, note and cents) is self-contained.
+        'tuner': <String>{},
       };
       if (from != null &&
           to != null &&
