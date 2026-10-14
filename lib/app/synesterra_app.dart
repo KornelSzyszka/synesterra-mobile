@@ -20,6 +20,7 @@ import '../features/library/library_view.dart';
 import '../features/audio_spike/audio_spike_view.dart';
 import '../features/design_lab/design_lab_view.dart';
 import '../shared/theme/synesterra_theme.dart';
+import 'step_feedback.dart';
 
 class SynesterraApp extends StatefulWidget {
   const SynesterraApp({
@@ -30,6 +31,7 @@ class SynesterraApp extends StatefulWidget {
     this.loopLibrary,
     this.arrangementLibrary,
     this.playback,
+    this.stepFeedback = hapticStepFeedback,
     @visibleForTesting this.debugHideDesignLab = false,
   });
 
@@ -44,6 +46,10 @@ class SynesterraApp extends StatefulWidget {
 
   /// The bootstrap passes the engine; when omitted, a silent stand-in.
   final PlaybackRepository? playback;
+
+  /// The light tick of the Instrument wheel on each snapped step: the
+  /// platform's selection click unless a test gives its own.
+  final VoidCallback stepFeedback;
 
   /// Tests only: hides the design lab as a release build would. It can only
   /// hide the lab; nothing can show it outside a debug build ([kDebugMode]).
@@ -88,6 +94,7 @@ class _SynesterraAppState extends State<SynesterraApp> {
                 initialLoop: loop,
                 loopExisting: loopExisting,
                 initialTab: tab,
+                stepFeedback: widget.stepFeedback,
                 // The Arrangement panel is its own feature (R4), so it is built
                 // here; it shares the one playback repository and the
                 // Editor's position adapter with the Loop panel.
