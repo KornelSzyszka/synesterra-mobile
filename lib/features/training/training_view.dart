@@ -12,9 +12,17 @@ import 'tap_trainer_view.dart';
 
 /// The Training tab: one round card per exercise.
 class TrainingView extends StatefulWidget {
-  const TrainingView({super.key, required this.playback, this.earSeed});
+  const TrainingView({
+    super.key,
+    required this.playback,
+    this.earSeed,
+    this.onOpenTuner,
+  });
 
   final PlaybackRepository playback;
+
+  /// Opens the Tuner (its own feature, built by the app); no card when null.
+  final VoidCallback? onOpenTuner;
 
   /// Seeds the ear-training questions; a fresh seed per exercise when null.
   /// Tests give one.
@@ -48,6 +56,14 @@ class _TrainingViewState extends State<TrainingView> {
   @override
   Widget build(BuildContext context) {
     final sections = <_Section>[
+      if (widget.onOpenTuner != null)
+        _Section(
+          id: 'tuner',
+          title: 'Tuner',
+          teaser: 'Listen to your instrument and see the note and cents.',
+          icon: Icons.mic_rounded,
+          onTap: widget.onOpenTuner!,
+        ),
       _Section(
         id: 'tap',
         title: 'Tap in rhythm',
