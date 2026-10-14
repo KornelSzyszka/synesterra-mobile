@@ -81,6 +81,7 @@ class LoopEditorViewModel extends ChangeNotifier {
     _persisted = keep;
     _saveError = null;
     _beforeRolls.clear();
+    _tapTempo.reset();
   }
 
   /// The loop as edited, under the last valid name.

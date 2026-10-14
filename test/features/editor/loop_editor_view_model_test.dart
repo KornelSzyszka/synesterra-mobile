@@ -295,6 +295,19 @@ void main() {
       expect(vm.dirty, isTrue);
     });
 
+    test('opening another loop forgets earlier taps', () {
+      var now = Duration.zero;
+      final vm = create(loop: mine('m1'), existing: true, clock: () => now);
+      for (final ms in [0, 600]) {
+        now = Duration(milliseconds: ms);
+        vm.tapTempo();
+      }
+      vm.open(mine('m2'), existing: true);
+      now = const Duration(milliseconds: 1200);
+      vm.tapTempo();
+      expect(vm.tempo, 120, reason: 'one tap in the new loop changes nothing');
+    });
+
     test('is clamped to the BPM range and restarts after silence', () {
       var now = Duration.zero;
       final vm = create(loop: mine('m1'), existing: true, clock: () => now);
