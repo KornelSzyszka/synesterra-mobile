@@ -15,7 +15,7 @@ import '../data/repositories/audio_spike_repository.dart';
 import '../features/editor/editor_view.dart';
 import '../features/home/home_view.dart';
 import '../features/arrangement/arrangement_panel.dart';
-import '../features/learn/learn_view.dart';
+import '../features/training/training_view.dart';
 import '../features/library/library_view.dart';
 import '../features/audio_spike/audio_spike_view.dart';
 import '../features/design_lab/design_lab_view.dart';
@@ -124,7 +124,7 @@ class _SynesterraAppState extends State<SynesterraApp> {
               ),
             ),
           );
-          // Opens the Loop panel with [loop]; Learn's "Try it" can use it too.
+          // Opens the Loop panel with [loop] (Library).
           void openLoop(Loop loop, bool existing) => openEditor(
             loop: loop,
             loopExisting: existing,
@@ -151,13 +151,9 @@ class _SynesterraAppState extends State<SynesterraApp> {
                 ),
               ),
             ),
-            onOpenLearn: () => Navigator.of(context).push(
+            onOpenTraining: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => LearnView(
-                  playback: _playback,
-                  // A lesson's loop opens in the Loop panel as an unsaved copy.
-                  onTryIt: (loop) => openLoop(loop, false),
-                ),
+                builder: (_) => TrainingView(playback: _playback),
               ),
             ),
             // Both the entry and the route sit behind the compile-time

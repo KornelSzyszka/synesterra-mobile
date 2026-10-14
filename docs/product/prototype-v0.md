@@ -4,13 +4,13 @@ Status: decided by the coordinator on the Founder's brief of 2026-10-07 ("a work
 
 ## What the prototype is
 
-A phone app where a user can: shape an instrument on the radar of traits (#115, replacing the dot pad of #86 and #107; see [instrument radar](instrument-radar.md)), build a **loop** from 2-4 layers (each with an instrument, a pitch and a beat pattern), see it as moving pictures, save loops and instruments in a **library**, chain loops into an **arrangement** and play it, and open a **Learn** tab that explains polyrhythm with live examples.
+A phone app where a user can: shape an instrument on the radar of traits (#115, replacing the dot pad of #86 and #107; see [instrument radar](instrument-radar.md)), build a **loop** from 2-4 layers (each with an instrument, a pitch and a beat pattern), see it as moving pictures, save loops and instruments in a **library**, chain loops into an **arrangement** and play it, and open a **Training** tab (tap in rhythm, ear training; see [training](../modules/training.md)).
 
 It is a prototype: the audio path is the ADR 0002 phase-1 engine (`flutter_soloud` behind the ports) and its timing is not yet measured on a device (issue #43, gates G2-G10). Do not claim timing quality. Nothing is published.
 
 ## Navigation (changes the vision)
 
-Start screen: **Editor**, **Library**, **Learn** (Learn is new; the Founder asked for it on 2026-10-07, so the vision's "no learning panel for now" no longer holds). Editor has three panels: **Instrument**, **Loop**, **Arrangement**. Library has three tabs in the same order. Transport (Play/Stop, tempo) is always visible in the Loop and Arrangement panels.
+Start screen: **Editor**, **Library**, **Training** (replaced the Learn tab, Founder 2026-10-14, issue #132). Editor has three panels: **Instrument**, **Loop**, **Arrangement**. Library has three tabs in the same order. Transport (Play/Stop, tempo) is always visible in the Loop and Arrangement panels.
 
 ## Models
 
@@ -36,9 +36,9 @@ Arrangement view: a strip of sections with the current section and cycle progres
 
 **Position contract.** The visualization task defines `PositionSource` (a `ValueListenable` of `{playing, cyclePosition in [0, 1) (half-open: the cycle boundary is 0 of the next cycle), cycleIndex, generation, sectionIndex (null outside an arrangement)}`) and a fake. The playback task exposes its own `PlaybackPosition` and does not import UI code (`data/` never imports the UI). The Loop panel task writes the adapter between the two.
 
-## Learn tab
+## Training tab
 
-A list of short lessons, each: a title, 2-4 plain sentences, a live visualization (the same painters, running on a built-in loop) and an optional "Try it" button that opens the Loop panel with that loop loaded. The live visualization runs on a built-in loop with a **tutorial clock**: a deterministic, ticker-driven position source with no audio and no transport. This is the one explicit exception to "never driven by a UI timer", and it is allowed because nothing is being played; a tap on the picture may instead play the loop through the playback repository; "Try it" needs the Loop panel, so the Learn task comes after it. Content lives in code as data (`lib/features/learn/`), English first (localization is issue #25). Lessons for v0: What a pulse and a cycle are; Two against three (3:2); Four against five (5:4); Layers and instruments; Shaping a sound (the pad); Building and saving a loop; Chaining loops (arrangement).
+Replaced the Learn tab (Founder, 2026-10-14, issue #132): the lessons were removed. See [training](../modules/training.md).
 
 ## Out of scope for v0
 
@@ -52,6 +52,6 @@ True sustain and the drone, noise and pitch-drop instruments, export/import file
 4. Audio: a playback repository that turns a `SessionDocument` into sound through `EventPlanner`, the scheduler and the SoLoud sink, with instrument buffers rendered per instrument and pitch, exposing the transport position, and that also plays a **sequence**: `playSequence(sections, repeatAll)` with `sections` an ordered list of `(originalIndex, SessionDocument, repeats)` already filtered by the caller for missing loops, where `originalIndex` is the section's index in the arrangement; it switches section on a cycle boundary (generation rule, phase reset to the new section's cycle start), reports `sectionIndex` as that **original** index (so the arrangement strip highlights the right section), and stops with a clear state when the list is empty (`AUD`, class L).
 5. UI: visualization painters, `PositionSource` and a fake (`UX`), parallel to 4; no dependency on 4.
 6. UI: Loop panel, transport and the `PositionSource` adapter (`UX`), after 3, 4 and 5.
-7. UI: Learn tab (`UX`), after 5 and 6.
+7. UI: Training tab (`UX`).
 8. UI: Arrangement panel and playback (`UX`), after 2, 3, 4 and 6.
 9. Start screen entry, integration and a phone hand-off (`QA`).

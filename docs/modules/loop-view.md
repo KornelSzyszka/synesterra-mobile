@@ -72,7 +72,7 @@ it the strip's live label ("Section 2 of 3, Chorus, cycle 2 of 2.",
 Layout: on a phone held upright the ring (up to 320 dp) sits under the
 transport, above the section cards; from 600 dp wide it sits beside the
 controls (260 dp) so the sections stay in view. The strip is no longer in the
-panel; it stays in Learn and the demo. Section numbers sit on the ground,
+panel; it stays in the demo. Section numbers sit on the ground,
 possibly under a neighbour's glow; they keep 4.5:1 there in every palette
 and under every mist colour (`ArrangementRingPainter.numberGrounds`), which
 is why they are never in the muted colour.

@@ -336,7 +336,6 @@ The flows, as tests:
 
 1. Create a loop (the Editor's Loop panel starts from a copy of the factory 3:2 loop), switch a step off, Play (the engine starts only then; the first cycle holds exactly the edited number of hits), Stop (engine stopped, nothing pending, silent), Save, go to Library > Loops, tap the loop (it opens in place with the saved step state and name).
 2. Arrangement: add 3:2 and 5:4 from the picker, Save, Play. The section index is 0, moves to 1 after the first section's repeats (timed on the fake clock), both layers of the second loop sound, the sequence ends by itself and the engine stops. The saved arrangement opens from Library > Arrangements.
-3. Learn: open "Four against five (5:4)", press Try it. The Loop panel shows that lesson's 5:4 loop as an unsaved copy (the library is still empty), and it plays 5 + 4 hits in the first cycle.
 4. Instrument: shape a sound on the stat wheel (drag a vertex along its spoke), name it, Save (the lift sounds once, the saved sound is the shape on screen), choose it as layer 1's sound in a loop, Play. The engine renders a buffer for exactly that sound and nothing is reported as a missing sound.
 
 Mutation check of the flow tests: with the loop save made a no-op, with the sequence reporting section 0 forever, and with Try it ignoring the lesson's loop, the matching flow failed each time (one mutation per run, then reverted).
@@ -363,11 +362,6 @@ Each flow: steps, then the expected result. Anything else is a finding; write it
 2. Add a section and pick "Three against two", add another and pick "Five against four". Expected: two sections in the strip.
 3. Save, then Play. Expected: the first section is highlighted; after its repeats the highlight moves to the second; the sequence stops by itself at the end (with "Repeat all" on it starts over).
 4. Back, Library > Arrangements, tap the arrangement. Expected: it opens on the Arrangement tab with both sections.
-
-**Flow 3. Learn and Try it**
-
-1. Start screen > Learn > "Four against five (5:4)". Expected: 2-4 plain sentences and a moving picture, no sound.
-2. Tap Try it. Expected: the Loop panel opens with "Five against four copy" and the text "Not in your library yet"; Play works. Leaving after edits asks whether to save.
 
 **Flow 4. Shape an instrument and use it**
 
@@ -417,9 +411,8 @@ Playback and audio ([playback](modules/playback.md), #100):
 - Timing of everything is unmeasured (issue #43, gates G2-G10).
 - Tests that use `flutter_soloud` need the plugin's native build hook, which needs MSVC. This Windows host has none, so `flutter test` fails here as is and agents run the suite in a scratch copy without the plugin. CI (Linux) runs them.
 
-Editor, Library and Learn (#98, #101-#103):
+Editor and Library (#98, #101-#103):
 
-- The Learn tab calls `stop()` without an owner, so it can stop playback that an Editor panel started, if both are active at once (coordinator note on #101).
 - "Repeat all" is not persisted: arrangement JSON v1 has no field for it, so it resets when the arrangement is reopened.
 - Trait values are not saved: opening a saved instrument shows its shape read back approximately, with a plain note when it is only an approximation.
 - The trait mapping, the radar presets and the factory instruments are untuned (Founder `musical` gate, out of scope for v0).
@@ -442,7 +435,6 @@ Evidence level: device (listening and looking only; no timing numbers)
 |---|---|---|---|
 | 1 Loop: create, play, save, reopen | | | |
 | 2 Arrangement of two loops | | | |
-| 3 Learn and Try it | | | |
 | 4 Radar instrument in a loop | | | |
 
 Listening answers (one line per bullet above):

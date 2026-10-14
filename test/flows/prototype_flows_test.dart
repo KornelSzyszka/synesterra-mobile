@@ -25,9 +25,6 @@ import '../features/editor/audition_fakes.dart';
 /// The factory 3:2 loop: 90 BPM, a two-beat cycle.
 const cycle32 = 1333333;
 
-/// The factory 5:4 loop: 80 BPM, a four-beat cycle.
-const cycle54 = 3000000;
-
 /// Where beat 0 of the first Play lands on the fake clock: minLead (10 ms)
 /// plus startPad (30 ms).
 const anchor = 40000;
@@ -295,34 +292,6 @@ void main() {
     expect(find.byKey(const Key('arrangement-panel')), findsOneWidget);
     expect(find.byKey(const Key('section-0')), findsOneWidget);
     expect(find.byKey(const Key('section-1')), findsOneWidget);
-    await rig.finish();
-  });
-
-  testWidgets('a lesson opens and Try it lands in the Loop panel on an '
-      'unsaved copy', (tester) async {
-    final rig = await boot(tester);
-    await rig.tap('home-learn');
-    expect(find.byKey(const Key('learn-list')), findsOneWidget);
-    await rig.tap('lesson-four-against-five');
-    expect(find.byKey(const Key('lesson-picture')), findsOneWidget);
-    expect(find.byKey(const Key('lesson-text')), findsOneWidget);
-    expect(rig.engine.log, isEmpty, reason: 'a lesson makes no sound alone');
-
-    // The lesson's own loop (5:4, not the Editor's default 3:2) arrives.
-    await rig.tap('lesson-try-it');
-    expect(find.byKey(const Key('loop-play')), findsOneWidget);
-    expect(find.text('Five against four copy'), findsOneWidget);
-    expect(find.text('Not in your library yet'), findsOneWidget);
-    expect(rig.loops.snapshot.value.items, isEmpty, reason: 'a copy only');
-    expect(rig.steps(0), ['strong', 'on', 'on', 'on', 'on']);
-    expect(rig.steps(1), ['strong', 'on', 'on', 'on']);
-
-    // It plays like any loop of the Editor: 5 + 4 hits in the first cycle.
-    await rig.tap('loop-play');
-    await rig.advance(cycle54);
-    expect(rig.soundedBefore(anchor + cycle54), hasLength(9));
-    await rig.tap('loop-play');
-    expect(rig.playback.status.value.state, PlaybackState.stopped);
     await rig.finish();
   });
 

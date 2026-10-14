@@ -105,7 +105,7 @@ class FakePositionSource extends ValueNotifier<LoopPosition>
 }
 
 /// A deterministic, ticker-driven position with no audio and no transport,
-/// for the Learn tab and demos. Nothing is being played, which is why this is
+/// for demos. Nothing is being played, which is why this is
 /// the one allowed exception to "views are never driven by a UI timer".
 ///
 /// The position is a pure function of the ticker's elapsed time

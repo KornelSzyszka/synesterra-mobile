@@ -31,7 +31,7 @@ Future<void> _pumpHome(
       home: HomeView(
         onOpenEditor: () => _opened.add('editor'),
         onOpenLibrary: () => _opened.add('library'),
-        onOpenLearn: () => _opened.add('learn'),
+        onOpenTraining: () => _opened.add('training'),
         onOpenAudioSpike: () => _opened.add('spike'),
         onPaletteChanged: withMenu ? (_) {} : null,
       ),
@@ -49,18 +49,18 @@ void main() {
     final home = HomeView(
       onOpenEditor: () {},
       onOpenLibrary: () {},
-      onOpenLearn: () {},
+      onOpenTraining: () {},
     );
     expect(home.palette, SynesterraPalette.graphite);
   });
 
   testWidgets('three round entries open their places', (tester) async {
     await _pumpHome(tester, withMenu: false);
-    for (final key in ['home-editor', 'home-library', 'home-learn']) {
+    for (final key in ['home-editor', 'home-library', 'home-training']) {
       await tester.tap(find.byKey(Key(key)));
     }
     await tester.tap(find.byKey(const Key('home-audio-spike')));
-    expect(_opened, ['editor', 'library', 'learn', 'spike']);
+    expect(_opened, ['editor', 'library', 'training', 'spike']);
     // Each entry has the tap effect and sits in a round shape, never in a
     // rounded rectangle or an ink well.
     expect(
@@ -79,14 +79,14 @@ void main() {
     await _pumpHome(tester);
     await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-    for (final key in ['home-editor', 'home-library', 'home-learn']) {
+    for (final key in ['home-editor', 'home-library', 'home-training']) {
       final size = tester.getSize(find.byKey(Key(key)));
       expect(size.width, greaterThanOrEqualTo(48));
       expect(size.height, greaterThanOrEqualTo(48));
     }
     expect(find.bySemanticsLabel(RegExp(r'^Editor\. Shape')), findsOneWidget);
     expect(find.bySemanticsLabel(RegExp(r'^Library\. Your')), findsOneWidget);
-    expect(find.bySemanticsLabel(RegExp(r'^Learn\. Short')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp(r'^Training\. Tap')), findsOneWidget);
     handle.dispose();
   });
 

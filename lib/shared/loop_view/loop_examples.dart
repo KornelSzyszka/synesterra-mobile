@@ -1,7 +1,6 @@
 import 'package:synesterra_core/synesterra_core.dart';
 
-/// Example loops for demos and tests. Built-in tutorial loops of the Learn tab
-/// can reuse them.
+/// Example loops for demos and tests. Other screens can reuse them.
 
 SessionDocument _loop(
   String title,

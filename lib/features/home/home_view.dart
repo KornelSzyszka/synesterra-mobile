@@ -12,14 +12,14 @@ import '../../shared/widgets/round_screen.dart';
 import '../../shared/widgets/tap_glitch.dart';
 
 /// The first screen: the title and three round entries, Editor, Library and
-/// Learn. The Editor is the large gold light; Library and Learn are two
+/// Training. The Editor is the large gold light; Library and Training are two
 /// softer forms below it, one a little lower than the other.
 class HomeView extends StatelessWidget {
   const HomeView({
     super.key,
     required this.onOpenEditor,
     required this.onOpenLibrary,
-    required this.onOpenLearn,
+    required this.onOpenTraining,
     this.onOpenAudioSpike,
     this.onOpenDesignLab,
     this.palette = SynesterraPalette.graphite,
@@ -28,7 +28,7 @@ class HomeView extends StatelessWidget {
 
   final VoidCallback onOpenEditor;
   final VoidCallback onOpenLibrary;
-  final VoidCallback onOpenLearn;
+  final VoidCallback onOpenTraining;
   final VoidCallback? onOpenAudioSpike;
 
   /// Debug builds only: a long press on the title opens the design lab.
@@ -109,12 +109,11 @@ class HomeView extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: Space.xxl),
                         child: _Entry(
-                          key: const Key('home-learn'),
-                          icon: Icons.school_outlined,
-                          title: 'Learn',
-                          description:
-                              'Short lessons on rhythm, with live pictures.',
-                          onTap: onOpenLearn,
+                          key: const Key('home-training'),
+                          icon: Icons.hearing_rounded,
+                          title: 'Training',
+                          description: 'Tap in rhythm and train your ear.',
+                          onTap: onOpenTraining,
                           size: small,
                           style: SurfaceStyle.organic,
                           shape: const BlobShape(

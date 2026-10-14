@@ -26,6 +26,7 @@ export 'src/session/session_project.dart';
 export 'src/randomizer/seeded_random.dart'
     show SeededRandom, maxRandomSeed, checkRandomSeed;
 export 'src/randomizer/loop_randomizer.dart';
+export 'src/training/tap_training.dart';
 export 'src/randomizer/arrangement_randomizer.dart';
 export 'src/randomizer/instrument_randomizer.dart';
 export 'src/rhythm/tap_tempo.dart';
