@@ -274,6 +274,11 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
   @visibleForTesting
   double get debugSwell => _swell.value;
 
+  /// Tests: the lean and swell of the last painted frame.
+  @visibleForTesting
+  (Offset, double)? get debugPainted => _painted;
+  (Offset, double)? _painted;
+
   bool get _settled =>
       springSettled(_leanX, _leanTarget.dx) &&
       springSettled(_leanY, _leanTarget.dy) &&
@@ -296,7 +301,11 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
     _animated = value;
     // Only slot holders follow the clock: a card losing its slot drops its
     // springs to rest at once instead of ticking them out.
-    if (!value) _settleSprings();
+    if (!value) {
+      _settleSprings();
+      // Nothing else repaints the card: show the still shape now.
+      _frame.ping();
+    }
     _sync();
   }
 
@@ -356,6 +365,7 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
     _swellTarget = 0;
     _life = 0;
     entranceIndex = null;
+    _frame.ping();
   }
 
   void _sync() {
@@ -493,6 +503,7 @@ class LivingBlobPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final lean = Offset(blob._leanX.value, blob._leanY.value);
     final swell = blob._swell.value;
+    blob._painted = (lean, swell);
     final path = livingOutline(
       size,
       shape,

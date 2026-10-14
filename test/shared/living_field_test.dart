@@ -133,6 +133,57 @@ void main() {
     expect(slotless.listening, isFalse);
   });
 
+  testWidgets('a leaning card that loses its slot is repainted still', (
+    tester,
+  ) async {
+    await _pump(tester, _gallery(count: 3));
+    await tester.pump(const Duration(milliseconds: 16));
+    final card = find.byKey(const Key('card-1'));
+    final blob = tester.state<LivingBlobState>(
+      find.descendant(of: card, matching: find.byType(LivingBlob)),
+    );
+    final gesture = await tester.startGesture(
+      tester.getCenter(card) + const Offset(150, 0),
+    );
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(blob.debugPainted!.$1.dx, greaterThan(.3));
+
+    // The field takes the slot away (as after a small scroll) while the
+    // finger is down; nothing else rebuilds or repaints the card.
+    blob.animated = false;
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(blob.animated, isFalse);
+    expect(blob.debugPainted, (Offset.zero, 0.0));
+    await gesture.up();
+  });
+
+  testWidgets('switching reduce motion on mid-lean repaints the card still', (
+    tester,
+  ) async {
+    await _pump(tester, _gallery(count: 3));
+    await tester.pump(const Duration(milliseconds: 16));
+    final card = find.byKey(const Key('card-1'));
+    final blob = tester.state<LivingBlobState>(
+      find.descendant(of: card, matching: find.byType(LivingBlob)),
+    );
+    final gesture = await tester.startGesture(
+      tester.getCenter(card) + const Offset(150, 0),
+    );
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(blob.debugPainted!.$1.dx, greaterThan(.3));
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(blob.debugPainted, (Offset.zero, 0.0));
+    await gesture.up();
+  });
+
   testWidgets('scrolling hands the slots to the cards that come into view', (
     tester,
   ) async {
