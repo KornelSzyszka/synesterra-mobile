@@ -151,14 +151,14 @@ class TapTrainerModel extends ChangeNotifier {
     final p = playback.readPosition();
     final now = _nowMs(p);
     if (_phase == TapPhase.starting) return;
+    // Taps before scoring begins belong to the count-in: they are dropped,
+    // so a tap shown as count-in can never score against the first hit.
+    if (now < tapCountInCycles * preset.cycleMs) return;
     final before = _scoreNow().results.length;
     _taps.add(now);
     final results = _scoreNow().results;
     if (results.length > before) lastResult = results.last;
-    if (_phase == TapPhase.countIn &&
-        now >= tapCountInCycles * preset.cycleMs) {
-      _phase = TapPhase.scoring;
-    }
+    _phase = TapPhase.scoring;
     notifyListeners();
   }
 

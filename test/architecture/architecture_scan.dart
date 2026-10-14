@@ -109,6 +109,8 @@ List<ArchitectureViolation> scanArchitecture(Directory root) {
         'playback': {'rhythm', 'harmony', 'sound', 'session'},
         'ports': {'rhythm', 'harmony', 'sound', 'session', 'playback'},
         'randomizer': {'rhythm', 'harmony', 'sound', 'session', 'arrangement'},
+        // Training uses SeededRandom only, nothing else.
+        'training': {'randomizer'},
       };
       if (from != null &&
           to != null &&

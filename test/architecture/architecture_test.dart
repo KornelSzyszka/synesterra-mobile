@@ -27,6 +27,17 @@ void main() {
     expect(violations.map((v) => v.file), contains('lib/shared/helper.dart'));
   });
 
+  test('R2 lets training use only the randomizer', () {
+    final violations = scanArchitecture(
+      Directory('test/architecture/fixtures/r2'),
+    ).where((violation) => violation.rule == 'R2');
+    expect(
+      violations.any((v) => v.file.contains('/training/bad.dart')),
+      isTrue,
+      reason: 'training must not import rhythm',
+    );
+  });
+
   test('R2 keeps the sound context free of other contexts', () {
     final violations = scanArchitecture(
       Directory('test/architecture/fixtures/r2'),

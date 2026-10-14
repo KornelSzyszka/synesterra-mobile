@@ -10,7 +10,7 @@ It is a prototype: the audio path is the ADR 0002 phase-1 engine (`flutter_solou
 
 ## Navigation (changes the vision)
 
-Start screen: **Editor**, **Library**, **Learn** (Learn is new; the Founder asked for it on 2026-10-07, so the vision's "no learning panel for now" no longer holds). Editor has three panels: **Instrument**, **Loop**, **Arrangement**. Library has three tabs in the same order. Transport (Play/Stop, tempo) is always visible in the Loop and Arrangement panels.
+Start screen: **Editor**, **Library**, **Training** (replaced the Learn tab, Founder 2026-10-14, issue #132). Editor has three panels: **Instrument**, **Loop**, **Arrangement**. Library has three tabs in the same order. Transport (Play/Stop, tempo) is always visible in the Loop and Arrangement panels.
 
 ## Models
 
