@@ -5,7 +5,7 @@
 1. A GitHub issue with labels exists; the task ID is its prefix plus the issue number. Branch `<prefix>-<nnn>-slug` (e.g. `dom-007-session-model`) from current `main`. In Orca: `orca worktree create --issue <n>`. Give parallel tasks separate worktrees.
 2. The author commits only the task's changes and runs locally: `dart format --output=none --set-exit-if-changed .`, `flutter analyze`, the narrowest `flutter test`.
 3. The author pushes the branch and opens a PR to `main` from the PR template. The PR includes the task ID, `Closes #<n>`, the goal, changes, tests and risks.
-4. CI ([ci.yml](../../.github/workflows/ci.yml)) must be green: model log check, format, analyze, test, `flutter build apk --debug`. Run iOS by hand (`gh workflow run CI -f ios=true --ref <branch>`) when the task touches `ios/` or native iOS code.
+4. CI ([ci.yml](../../.github/workflows/ci.yml)) must be green: model log check, format, analyze, test (it does not run for documentation-only PRs and not on a push to `main`). The author runs `flutter build apk --debug` locally and says so in the PR; run the APK job by hand (`gh workflow run CI -f apk=true --ref <branch>`) when the task touches gradle, plugins, `android/` or the build. Run iOS by hand (`gh workflow run CI -f ios=true --ref <branch>`) when the task touches `ios/` or native iOS code.
 5. A cross-agent review (below) with no unresolved `blocker` or `major` finding.
 6. The task's model outcome record `logs/outcomes/<TASK-ID>.json` is in the PR; CI validates it.
 7. Only the coordinator merges: squash, delete the branch. The issue closes through `Closes #n`. Remove `founder-review` once the Founder has accepted.
@@ -33,6 +33,10 @@ Tests checked: …
 ```
 
 `blocker` and `major` go back to the author as a fix on the same branch, then the reviewer re-reviews. A `minor` may become a follow-up issue.
+
+## Actions minutes
+
+The free plan has 2000 minutes a month and one run takes about 13 minutes. Collect the fixes of a review round into one push; do not push each finding separately. Drop CI for documentation-only changes (`paths-ignore`), and do not re-run a green job.
 
 ## Push
 

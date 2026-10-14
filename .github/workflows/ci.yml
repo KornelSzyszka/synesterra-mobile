@@ -1,12 +1,21 @@
 name: CI
 
+# Minutes matter on the free plan (2000 per month), so: no run on a push to main
+# (the pull request already ran the same checks), no run for documentation-only
+# pull requests, and the debug APK build only on demand.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.github/ISSUE_TEMPLATE/**'
   workflow_dispatch:
     inputs:
+      apk:
+        description: Also build the debug APK (Linux, about 5 minutes)
+        type: boolean
+        default: false
       ios:
         description: Also build iOS (macOS runner, ~10x minute cost)
         type: boolean
@@ -63,6 +72,33 @@ jobs:
       - name: Test pure Dart core
         working-directory: packages/synesterra_core
         run: dart test
+
+  apk:
+    name: Build debug APK
+    if: github.event_name == 'workflow_dispatch' && inputs.apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get --enforce-lockfile
 
       - name: Build debug APK
         run: flutter build apk --debug

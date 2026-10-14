@@ -65,7 +65,7 @@ flutter build apk --debug
 dart run tool/model_log.dart check  # model outcome log
 ```
 
-CI: [.github/workflows/ci.yml](.github/workflows/ci.yml). Linux runs on every push and PR; iOS runs on demand with `gh workflow run CI -f ios=true --ref <branch>`.
+CI: [.github/workflows/ci.yml](.github/workflows/ci.yml). Linux (model log, format, analyze, tests) runs on every PR that changes more than documentation (not on a push to `main`, to save Actions minutes); the debug APK and iOS builds run on demand with `gh workflow run CI -f apk=true --ref <branch>` and `-f ios=true`. Push once per review round: every push to a PR costs a full run.
 
 ## Git
 
