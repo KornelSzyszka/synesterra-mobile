@@ -17,5 +17,5 @@
   "failure_cost": null,
   "minutes": null,
   "tokens": null,
-  "notes": "PR 1 of 2: Learn removed (Founder, mid-task), Training tab with the tap-in-rhythm trainer (pure scoring in core, audio-clock taps through PlaybackRepository, manual latency offset). A scene needs 2..4 layers, found by a red model test, so an unsounded target is a muted layer. App tests ran in a soloud-free scratch copy; timing and feel on a phone not judged. Review pending (Codex)."
+  "notes": "PR 2 of 2 (this log covers both PRs): ear training (note, chord, progression) with seeded pure question generation in core, one-cycle sections through playSequence, streak score kept in memory. Part 1 removed Learn (Founder, mid-task) and added the tap trainer. A scene needs 2..4 layers, found by a red model test in part 1, so unsounded or single-note layers are muted twins. App tests ran in a soloud-free scratch copy; sound quality, timing and feel on a phone not judged. Review pending (Codex)."
 }

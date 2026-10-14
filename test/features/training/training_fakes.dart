@@ -8,6 +8,7 @@ class ScriptedPlayback extends NoopPlaybackRepository {
   final _pos = ValueNotifier(PlaybackPosition.stopped(0));
   final documents = <SessionDocument>[];
   final owners = <Object?>[];
+  final sequences = <List<PlaybackSection>>[];
   int stops = 0;
   bool failStart = false;
 
@@ -41,6 +42,24 @@ class ScriptedPlayback extends NoopPlaybackRepository {
       return;
     }
     await super.play(document, owner: owner);
+  }
+
+  @override
+  Future<void> playSequence(
+    List<PlaybackSection> sections, {
+    required bool repeatAll,
+    Object? owner,
+  }) async {
+    sequences.add(sections);
+    owners.add(owner);
+    if (failStart) {
+      (status as ValueNotifier<PlaybackStatus>).value = PlaybackStatus(
+        stopReason: PlaybackStopReason.error,
+        error: 'no engine',
+      );
+      return;
+    }
+    await super.playSequence(sections, repeatAll: repeatAll, owner: owner);
   }
 
   @override
