@@ -279,6 +279,11 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
   (Offset, double)? get debugPainted => _painted;
   (Offset, double)? _painted;
 
+  /// Tests: the outline of the last painted frame.
+  @visibleForTesting
+  Path? get debugPaintedOutline => _paintedOutline;
+  Path? _paintedOutline;
+
   bool get _settled =>
       springSettled(_leanX, _leanTarget.dx) &&
       springSettled(_leanY, _leanTarget.dy) &&
@@ -309,7 +314,9 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
     _sync();
   }
 
+  /// Back to the still shape: no lean, no swell, no morph.
   void _settleSprings() {
+    _life = 0;
     _leanTarget = Offset.zero;
     _swellTarget = 0;
     _leanX = _leanY = _swell = const SpringState(0);
@@ -513,6 +520,7 @@ class LivingBlobPainter extends CustomPainter {
       lean: lean,
       swell: swell,
     );
+    blob._paintedOutline = path;
     final rect = Offset.zero & size;
     final glow = (1 + swell.clamp(0.0, 1.0)) * (pressed ? 1.2 : 1);
     if (swell > .01) {

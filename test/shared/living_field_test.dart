@@ -156,6 +156,26 @@ void main() {
     await tester.pump(const Duration(milliseconds: 16));
     expect(blob.animated, isFalse);
     expect(blob.debugPainted, (Offset.zero, 0.0));
+    // The painted outline is the still one: no lean, no swell, no morph.
+    final size = tester.getSize(find.byWidget(blob.widget));
+    final still = livingOutline(
+      size,
+      blob.widget.shape,
+      morphSeed: blob.widget.morphSeed,
+      time: 0,
+      life: 0,
+      lean: Offset.zero,
+      swell: 0,
+    );
+    final painted = blob.debugPaintedOutline!;
+    for (final metric in still.computeMetrics()) {
+      final other = painted.computeMetrics().first;
+      for (var i = 0; i < 24; i++) {
+        final a = metric.getTangentForOffset(metric.length * i / 24)!.position;
+        final b = other.getTangentForOffset(other.length * i / 24)!.position;
+        expect((a - b).distance, lessThan(.01), reason: 'point $i');
+      }
+    }
     await gesture.up();
   });
 
