@@ -8,6 +8,7 @@ import '../../data/repositories/library_item.dart';
 import '../../data/repositories/loop.dart';
 import '../../data/repositories/loop_library_repository.dart';
 import '../../data/repositories/playback_repository.dart';
+import '../../shared/loop_view/arrangement_ring_geometry.dart';
 import '../../shared/loop_view/arrangement_strip.dart';
 
 /// Edits and plays one arrangement: an ordered list of sections, each a loop
@@ -135,16 +136,22 @@ class ArrangementPanelViewModel extends ChangeNotifier {
     return null;
   }
 
-  /// What the arrangement strip draws: one entry per section, missing ones
-  /// marked.
-  List<StripSection> get stripSections => [
-    for (var i = 0; i < _sections.length; i++)
-      StripSection(
-        label: loopAt(i)?.name ?? 'Missing loop',
-        repeats: _sections[i].repeats,
-        missing: isMissing(i),
-      ),
-  ];
+  /// What the arrangement ring (and strip) draws: one entry per section,
+  /// missing ones marked, one colour per distinct loop and the loop's layer
+  /// steps for its small figure.
+  List<StripSection> get stripSections {
+    final colors = loopColorIndexes([for (final s in _sections) s.loopId]);
+    return [
+      for (var i = 0; i < _sections.length; i++)
+        StripSection(
+          label: loopAt(i)?.name ?? 'Missing loop',
+          repeats: _sections[i].repeats,
+          missing: isMissing(i),
+          colorIndex: colors[i],
+          layerSteps: loopAt(i)?.hitsPerLayer ?? const [],
+        ),
+    ];
+  }
 
   bool get nameValid => isValidLibraryName(_name);
 
