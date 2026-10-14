@@ -27,6 +27,8 @@ export 'src/randomizer/seeded_random.dart'
     show SeededRandom, maxRandomSeed, checkRandomSeed;
 export 'src/randomizer/loop_randomizer.dart';
 export 'src/randomizer/arrangement_randomizer.dart';
+export 'src/randomizer/instrument_randomizer.dart';
+export 'src/rhythm/tap_tempo.dart';
 export 'src/playback/audio_time.dart';
 export 'src/playback/tempo_map.dart';
 export 'src/playback/event_planner.dart';
