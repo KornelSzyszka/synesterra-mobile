@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/repositories/library_item.dart';
+import '../../shared/living_blobs/living_motion.dart';
 import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/round_shapes.dart';
 import '../../shared/theme/surfaces.dart';
@@ -93,6 +94,8 @@ class _LightPainter extends CustomPainter {
 
 /// A library item: a soft organic card with a leading picture, a title,
 /// summary lines and trailing round actions. Tapping it opens the item.
+/// Inside the library's `LivingField` the card is alive (UX-126): its motion
+/// is seeded by [motionId] and its depth glows in [tint].
 class LibraryCard extends StatelessWidget {
   const LibraryCard({
     super.key,
@@ -102,6 +105,8 @@ class LibraryCard extends StatelessWidget {
     required this.onTap,
     this.actions = const [],
     this.seed = 7,
+    this.motionId,
+    this.tint,
   });
 
   final Widget leading;
@@ -112,6 +117,13 @@ class LibraryCard extends StatelessWidget {
 
   /// Gives neighbouring cards slightly different edges.
   final int seed;
+
+  /// The item's id: the same item always moves the same way.
+  final String? motionId;
+
+  /// The colour of the living depth (an instrument's identity colour); the
+  /// ground's aura when null.
+  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +139,9 @@ class LibraryCard extends StatelessWidget {
         ].join('. '),
         onTap: onTap,
         seed: seed,
+        living: true,
+        morphSeed: motionId == null ? null : stableSeed(motionId!),
+        tint: tint,
         padding: const EdgeInsets.fromLTRB(
           Space.xl,
           Space.md,
