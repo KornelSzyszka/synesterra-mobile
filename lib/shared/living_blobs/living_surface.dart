@@ -281,7 +281,7 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
 
   @override
   bool get busy =>
-      _moving && (!_settled || (_animated && _entranceIndex != null));
+      _moving && _animated && (!_settled || _entranceIndex != null);
 
   @override
   void finishEntrance() {
@@ -294,7 +294,16 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
   set animated(bool value) {
     if (_animated == value) return;
     _animated = value;
+    // Only slot holders follow the clock: a card losing its slot drops its
+    // springs to rest at once instead of ticking them out.
+    if (!value) _settleSprings();
     _sync();
+  }
+
+  void _settleSprings() {
+    _leanTarget = Offset.zero;
+    _swellTarget = 0;
+    _leanX = _leanY = _swell = const SpringState(0);
   }
 
   @override
@@ -350,7 +359,7 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
   }
 
   void _sync() {
-    final want = _moving && (_animated || busy);
+    final want = _moving && _animated;
     if (want && !_listening) {
       _field!.clock.addListener(_tick);
       _listening = true;
@@ -393,6 +402,10 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
 
   void _touch(Offset local, {required bool down}) {
     if (!_moving) return;
+    _field?.wake();
+    // A card without a slot answers a press only with its static pressed
+    // glow; the spring is for slot holders, so the cap always holds.
+    if (!_animated) return;
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.hasSize) return;
     final size = box.size;
@@ -408,7 +421,6 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
       _leanTarget = Offset.zero;
       _swellTarget = 0;
     }
-    _field?.wake();
     _sync();
   }
 

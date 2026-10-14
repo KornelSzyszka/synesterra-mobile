@@ -31,6 +31,9 @@ card glows brighter" is the pressed card.
   change the field picks the cards that overlap its viewport, the most visible
   first (`chooseAnimated`, cap `maxAnimatedBlobs` = 6). The others keep their
   last shape and do not repaint. Cards in the list's cache extent never animate.
+  Only slot holders follow the clock at all: a card without a slot shows its full
+  card at once (no entrance) and answers a press with the static pressed glow only
+  (no spring), so no more than six cards ever repaint per frame.
 - **It rests.** Full motion lasts `LivingTiming.awake` (10 s) after the
   library appears, a touch or a scroll, then fades to the still shape over
   1.6 s and the ticker stops: a gallery at rest schedules no frames (the

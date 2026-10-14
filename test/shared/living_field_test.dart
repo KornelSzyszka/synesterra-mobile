@@ -107,6 +107,32 @@ void main() {
     expect(offscreen.where((b) => b.animated), isEmpty);
   });
 
+  testWidgets('touching a visible card without a slot never raises the '
+      'number of cards following the clock above the cap', (tester) async {
+    await _pump(tester, _gallery(count: 12));
+    await tester.pump(const Duration(milliseconds: 16));
+    final slotless = _blobs(tester).firstWhere(
+      (b) => !b.animated && tester.getTopLeft(find.byWidget(b.widget)).dy < 700,
+    );
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byWidget(slotless.widget)) + const Offset(120, 0),
+    );
+    var most = 0;
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      final listening = _blobs(tester).where((b) => b.listening).length;
+      if (listening > most) most = listening;
+    }
+    await gesture.up();
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      final listening = _blobs(tester).where((b) => b.listening).length;
+      if (listening > most) most = listening;
+    }
+    expect(most, lessThanOrEqualTo(maxAnimatedBlobs));
+    expect(slotless.listening, isFalse);
+  });
+
   testWidgets('scrolling hands the slots to the cards that come into view', (
     tester,
   ) async {
