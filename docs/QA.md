@@ -1,6 +1,8 @@
 # Mobile audio device QA protocol
 
-Status: ready for the Android audio discovery spike; no device result exists yet.
+> **Harness removed; measurements not done (AGT-138).** The Audio spike screen, `AudioSpikeRepository` and `SoloudSpikeRepository` were removed from the app. No device measurement of spike #43 was made. The text below is kept as written; its mentions of the spike screen, Start/Pause/Stop controls and diagnostics export describe a harness that no longer exists. The real playback and audition engines in `lib/data/audio/` are unchanged.
+
+Status: the spike harness was removed (AGT-138) and spike #43 was never measured; no device result exists.
 Owner: QA/release.
 Evidence required for listening, timing, routes, and lifecycle: a physical device. An emulator may help exercise a UI flow, but it must never be entered as device evidence in this protocol.
 

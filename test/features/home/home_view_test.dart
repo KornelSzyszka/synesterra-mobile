@@ -32,7 +32,6 @@ Future<void> _pumpHome(
         onOpenEditor: () => _opened.add('editor'),
         onOpenLibrary: () => _opened.add('library'),
         onOpenTraining: () => _opened.add('training'),
-        onOpenAudioSpike: () => _opened.add('spike'),
         onPaletteChanged: withMenu ? (_) {} : null,
       ),
     ),
@@ -59,8 +58,8 @@ void main() {
     for (final key in ['home-editor', 'home-library', 'home-training']) {
       await tester.tap(find.byKey(Key(key)));
     }
-    await tester.tap(find.byKey(const Key('home-audio-spike')));
-    expect(_opened, ['editor', 'library', 'training', 'spike']);
+    expect(_opened, ['editor', 'library', 'training']);
+    expect(find.byKey(const Key('home-audio-spike')), findsNothing);
     // Each entry has the tap effect and sits in a round shape, never in a
     // rounded rectangle or an ink well.
     expect(

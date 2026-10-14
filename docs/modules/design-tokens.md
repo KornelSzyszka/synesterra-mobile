@@ -113,8 +113,7 @@ rendered by a widget test with real fonts, drift at rest):
   the round components and a round header (a `RoundIconButton` Back with the
   tooltip "Back", the title as a heading, actions). `RoundSectionHeader` is the
   small gold light with a tracked-out label.
-- **Start**: the title with a soft glow (a long press still opens the design lab in
-  debug builds) and three round entries: Editor is the large gold blob (the one
+- **Start**: the title with a soft glow (the design lab is no longer reachable from it, AGT-138) and three round entries: Editor is the large gold blob (the one
   element that breathes), Library and Training are two organic blobs, the second one a
   little lower. Each is one semantics node, "Title. Description".
 - **Library**: `LibraryTabs` is a tray with the chosen tab raised (like

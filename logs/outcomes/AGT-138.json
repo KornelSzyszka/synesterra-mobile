@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-14",
+  "task": "AGT-138",
+  "prefix": "AGT",
+  "size": "S",
+  "risk": "risk-scope",
+  "agent": "claude",
+  "model": "claude-sonnet-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "static",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Audio spike screen and repositories removed; design lab unreachable from the app (code and tests kept). fixture_events.dart kept: soloud_adapters_test still uses it. Tests run in a soloud-free scratch copy."
+}
