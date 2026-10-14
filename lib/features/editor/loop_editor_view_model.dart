@@ -282,7 +282,11 @@ class LoopEditorViewModel extends ChangeNotifier {
   /// roll to the loop as it was before the first one.
   void undoRandomize() {
     if (_beforeRolls.isEmpty) return;
-    final (_, before) = _beforeRolls.removeLast();
+    // The title follows the loop as it is now: a save that finished after
+    // the roll renamed it, and the snapshot must not bring the old name back
+    // (then a restored saved loop is not "changed").
+    final (_, snapshot) = _beforeRolls.removeLast();
+    final before = edits.withTitle(snapshot, _document.title);
     if (before == _document) {
       notifyListeners();
     } else {

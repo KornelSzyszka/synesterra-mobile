@@ -412,7 +412,11 @@ void main() {
       expect(vm.dirty, isTrue);
       expect(vm.canUndoRandomize, isTrue);
       vm.undoRandomize();
+      // Back to exactly the saved loop, title included, and not changed.
+      expect(vm.document, slow.snapshot.value.items.single.document);
       expect(vm.document.scenes, saved.scenes);
+      expect(vm.dirty, isFalse);
+      expect(vm.canSave, isFalse);
       expect(vm.canUndoRandomize, isFalse);
     });
 
