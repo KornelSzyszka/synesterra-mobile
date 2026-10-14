@@ -117,6 +117,12 @@ void main() {
             greaterThanOrEqualTo(1 / 16),
             reason: reason,
           );
+          // The generator's own floor: at most four steps a beat.
+          expect(
+            cycle.numerator / steps.length,
+            greaterThanOrEqualTo(1 / 4),
+            reason: reason,
+          );
           expect(factoryIds, contains(layer.instrumentId), reason: reason);
           expect(layer.pitch, inInclusiveRange(24, 107), reason: reason);
           expect(layer.phaseSteps, 0, reason: reason);
