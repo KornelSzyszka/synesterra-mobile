@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
 import 'package:synesterra/features/editor/instrument_editor_view_model.dart';
@@ -66,6 +67,92 @@ void main() {
     );
     await tester.pump(const Duration(seconds: 1));
     expect(ticks, 3);
+  });
+
+  testWidgets('pointer moves between frames: one tick and one change per '
+      'step crossed, none within a step', (tester) async {
+    var traits = InstrumentTraits.neutral();
+    var ticks = 0;
+    final changes = <double>[];
+    var releases = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: synesterraTheme(SynesterraPalette.graphite),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => InstrumentRadar(
+              traits: traits,
+              color: Colors.teal,
+              onChanged: (id, value) {
+                changes.add(value);
+                setState(() => traits = traits.withValues({id: value}));
+              },
+              onRelease: () => releases++,
+              onStep: () => ticks++,
+            ),
+          ),
+        ),
+      ),
+    );
+    final rect = tester.getRect(find.byType(InstrumentRadar));
+    final reach = WheelLayout.of(rect.size).reach;
+    Offset at(double v) => radarPoint(2, 6, v, rect.size, reach) + rect.topLeft;
+
+    // No frame between the moves: the wheel has not rebuilt yet.
+    final gesture = await tester.startGesture(at(0.5));
+    for (final v in [0.52, 0.54, 0.6, 0.62, 0.64, 0.7, 0.72, 0.68]) {
+      await gesture.moveTo(at(v));
+    }
+    await gesture.up();
+    expect(ticks, 2, reason: 'C to C+, then B');
+    expect(changes, [0.6, 0.7]);
+    expect(releases, 1);
+    await tester.pump(const Duration(seconds: 1));
+    expect(traits[TraitIds.warmth], 0.7);
+
+    // Back down within one gesture, still without frames.
+    final back = await tester.startGesture(at(0.7));
+    for (final v in [0.66, 0.6, 0.58, 0.61]) {
+      await back.moveTo(at(v));
+    }
+    await back.cancel();
+    expect(ticks, 3);
+    expect(changes, [0.6, 0.7, 0.6]);
+    expect(releases, 1, reason: 'a cancelled drag stays silent');
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('two screen-reader steps before a frame move two steps', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    var traits = InstrumentTraits.neutral();
+    final changes = <double>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: synesterraTheme(SynesterraPalette.graphite),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => InstrumentRadar(
+              traits: traits,
+              color: Colors.teal,
+              onChanged: (id, value) {
+                changes.add(value);
+                setState(() => traits = traits.withValues({id: value}));
+              },
+              onRelease: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    final air = find.semantics.byLabel('Air');
+    tester.semantics.performAction(air, SemanticsAction.increase);
+    tester.semantics.performAction(air, SemanticsAction.increase);
+    expect(changes, [0.6, 0.7]);
+    await tester.pumpAndSettle();
+    expect(traits[TraitIds.air], 0.7);
+    handle.dispose();
   });
 
   testWidgets('the panel passes its step feedback to the wheel', (

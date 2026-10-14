@@ -162,6 +162,15 @@ class _InstrumentRadarState extends State<InstrumentRadar>
   int? _active;
   double _grab = 0;
 
+  /// The step last sent for the vertex being dragged. It is set the moment
+  /// a value is sent, not when the widget rebuilds, so several pointer moves
+  /// between two frames tick and change once per step, never more.
+  int? _dragStep;
+
+  /// Values sent by screen-reader steps since the last rebuild, per vertex,
+  /// so two quick steps before a frame move two steps.
+  final Map<int, double> _sentSteps = {};
+
   /// Stacked handles under a touch that has not moved yet, and where it
   /// went down; the first move picks one of them.
   List<int>? _stacked;
@@ -210,6 +219,7 @@ class _InstrumentRadarState extends State<InstrumentRadar>
   @override
   void didUpdateWidget(InstrumentRadar old) {
     super.didUpdateWidget(old);
+    _sentSteps.clear();
     final next = _snapped(widget.traits);
     if (listEquals(next, _to)) return;
     if (_reduceMotion || next.length != _to.length) {
@@ -248,18 +258,24 @@ class _InstrumentRadarState extends State<InstrumentRadar>
   /// Sends [value] snapped for spoke [axis] when it lands on another step,
   /// with a tick ([InstrumentRadar.onStep]).
   void _send(int axis, double value) {
-    final snapped = snapToRank(value);
-    if (rankStep(snapped) == rankStep(_to[axis])) return;
+    final step = rankStep(value);
+    if (step == _dragStep) return;
+    _dragStep = step;
     widget.onStep?.call();
-    widget.onChanged(_id(axis), snapped);
+    widget.onChanged(_id(axis), rankValue(step));
   }
 
-  void _grabHandle(int axis, Offset at, Size size, double reach) {
+  /// Starts dragging [axis] from the step it shows.
+  void _start(int axis, double grab) {
+    _dragStep = rankStep(_to[axis]);
     setState(() {
       _active = axis;
-      _grab = _to[axis] - radarProject(at, axis, _to.length, size, reach);
+      _grab = grab;
     });
   }
+
+  void _grabHandle(int axis, Offset at, Size size, double reach) =>
+      _start(axis, _to[axis] - radarProject(at, axis, _to.length, size, reach));
 
   void _down(Offset local, Size size, double reach) {
     final values = _to;
@@ -286,10 +302,7 @@ class _InstrumentRadarState extends State<InstrumentRadar>
     }
     final axis = radarHitAxis(local, values, size, reach);
     if (axis == null) return;
-    setState(() {
-      _active = axis;
-      _grab = 0;
-    });
+    _start(axis, 0);
     _send(axis, radarProject(local, axis, values.length, size, reach));
   }
 
@@ -317,7 +330,10 @@ class _InstrumentRadarState extends State<InstrumentRadar>
     _stacked = null;
     final axis = _active ?? stacked?.first;
     if (axis == null) return;
-    final at = radarPoint(axis, _to.length, _to[axis], size, reach);
+    // Where the vertex is now, even if the lift comes before a frame.
+    final value = _dragStep == null ? _to[axis] : rankValue(_dragStep!);
+    final at = radarPoint(axis, _to.length, value, size, reach);
+    _dragStep = null;
     setState(() => _active = null);
     widget.onRelease();
     _accent(at);
@@ -328,6 +344,7 @@ class _InstrumentRadarState extends State<InstrumentRadar>
   /// without a sound and without the accent; the shape keeps the last value.
   void _cancel() {
     _stacked = null;
+    _dragStep = null;
     if (_active == null) return;
     setState(() => _active = null);
     _breathe();
@@ -351,8 +368,12 @@ class _InstrumentRadarState extends State<InstrumentRadar>
   }
 
   void _step(int index, int direction) {
-    final next = rankStepFrom(_to[index], direction);
-    if (next != _to[index]) widget.onChanged(_id(index), next);
+    final from = _sentSteps[index] ?? _to[index];
+    final next = rankStepFrom(from, direction);
+    if (next != from) {
+      _sentSteps[index] = next;
+      widget.onChanged(_id(index), next);
+    }
     widget.onRelease();
     if (!_reduceMotion) _swell.forward(from: 0);
   }
