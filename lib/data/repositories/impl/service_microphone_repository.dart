@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import '../../services/microphone_service.dart';
@@ -31,17 +32,46 @@ class ServiceMicrophoneRepository implements MicrophoneRepository {
   }
 
   @override
-  Stream<Float32List> frames() async* {
+  Stream<Float32List> frames() {
     final framer = PcmFramer(frameSize: frameSize);
-    final pcm = await _service.startPcm(sampleRate: sampleRate.round());
-    try {
-      await for (final chunk in pcm) {
-        for (final frame in framer.add(chunk)) {
-          yield frame;
-        }
+    final controller = StreamController<Float32List>();
+    StreamSubscription<Uint8List>? source;
+    var started = false;
+    var cancelled = false;
+
+    Future<void> close() async {
+      cancelled = true;
+      await source?.cancel();
+      source = null;
+      if (started) {
+        started = false;
+        await _service.stop();
       }
-    } finally {
-      await _service.stop();
     }
+
+    controller.onListen = () async {
+      try {
+        final pcm = await _service.startPcm(sampleRate: sampleRate.round());
+        started = true;
+        if (cancelled) {
+          await close();
+          return;
+        }
+        source = pcm.listen(
+          (chunk) {
+            for (final frame in framer.add(chunk)) {
+              controller.add(frame);
+            }
+          },
+          onError: controller.addError,
+          onDone: controller.close,
+        );
+      } catch (error, stack) {
+        controller.addError(error, stack);
+      }
+    };
+    // Closing the microphone does not wait for the next audio chunk.
+    controller.onCancel = close;
+    return controller.stream;
   }
 }
