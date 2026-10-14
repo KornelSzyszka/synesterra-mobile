@@ -8,12 +8,15 @@ import '../data/repositories/impl/noop_playback_repository.dart';
 import '../data/repositories/instrument_audition_repository.dart';
 import '../data/repositories/instrument_library_repository.dart';
 import '../data/repositories/loop.dart';
+import '../data/repositories/impl/noop_microphone_repository.dart';
 import '../data/repositories/loop_library_repository.dart';
+import '../data/repositories/microphone_repository.dart';
 import '../data/repositories/playback_repository.dart';
 import '../features/editor/editor_view.dart';
 import '../features/home/home_view.dart';
 import '../features/arrangement/arrangement_panel.dart';
 import '../features/training/training_view.dart';
+import '../features/tuner/tuner_view.dart';
 import '../features/library/library_view.dart';
 import '../shared/theme/synesterra_theme.dart';
 import 'step_feedback.dart';
@@ -26,6 +29,7 @@ class SynesterraApp extends StatefulWidget {
     this.loopLibrary,
     this.arrangementLibrary,
     this.playback,
+    this.microphone,
     this.stepFeedback = hapticStepFeedback,
     @visibleForTesting this.showArrangement = false,
   });
@@ -40,6 +44,10 @@ class SynesterraApp extends StatefulWidget {
 
   /// The bootstrap passes the engine; when omitted, a silent stand-in.
   final PlaybackRepository? playback;
+
+  /// The bootstrap passes the real microphone; when omitted, one that hears
+  /// nothing.
+  final MicrophoneRepository? microphone;
 
   /// The light tick of the Instrument wheel on each snapped step: the
   /// platform's selection click unless a test gives its own.
@@ -60,6 +68,8 @@ class _SynesterraAppState extends State<SynesterraApp> {
       widget.arrangementLibrary ?? InMemoryArrangementLibraryRepository();
   late final PlaybackRepository _playback =
       widget.playback ?? NoopPlaybackRepository();
+  late final MicrophoneRepository _microphone =
+      widget.microphone ?? NoopMicrophoneRepository();
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +152,17 @@ class _SynesterraAppState extends State<SynesterraApp> {
             ),
             onOpenTraining: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => TrainingView(playback: _playback),
+                builder: (_) => TrainingView(
+                  playback: _playback,
+                  onOpenTuner: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => TunerView(
+                        microphone: _microphone,
+                        playback: _playback,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           );
