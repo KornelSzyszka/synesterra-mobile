@@ -189,6 +189,142 @@ void main() {
     }
   });
 
+  group('what the painter draws', () {
+    final tokens = SynesterraTokens.forPalette(SynesterraPalette.graphite);
+    final colors = ArrangementRingColors.of(
+      GroundPalette.of(tokens, GroundTone.dark, tokens.layerColors[0]),
+      tokens,
+    );
+    const size = Size.square(300);
+    final sixteen = [
+      for (var i = 0; i < 16; i++)
+        StripSection(
+          label: 'Loop $i',
+          repeats: i == 0 ? 32 : (i % 4) + 1,
+          missing: i == 5,
+          colorIndex: i % 12,
+          layerSteps: const [3, 2],
+        ),
+    ];
+
+    ArrangementRingPainter painterFor(
+      List<StripSection> sections, [
+      LoopPosition? position,
+    ]) => ArrangementRingPainter(
+      sections: sections,
+      source: FakePositionSource(position),
+      colors: colors,
+      labelStyle: const TextStyle(fontSize: 12.5),
+      numberStyle: const TextStyle(fontSize: 26),
+      captionStyle: const TextStyle(fontSize: 12.5),
+    );
+
+    List<_Arc> paintRing(List<StripSection> sections, LoopPosition position) {
+      final canvas = _ArcRecorder();
+      painterFor(sections, position).paint(canvas, size);
+      return canvas.arcs;
+    }
+
+    final m = painterFor(sixteen).measures(size);
+    final cap = (m.band / 2) / m.radius;
+
+    /// The section bands: full band width, no blur, translucent, not grey.
+    List<_Arc> bands(List<_Arc> arcs) => [
+      for (final arc in arcs)
+        if (arc.strokeWidth == m.band &&
+            !arc.blurred &&
+            arc.color.a < .5 &&
+            !_same(arc.color.withValues(alpha: 1), colors.muted))
+          arc,
+    ];
+
+    test('one band per loaded section, with the sweep from its repeats', () {
+      final found = bands(paintRing(sixteen, LoopPosition.stopped));
+      final expected = ringArcs([for (final s in sixteen) s.repeats]);
+      expect(found, hasLength(15), reason: '16 sections, one missing');
+      var k = 0;
+      for (var i = 0; i < 16; i++) {
+        if (i == 5) continue;
+        expect(found[k].start, closeTo(expected[i].start + cap, 1e-9));
+        expect(found[k].sweep, closeTo(expected[i].sweep - 2 * cap, 1e-9));
+        expect(
+          _same(
+            found[k].color.withValues(alpha: 1),
+            colors.layerColors[sixteen[i].colorIndex],
+          ),
+          isTrue,
+          reason: 'section $i in its loop colour',
+        );
+        k++;
+      }
+    });
+
+    test('one section is a single band almost around the ring', () {
+      final found = bands(
+        paintRing([
+          StripSection(label: 'Only', repeats: 32),
+        ], LoopPosition.stopped),
+      );
+      expect(found, hasLength(1));
+      expect(found.single.sweep, greaterThan(6));
+    });
+
+    test('a missing loop is dashed in grey, not a band', () {
+      final arcs = paintRing(sixteen, LoopPosition.stopped);
+      final missing = ringArcs([for (final s in sixteen) s.repeats])[5];
+      final inside = [
+        for (final arc in arcs)
+          if (arc.start >= missing.start - 1e-9 &&
+              arc.end <= missing.end + 1e-9)
+            arc,
+      ];
+      expect(inside.length, greaterThan(1), reason: 'several dashes');
+      for (final dash in inside) {
+        expect(_same(dash.color.withValues(alpha: 1), colors.muted), isTrue);
+        expect(dash.strokeWidth, lessThan(m.band));
+        expect(dash.sweep, lessThan(missing.sweep / 3));
+      }
+    });
+
+    test('the current section glows, fills and has a gold rim', () {
+      final arcs = paintRing(
+        sixteen,
+        LoopPosition(
+          playing: true,
+          cyclePosition: .5,
+          cycleIndex: 1,
+          sectionIndex: 3,
+        ),
+      );
+      final current = ringArcs([for (final s in sixteen) s.repeats])[3];
+      bool within(_Arc arc) =>
+          arc.start >= current.start - 1e-9 && arc.end <= current.end + 1e-9;
+      final glows = [
+        for (final a in arcs)
+          if (a.blurred) a,
+      ];
+      expect(glows, hasLength(1));
+      expect(within(glows.single), isTrue);
+      final gold = [
+        for (final a in arcs)
+          if (_same(a.color, colors.accent)) a,
+      ];
+      expect(gold, hasLength(1), reason: 'the rim');
+      expect(within(gold.single), isTrue);
+      final fill = [
+        for (final a in arcs)
+          if (a.color.a > .9 && !_same(a.color, colors.accent)) a,
+      ];
+      expect(fill, hasLength(1), reason: 'the fill');
+      expect(within(fill.single), isTrue);
+      // Played sections are dimmer than the ones to come, the current one
+      // brighter.
+      final found = bands(arcs);
+      expect(found[0].color.a, lessThan(found[10].color.a));
+      expect(found[3].color.a, greaterThan(found[10].color.a));
+    });
+  });
+
   for (final textScale in [1.0, 1.5]) {
     testWidgets('fits 320 dp at text scale $textScale', (tester) async {
       final source = FakePositionSource();
@@ -245,4 +381,39 @@ void main() {
       }
     }
   });
+}
+
+/// Paint keeps 8 bits per channel, so colours are compared at that depth.
+bool _same(Color a, Color b) => a.toARGB32() == b.toARGB32();
+
+class _Arc {
+  _Arc(this.start, this.sweep, Paint paint)
+    : color = paint.color,
+      strokeWidth = paint.strokeWidth,
+      blurred = paint.maskFilter != null;
+
+  final double start;
+  final double sweep;
+  final Color color;
+  final double strokeWidth;
+  final bool blurred;
+
+  double get end => start + sweep;
+}
+
+/// A canvas that records `drawArc` and ignores everything else.
+class _ArcRecorder implements Canvas {
+  final arcs = <_Arc>[];
+
+  @override
+  void drawArc(
+    Rect rect,
+    double startAngle,
+    double sweepAngle,
+    bool useCenter,
+    Paint paint,
+  ) => arcs.add(_Arc(startAngle, sweepAngle, paint));
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

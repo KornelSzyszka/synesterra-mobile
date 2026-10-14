@@ -41,9 +41,10 @@ the contrast test).
 
 The Arrangement panel shows the whole arrangement as a ring of sections
 (`arrangement_ring.dart`, geometry in `arrangement_ring_geometry.dart` with
-unit tests). The coordinator chose the form by default from the candidates in
-issue #123 (ring of sections, timeline of mini figures, stacked polygons);
-the Founder may ask for another.
+unit tests). The ring is the first version proposed by the coordinator from
+the candidates in issue #123 (ring of sections, timeline of mini figures,
+stacked polygons). The form is chosen with the Founder, who has not decided
+yet and may redirect it after seeing it on the phone.
 
 | Part | Rule |
 |---|---|
