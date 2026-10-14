@@ -6,32 +6,48 @@ import '../../shared/theme/round_shapes.dart';
 import '../../shared/theme/surfaces.dart';
 import '../../shared/widgets/round_components.dart';
 import '../../shared/widgets/round_screen.dart';
-import 'learn_lessons.dart';
-import 'lesson_page.dart';
+import 'tap_trainer_view.dart';
 
-/// The Learn tab: the list of lessons. "Try it" goes to [onTryIt], which the
-/// app shell supplies (it opens the Loop panel), as it does for the Library.
-class LearnView extends StatelessWidget {
-  const LearnView({
-    super.key,
-    required this.playback,
-    required this.onTryIt,
-    this.lessons,
-  });
+/// The Training tab: one round card per exercise.
+class TrainingView extends StatefulWidget {
+  const TrainingView({super.key, required this.playback});
 
   final PlaybackRepository playback;
-  final TryLesson onTryIt;
 
-  /// For tests; the app uses [learnLessons].
-  final List<LearnLesson>? lessons;
+  @override
+  State<TrainingView> createState() => _TrainingViewState();
+}
+
+class _TrainingViewState extends State<TrainingView> {
+  /// The latency offset of the tap trainer, kept while this tab is open.
+  final _tapOffset = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _tapOffset.dispose();
+    super.dispose();
+  }
+
+  void _open(Widget page) =>
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
 
   @override
   Widget build(BuildContext context) {
-    final items = lessons ?? learnLessons;
+    final sections = <_Section>[
+      _Section(
+        id: 'tap',
+        title: 'Tap in rhythm',
+        teaser: 'Tap along with a click and see how early or late you are.',
+        icon: Icons.touch_app_rounded,
+        onTap: () => _open(
+          TapTrainerView(playback: widget.playback, offset: _tapOffset),
+        ),
+      ),
+    ];
     return RoundScreen(
-      title: 'Learn',
+      title: 'Training',
       child: ListView(
-        key: const Key('learn-list'),
+        key: const Key('training-list'),
         padding: const EdgeInsets.fromLTRB(
           Space.lg,
           Space.md,
@@ -39,25 +55,14 @@ class LearnView extends StatelessWidget {
           Space.xl,
         ),
         children: [
-          for (var i = 0; i < items.length; i++)
+          for (var i = 0; i < sections.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: Space.md),
               child: OrganicCard(
-                key: Key('lesson-${items[i].id}'),
-                // Neighbouring lessons get different edges.
+                key: Key('training-${sections[i].id}'),
                 seed: 3 + i * 5,
-                label:
-                    'Lesson ${i + 1} of ${items.length}. ${items[i].title}. '
-                    '${items[i].teaser}',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => LessonPage(
-                      lesson: items[i],
-                      playback: playback,
-                      onTryIt: onTryIt,
-                    ),
-                  ),
-                ),
+                label: '${sections[i].title}. ${sections[i].teaser}',
+                onTap: sections[i].onTap,
                 child: ExcludeSemantics(
                   child: Row(
                     children: [
@@ -67,14 +72,9 @@ class LearnView extends StatelessWidget {
                           style: SurfaceStyle.glass,
                           shape: RoundShape.circle,
                           child: Center(
-                            child: Text(
-                              '${i + 1}',
-                              style: roundText(
-                                context,
-                                color: textOn(context, SurfaceStyle.glass),
-                                size: TypeScale.title,
-                                serif: true,
-                              ),
+                            child: Icon(
+                              sections[i].icon,
+                              color: textOn(context, SurfaceStyle.glass),
                             ),
                           ),
                         ),
@@ -85,7 +85,7 @@ class LearnView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              items[i].title,
+                              sections[i].title,
                               style: roundText(
                                 context,
                                 color: textOn(context, SurfaceStyle.organic),
@@ -96,7 +96,7 @@ class LearnView extends StatelessWidget {
                             ),
                             const SizedBox(height: Space.xs),
                             Text(
-                              items[i].teaser,
+                              sections[i].teaser,
                               style: roundText(
                                 context,
                                 color: mutedTextOn(
@@ -118,4 +118,20 @@ class LearnView extends StatelessWidget {
       ),
     );
   }
+}
+
+class _Section {
+  const _Section({
+    required this.id,
+    required this.title,
+    required this.teaser,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String id;
+  final String title;
+  final String teaser;
+  final IconData icon;
+  final VoidCallback onTap;
 }

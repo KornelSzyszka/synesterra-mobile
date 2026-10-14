@@ -37,7 +37,7 @@ one BPM. The UI timer only handles input and does not drive playback timing.
 ## Visual language v2: round shapes, three surfaces (UX-112)
 
 The shared foundation for the blend of glass, organic and material chosen after the
-design lab (Founder, 2026-10-13). The Start screen, Library, Learn and the rhythm
+design lab (Founder, 2026-10-13). The Start screen, Library and the rhythm
 screen use it since UX-118 (see *Screens on v2* below), the Editor shell, Loop and
 Arrangement panels since UX-119 (see *Adopted: the Editor* below); the Instrument
 panel keeps its own look until its task. Code: `lib/shared/theme/` and
@@ -99,14 +99,13 @@ is no dim second tier at all.
 
 ### Screens on v2 (UX-118)
 
-Start, Library (three tabs), Learn (list and lesson pages) and the rhythm screen
+Start, Library (three tabs) and the rhythm screen
 are built from the components above. Screenshots (dark Graphite, 412 x 892 dp,
 rendered by a widget test with real fonts, drift at rest):
 [Start](../assets/v2/start.png), Library
 [instruments](../assets/v2/library-instruments.png),
 [loops](../assets/v2/library-loops.png),
-[arrangements](../assets/v2/library-arrangements.png), Learn
-[list](../assets/v2/learn-list.png) and [a lesson](../assets/v2/learn-lesson.png).
+[arrangements](../assets/v2/library-arrangements.png).
 
 - **Frame**: `RoundScreen` (`lib/shared/widgets/round_screen.dart`) is the
   `Scaffold` of each screen: the Graphite ground with a very faint gold and cool
@@ -116,17 +115,13 @@ rendered by a widget test with real fonts, drift at rest):
   small gold light with a tracked-out label.
 - **Start**: the title with a soft glow (a long press still opens the design lab in
   debug builds) and three round entries: Editor is the large gold blob (the one
-  element that breathes), Library and Learn are two organic blobs, the second one a
+  element that breathes), Library and Training are two organic blobs, the second one a
   little lower. Each is one semantics node, "Title. Description".
 - **Library**: `LibraryTabs` is a tray with the chosen tab raised (like
   `RoundSegmented`, but with the existing keys, driving the `DefaultTabController`
   so swiping still works); tags are `TactileChip`s; items are `OrganicCard`s with a
   glass disc (the instrument's mist, or an icon) and round icon buttons for Rename,
   Delete and Copy; an empty list is a glass capsule with a small gold light.
-- **Learn**: a lesson is an `OrganicCard` with its number on a glass disc; a lesson
-  page has a round Back, the text on the ground, and `TactileChip`s for Hear it,
-  Run picture and Try it (gold). The picture itself (`LoopView`) is shared and is
-  unchanged.
 - **Rhythm**: each layer is an `OrganicCard` with a number badge ringed in the layer
   colour, a round on/off `RoundIconButton` (labelled "Layer N", selected while on)
   instead of a `Switch`, and the existing `NumberStepper`s. The layer colour is data
@@ -137,7 +132,7 @@ rendered by a widget test with real fonts, drift at rest):
   as one breath: a single pass over `driftPeriod` that ends where it began, started
   when the screen appears and again by a touch. A screen at rest schedules no
   frames. This also keeps `pumpAndSettle` and the tutorial-clock test (which counts
-  tickers) valid. Learn and the rhythm screen have no ticker of their own; since UX-126 the Library
+  tickers) valid. The rhythm screen has no ticker of their own; since UX-126 the Library
   has one shared ticker for its living cards that stops when they rest (see
   [living-blobs.md](living-blobs.md)).
   The tap effect is the shared `TapGlitch` with the default strength `subtle`; under
@@ -163,8 +158,7 @@ Screenshots (Graphite, rendered by a widget test with real fonts):
 - **Shell**: the shared `RoundScreen` frame from UX-118 (the ground with its
   still mist, a round Back with the tooltip "Back", the title "Editor"); the
   tabs, below the header, are quiet words with a small gold light under the
-  current one (it follows the swipe) and the tap glitch. Like Library and
-  Learn, the Editor has no drift of its own: a silent Editor schedules no
+  current one (it follows the swipe) and the tap glitch. Like the Library, the Editor has no drift of its own: a silent Editor schedules no
   frames; only the loop picture moves while something plays.
 - **Round theme** (`editorRoundTheme`, on the Loop and Arrangement tabs and
   their dialogs): dialogs are pebbles, bottom sheets a glass lens over an
@@ -202,7 +196,7 @@ spring, and the mist pulses with the instrument's envelope. One ticker per
 gallery, at most six visible cards animating, rest after 10 s, static depth
 under reduce motion, contrast checked. Details, tests and screenshots:
 [living-blobs.md](living-blobs.md). `OrganicCard(living: true)` opts in; other
-organic cards (Learn, rhythm) are unchanged.
+organic cards (rhythm) are unchanged.
 
 ## Colour roles: three colours, 60 : 30 : 10
 
