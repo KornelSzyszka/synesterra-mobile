@@ -14,9 +14,9 @@ Report the highest level reached (it is also the `evidence` field of the model o
 
 ## Minimum set per change
 
-- Documentation or agent rules only: link and consistency check; app tests are not needed (CI still runs).
+- Documentation or agent rules only: link and consistency check; app tests are not needed (CI is skipped for documentation-only PRs).
 - Dart code: `flutter analyze` and the narrowest test (`dart test` in the core, `flutter test <path>` in the app). Run the full suite when shared code changed.
-- Native code (gradle, Kotlin, Swift): also `flutter build apk --debug`. iOS needs macOS — use the manual CI job (`gh workflow run CI -f ios=true --ref <branch>`).
+- Native code (gradle, Kotlin, Swift) and any task that touches the build: also `flutter build apk --debug` locally, and the on-demand CI job `gh workflow run CI -f apk=true --ref <branch>` (the APK build no longer runs on every PR). iOS needs macOS — use the manual CI job (`gh workflow run CI -f ios=true --ref <branch>`).
 - Bug fix: a regression test that fails before the fix and passes after, when feasible.
 
 ## Host environment (2026-10-02)
