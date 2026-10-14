@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Tuner: the microphone, asked at runtime when the Tuner opens. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <application
         android:label="Synesterra"
         android:name="${applicationName}"

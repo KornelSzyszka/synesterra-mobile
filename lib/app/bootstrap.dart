@@ -10,8 +10,10 @@ import '../data/repositories/impl/engine_playback_repository.dart';
 import '../data/repositories/impl/file_arrangement_library_repository.dart';
 import '../data/repositories/impl/file_instrument_library_repository.dart';
 import '../data/repositories/impl/file_loop_library_repository.dart';
+import '../data/repositories/impl/service_microphone_repository.dart';
 import '../data/services/instrument_file_store.dart';
 import '../data/services/json_file_store.dart';
+import '../data/services/microphone_service.dart';
 import 'synesterra_app.dart';
 
 /// Resolves platform paths and builds the app with its real repositories.
@@ -41,6 +43,8 @@ Future<Widget> createApp() async {
     ),
     // Shared by the Loop and Arrangement panels; nothing starts before the
     // first Play.
+    // Opens the microphone only while the Tuner listens.
+    microphone: ServiceMicrophoneRepository(RecordMicrophoneService()),
     playback: EnginePlaybackRepository(
       engine: flutterSoloudPlaybackEngine(),
       instruments: library,
