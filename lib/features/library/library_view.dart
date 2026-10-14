@@ -35,6 +35,7 @@ class LibraryView extends StatelessWidget {
     required this.onOpenInstrument,
     required this.onOpenLoop,
     required this.onOpenArrangement,
+    this.showArrangements = true,
   });
 
   final InstrumentLibraryRepository instrumentLibrary;
@@ -44,17 +45,21 @@ class LibraryView extends StatelessWidget {
   final OpenLoop onOpenLoop;
   final OpenArrangement onOpenArrangement;
 
+  /// False hides the Arrangements tab (shelved by the Founder).
+  final bool showArrangements;
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: showArrangements ? 3 : 2,
       child: RoundScreen(
         title: 'Library',
-        below: const LibraryTabs(
+        below: LibraryTabs(
           tabs: [
             (Key('library-tab-instruments'), 'Instruments'),
             (Key('library-tab-loops'), 'Loops'),
-            (Key('library-tab-arrangements'), 'Arrangements'),
+            if (showArrangements)
+              (Key('library-tab-arrangements'), 'Arrangements'),
           ],
         ),
         // One field, one clock for every card of the gallery.
@@ -66,11 +71,12 @@ class LibraryView extends StatelessWidget {
                 onOpen: onOpenInstrument,
               ),
               LoopsTab(library: loopLibrary, onOpen: onOpenLoop),
-              ArrangementsTab(
-                library: arrangementLibrary,
-                loops: loopLibrary,
-                onOpen: onOpenArrangement,
-              ),
+              if (showArrangements)
+                ArrangementsTab(
+                  library: arrangementLibrary,
+                  loops: loopLibrary,
+                  onOpen: onOpenArrangement,
+                ),
             ],
           ),
         ),

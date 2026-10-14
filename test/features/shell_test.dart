@@ -12,6 +12,7 @@ import 'package:synesterra/shared/widgets/tap_glitch.dart';
 Future<void> _pumpApp(WidgetTester tester) async {
   await tester.pumpWidget(
     SynesterraApp(
+      showArrangement: true,
       instrumentLibrary: InMemoryInstrumentLibraryRepository(),
       instrumentAudition: NoopInstrumentAuditionRepository(),
     ),
@@ -22,6 +23,27 @@ void main() {
   sharedPlaybackTests();
   arrangementLeaveTests();
   arrangementNameLeaveTests();
+
+  testWidgets('the shipped app hides the shelved Arrangement tabs', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      SynesterraApp(
+        instrumentLibrary: InMemoryInstrumentLibraryRepository(),
+        instrumentAudition: NoopInstrumentAuditionRepository(),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('home-editor')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('editor-tab-loop')), findsOneWidget);
+    expect(find.byKey(const Key('editor-tab-arrangement')), findsNothing);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('home-library')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('library-tab-loops')), findsOneWidget);
+    expect(find.byKey(const Key('library-tab-arrangements')), findsNothing);
+  });
 
   testWidgets('start screen offers the Editor, Library and Learn entries', (
     tester,
@@ -165,6 +187,7 @@ void sharedPlaybackTests() {
     final playback = NoopPlaybackRepository();
     await tester.pumpWidget(
       SynesterraApp(
+        showArrangement: true,
         instrumentLibrary: InMemoryInstrumentLibraryRepository(),
         instrumentAudition: NoopInstrumentAuditionRepository(),
         playback: playback,
@@ -210,6 +233,7 @@ void arrangementLeaveTests() {
     final arrangements = InMemoryArrangementLibraryRepository();
     await tester.pumpWidget(
       SynesterraApp(
+        showArrangement: true,
         instrumentLibrary: InMemoryInstrumentLibraryRepository(),
         instrumentAudition: NoopInstrumentAuditionRepository(),
         arrangementLibrary: arrangements,
@@ -268,6 +292,7 @@ void arrangementNameLeaveTests() {
   ) async {
     await tester.pumpWidget(
       SynesterraApp(
+        showArrangement: true,
         instrumentLibrary: InMemoryInstrumentLibraryRepository(),
         instrumentAudition: NoopInstrumentAuditionRepository(),
       ),
