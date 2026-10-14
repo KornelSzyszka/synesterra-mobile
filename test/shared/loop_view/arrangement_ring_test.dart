@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/shared/loop_view/arrangement_ring.dart';
@@ -284,44 +286,82 @@ void main() {
         expect(dash.strokeWidth, lessThan(m.band));
         expect(dash.sweep, lessThan(missing.sweep / 3));
       }
+      // The dashes run along the whole arc, evenly: from its start (inside
+      // the round cap) to its end, one dash every two dash lengths, so
+      // together they cover about half of it.
+      final dashCap = (inside.first.strokeWidth / 2) / m.radius;
+      final dash = 4 / m.radius;
+      final from = missing.start + dashCap;
+      final to = missing.end - dashCap;
+      expect(inside.first.start, closeTo(from, 1e-9));
+      for (var i = 1; i < inside.length; i++) {
+        expect(inside[i].start - inside[i - 1].start, closeTo(2 * dash, 1e-9));
+      }
+      expect(inside.last.end, lessThanOrEqualTo(to + 1e-9));
+      expect(to - inside.last.start, lessThan(2 * dash));
+      final covered = inside.fold<double>(0, (sum, d) => sum + d.sweep);
+      final expectedCount = ((to - from) / (2 * dash)).ceil();
+      expect(inside, hasLength(expectedCount));
+      expect(covered / (to - from), inInclusiveRange(.3, .7));
     });
 
     test('the current section glows, fills and has a gold rim', () {
-      final arcs = paintRing(
-        sixteen,
-        LoopPosition(
-          playing: true,
-          cyclePosition: .5,
-          cycleIndex: 1,
-          sectionIndex: 3,
-        ),
-      );
-      final current = ringArcs([for (final s in sixteen) s.repeats])[3];
-      bool within(_Arc arc) =>
-          arc.start >= current.start - 1e-9 && arc.end <= current.end + 1e-9;
-      final glows = [
-        for (final a in arcs)
-          if (a.blurred) a,
-      ];
-      expect(glows, hasLength(1));
-      expect(within(glows.single), isTrue);
-      final gold = [
-        for (final a in arcs)
-          if (_same(a.color, colors.accent)) a,
-      ];
-      expect(gold, hasLength(1), reason: 'the rim');
-      expect(within(gold.single), isTrue);
-      final fill = [
-        for (final a in arcs)
-          if (a.color.a > .9 && !_same(a.color, colors.accent)) a,
-      ];
-      expect(fill, hasLength(1), reason: 'the fill');
-      expect(within(fill.single), isTrue);
-      // Played sections are dimmer than the ones to come, the current one
-      // brighter.
-      final found = bands(arcs);
-      expect(found[0].color.a, lessThan(found[10].color.a));
-      expect(found[3].color.a, greaterThan(found[10].color.a));
+      final expected = ringArcs([for (final s in sixteen) s.repeats]);
+      final current = expected[3];
+      final from = current.start + cap;
+      final sweep = current.sweep - 2 * cap;
+      // Section 4 plays 4 cycles; two moments in it.
+      for (final (cycleIndex, cyclePosition) in [(1, .5), (3, .5)]) {
+        final arcs = paintRing(
+          sixteen,
+          LoopPosition(
+            playing: true,
+            cyclePosition: cyclePosition,
+            cycleIndex: cycleIndex,
+            sectionIndex: 3,
+          ),
+        );
+        final glows = [
+          for (final a in arcs)
+            if (a.blurred) a,
+        ];
+        expect(glows, hasLength(1));
+        expect(glows.single.start, closeTo(from, 1e-9));
+        expect(glows.single.sweep, closeTo(sweep, 1e-9));
+        final gold = [
+          for (final a in arcs)
+            if (_same(a.color, colors.accent)) a,
+        ];
+        expect(gold, hasLength(1), reason: 'the rim');
+        expect(gold.single.start, closeTo(from, 1e-9));
+        expect(gold.single.sweep, closeTo(sweep, 1e-9));
+        final fill = [
+          for (final a in arcs)
+            if (a.color.a > .9 && !_same(a.color, colors.accent)) a,
+        ];
+        expect(fill, hasLength(1), reason: 'the fill');
+        // The fill ends at the light (the section start plus its
+        // progress), held inside the band's round caps.
+        final progress = (cycleIndex + cyclePosition) / 4;
+        expect(fill.single.start, closeTo(from, 1e-9));
+        expect(
+          fill.single.sweep,
+          closeTo(math.min(current.sweep * progress - cap, sweep), 1e-9),
+          reason: 'cycle ${cycleIndex + 1} at $cyclePosition',
+        );
+        expect(
+          _same(
+            fill.single.color.withValues(alpha: 1),
+            colors.layerColors[sixteen[3].colorIndex],
+          ),
+          isTrue,
+        );
+        // Played sections are dimmer than the ones to come, the current one
+        // brighter.
+        final found = bands(arcs);
+        expect(found[0].color.a, lessThan(found[10].color.a));
+        expect(found[3].color.a, greaterThan(found[10].color.a));
+      }
     });
   });
 
