@@ -11,48 +11,120 @@ import '../theme/surfaces.dart';
 import 'living_field.dart';
 import 'living_motion.dart';
 
-/// The lights of a living blob, each as its largest alpha on the (dark,
-/// light) ground. Public so the contrast test checks exactly what is drawn.
-abstract final class LivingLight {
-  /// The three drifting depth layers, front to back: the tint, white light,
-  /// the tint again.
-  static const layers = [(.12, .12), (.04, .2), (.07, .08)];
+/// The inks of a living blob on one ground, in one tint: every colour it
+/// paints inside the outline, with its alpha. Public so the contrast test
+/// checks exactly what is drawn.
+///
+/// On the dark ground there is almost no room to lighten under text (the
+/// secondary text is close to 4.5:1 already), so the depth there is colour
+/// without light: the tint is darkened to the fill's own luminance, which
+/// adds hue but never brightness, and a drifting shadow adds the depth. On
+/// the light ground the layers are light and tint, as there is room.
+@immutable
+class LivingInk {
+  const LivingInk._({
+    required this.layers,
+    required this.highlight,
+    required this.innerGlow,
+    required this.grain,
+  });
+
+  factory LivingInk.of(GroundPalette palette, Color tint) {
+    if (!palette.isDark) {
+      return LivingInk._(
+        layers: [
+          tint.withValues(alpha: .07),
+          palette.light.withValues(alpha: .22),
+          tint.withValues(alpha: .05),
+        ],
+        highlight: palette.light.withValues(alpha: .34),
+        innerGlow: tint.withValues(alpha: .055),
+        grain: palette.shade.withValues(alpha: .05),
+      );
+    }
+    final fill = Surfaces(palette).fillSamples(SurfaceStyle.organic);
+    final floor = fill.map((c) => c.computeLuminance()).reduce(math.min);
+    final deep = _darkenedTo(tint, palette.shade, floor);
+    return LivingInk._(
+      layers: [
+        deep.withValues(alpha: .55),
+        palette.shade.withValues(alpha: .22),
+        deep.withValues(alpha: .4),
+      ],
+      highlight: palette.light.withValues(alpha: .012),
+      innerGlow: tint.withValues(alpha: .01),
+      grain: palette.text.withValues(alpha: .015),
+    );
+  }
+
+  /// The three drifting depth layers, front to back.
+  final List<Color> layers;
 
   /// The soft specular highlight that wanders over the top.
-  static const highlight = (.07, .32);
+  final Color highlight;
 
-  /// The inner glow along the edge at rest; pressed it doubles.
-  static const innerGlow = (.16, .16);
-
-  /// The most the inner glow grows when pressed.
-  static const pressedGlow = 2.0;
+  /// The inner glow along the edge at rest; a press raises it up to
+  /// [pressedGlow] times.
+  final Color innerGlow;
 
   /// The faint fixed grain (1 px dots).
-  static const grain = (.05, .05);
+  final Color grain;
 
-  static double of((double, double) alphas, bool dark) =>
-      dark ? alphas.$1 : alphas.$2;
+  static const pressedGlow = 2.0;
+
+  @override
+  bool operator ==(Object other) =>
+      other is LivingInk &&
+      _sameColors(other.layers, layers) &&
+      other.highlight == highlight &&
+      other.innerGlow == innerGlow &&
+      other.grain == grain;
+
+  @override
+  int get hashCode =>
+      Object.hash(Object.hashAll(layers), highlight, innerGlow, grain);
+}
+
+bool _sameColors(List<Color> a, List<Color> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// [color] pulled toward [shade] until its luminance is at most [luminance]:
+/// the same hue, no brighter than the surface it tints.
+Color _darkenedTo(Color color, Color shade, double luminance) {
+  if (color.computeLuminance() <= luminance) return color;
+  var lo = 0.0; // share of the colour that is known to be dark enough
+  var hi = 1.0;
+  for (var i = 0; i < 14; i++) {
+    final mid = (lo + hi) / 2;
+    if (Color.lerp(shade, color, mid)!.computeLuminance() <= luminance) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return Color.lerp(shade, color, lo)!;
 }
 
 /// Every colour text on a living organic surface may sit on: the organic
-/// fill with all the lights stacked at their strongest over it, in [tint].
+/// fill with every ink of [LivingInk] stacked over it at its strongest.
 List<Color> livingFillSamples(GroundPalette palette, Color tint) {
-  final dark = palette.isDark;
+  final ink = LivingInk.of(palette, tint);
   var samples = Surfaces(palette).fillSamples(SurfaceStyle.organic);
-  void stack(Color color, (double, double) alphas, [double scale = 1]) {
-    samples = [
-      ...samples,
-      ...veiled(color, LivingLight.of(alphas, dark) * scale, samples),
-    ];
+  void stack(Color color) =>
+      samples = [...samples, ...veiled(color, color.a, samples)];
+  for (final layer in ink.layers) {
+    stack(layer);
   }
-
-  final colors = [tint, palette.light, tint];
-  for (var i = 0; i < LivingLight.layers.length; i++) {
-    stack(colors[i], LivingLight.layers[i]);
-  }
-  stack(palette.light, LivingLight.highlight);
-  stack(tint, LivingLight.innerGlow, LivingLight.pressedGlow);
-  stack(dark ? palette.text : palette.shade, LivingLight.grain);
+  stack(ink.highlight);
+  stack(
+    ink.innerGlow.withValues(alpha: ink.innerGlow.a * LivingInk.pressedGlow),
+  );
+  stack(ink.grain);
   return samples;
 }
 
@@ -193,6 +265,14 @@ class LivingBlobState extends State<LivingBlob> implements LivingMember {
   /// Tests: whether this blob holds an animation slot.
   @visibleForTesting
   bool get animated => _animated;
+
+  /// Tests: the spring-driven lean toward the finger (in half sizes).
+  @visibleForTesting
+  Offset get debugLean => Offset(_leanX.value, _leanY.value);
+
+  /// Tests: the spring-driven swell of a press.
+  @visibleForTesting
+  double get debugSwell => _swell.value;
 
   bool get _settled =>
       springSettled(_leanX, _leanTarget.dx) &&
@@ -379,13 +459,15 @@ class LivingBlobPainter extends CustomPainter {
     required this.shape,
     required this.tint,
     required this.pressed,
-  }) : super(repaint: blob._frame);
+  }) : ink = LivingInk.of(palette, tint),
+       super(repaint: blob._frame);
 
   final LivingBlobState blob;
   final GroundPalette palette;
   final BlobShape shape;
   final Color tint;
   final bool pressed;
+  final LivingInk ink;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -420,13 +502,12 @@ class LivingBlobPainter extends CustomPainter {
       canvas,
       path,
       rect,
-      palette: palette,
-      tint: tint,
+      ink: ink,
       seed: blob.widget.morphSeed,
       time: blob._time,
       life: blob._life,
       lean: lean,
-      glow: math.min(glow, LivingLight.pressedGlow),
+      glow: math.min(glow, LivingInk.pressedGlow),
     );
   }
 
@@ -441,21 +522,19 @@ class LivingBlobPainter extends CustomPainter {
 
 /// The depth inside [path] (in [rect]): three translucent gradient layers
 /// at their parallax offsets, a soft highlight, an inner glow ([glow] 1 at
-/// rest, up to [LivingLight.pressedGlow]) and a fixed grain. With [life] 0
+/// rest, up to [LivingInk.pressedGlow]) and a fixed grain, in [ink]. With [life] 0
 /// and no [lean] it is the still depth used under reduce motion.
 void paintLivingDepth(
   Canvas canvas,
   Path path,
   Rect rect, {
-  required GroundPalette palette,
-  required Color tint,
+  required LivingInk ink,
   required int seed,
   required double time,
   required double life,
   required Offset lean,
   double glow = 1,
 }) {
-  final dark = palette.isDark;
   final w = rect.width;
   final h = rect.height;
   if (w <= 0 || h <= 0) return;
@@ -465,7 +544,6 @@ void paintLivingDepth(
   final base = math.max(h, w * .35);
   const anchors = [Offset(-.5, -.3), Offset(.45, .35), Offset(.1, 0)];
   const radii = [.75, 1.0, 1.4];
-  final colors = [tint, palette.light, tint];
   for (var layer = 0; layer < LivingDepth.layers; layer++) {
     final drift = parallaxOffset(
       layer: layer,
@@ -485,17 +563,13 @@ void paintLivingDepth(
         Offset(anchors[layer].dx * w / 2, anchors[layer].dy * h / 2) +
         Offset(unit.dx * w * .2, unit.dy * h * .4);
     final radius = base * radii[layer];
-    final alpha = LivingLight.of(LivingLight.layers[layer], dark);
+    final color = ink.layers[layer];
     canvas.drawCircle(
       centre,
       radius,
       Paint()
-        ..shader = RadialGradient(
-          colors: [
-            colors[layer].withValues(alpha: alpha),
-            colors[layer].withValues(alpha: 0),
-          ],
-        ).createShader(Rect.fromCircle(center: centre, radius: radius)),
+        ..shader = RadialGradient(colors: [color, color.withValues(alpha: 0)])
+            .createShader(Rect.fromCircle(center: centre, radius: radius)),
     );
   }
 
@@ -517,12 +591,7 @@ void paintLivingDepth(
       1,
       Paint()
         ..shader = RadialGradient(
-          colors: [
-            palette.light.withValues(
-              alpha: LivingLight.of(LivingLight.highlight, dark),
-            ),
-            palette.light.withValues(alpha: 0),
-          ],
+          colors: [ink.highlight, ink.highlight.withValues(alpha: 0)],
         ).createShader(Rect.fromCircle(center: Offset.zero, radius: 1)),
     )
     ..restore();
@@ -533,31 +602,17 @@ void paintLivingDepth(
     Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
-      ..color = tint.withValues(
-        alpha: LivingLight.of(LivingLight.innerGlow, dark) * glow,
-      )
+      ..color = ink.innerGlow.withValues(alpha: ink.innerGlow.a * glow)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
   );
 
-  _paintGrain(
-    canvas,
-    rect,
-    seed,
-    dark ? palette.text : palette.shade,
-    LivingLight.of(LivingLight.grain, dark),
-  );
+  _paintGrain(canvas, rect, seed, ink.grain);
   canvas.restore();
 }
 
 /// A faint, fixed grain: about one 1 px dot per 40 square pixels, computed
 /// once per size and seed, so a repaint only draws.
-void _paintGrain(
-  Canvas canvas,
-  Rect rect,
-  int seed,
-  Color color,
-  double alpha,
-) {
+void _paintGrain(Canvas canvas, Rect rect, int seed, Color color) {
   final key = (seed % 64, rect.width.round(), rect.height.round());
   final points = _grainCache.putIfAbsent(key, () {
     if (_grainCache.length > 64) _grainCache.clear();
@@ -574,7 +629,7 @@ void _paintGrain(
     ui.PointMode.points,
     rect.topLeft == Offset.zero ? points : _shifted(points, rect.topLeft),
     Paint()
-      ..color = color.withValues(alpha: alpha)
+      ..color = color
       ..strokeWidth = 1,
   );
 }

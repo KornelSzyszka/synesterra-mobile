@@ -10,7 +10,11 @@ final livingBlobsEnabled = ValueNotifier<bool>(true);
 /// At most this many blobs of one field animate at the same time.
 const maxAnimatedBlobs = 6;
 
-const _maxStep = Duration(milliseconds: 100);
+/// A tick later than this after the previous one ends a pause.
+const _resumeGap = Duration(milliseconds: 250);
+
+/// The motion step taken for the first tick after a pause.
+const _frame = Duration(milliseconds: 16);
 
 /// The shared clock of a [LivingField]: one ticker for every blob in it.
 /// Blobs listen to it only while they animate.
@@ -32,10 +36,10 @@ class LivingClock extends ChangeNotifier {
   Duration get sinceOpen => _sinceOpen;
   Duration _sinceOpen = Duration.zero;
 
-  void _advance(Duration step, double life) {
-    _dt = step.inMicroseconds / Duration.microsecondsPerSecond;
+  void _advance(Duration motion, Duration wall, double life) {
+    _dt = motion.inMicroseconds / Duration.microsecondsPerSecond;
     _time += _dt;
-    _sinceOpen += step;
+    _sinceOpen += wall;
     _life = life;
     notifyListeners();
   }
@@ -142,6 +146,13 @@ class LivingFieldState extends State<LivingField>
   }
 
   @override
+  void didUpdateWidget(LivingField old) {
+    super.didUpdateWidget(old);
+    if (old.cap != widget.cap) _scheduleVisibility();
+    if (old.keepAwake != widget.keepAwake) wake();
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     livingBlobsEnabled.removeListener(_onEnabled);
@@ -183,14 +194,16 @@ class LivingFieldState extends State<LivingField>
   }
 
   void _onTick(Duration elapsed) {
-    // A muted ticker (route covered) keeps its start time; cap the step so
-    // the motion resumes where it paused instead of jumping ahead.
-    var step = elapsed - _lastElapsed;
-    if (step > _maxStep) step = _maxStep;
+    final step = elapsed - _lastElapsed;
     _lastElapsed = elapsed;
-    _sinceWake += step;
+    // A muted ticker (the route was covered) keeps its start time, so the
+    // first tick after it comes back spans the whole pause: the gallery
+    // wakes again and its motion goes on from where it paused.
+    final resumed = step > _resumeGap;
+    if (resumed) _sinceWake = Duration.zero;
+    _sinceWake += resumed ? Duration.zero : step;
     final life = widget.keepAwake ? 1.0 : lifeAmount(_sinceWake);
-    clock._advance(step, life);
+    clock._advance(resumed ? _frame : step, step, life);
     if (life == 0 && !_members.any((m) => m.busy)) _stop();
   }
 
