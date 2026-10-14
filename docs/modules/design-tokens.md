@@ -137,7 +137,9 @@ rendered by a widget test with real fonts, drift at rest):
   as one breath: a single pass over `driftPeriod` that ends where it began, started
   when the screen appears and again by a touch. A screen at rest schedules no
   frames. This also keeps `pumpAndSettle` and the tutorial-clock test (which counts
-  tickers) valid. Library, Learn and the rhythm screen have no ticker of their own.
+  tickers) valid. Learn and the rhythm screen have no ticker of their own; since UX-126 the Library
+  has one shared ticker for its living cards that stops when they rest (see
+  [living-blobs.md](living-blobs.md)).
   The tap effect is the shared `TapGlitch` with the default strength `subtle`; under
   reduce motion it is a fade and nothing drifts.
 - **Left as they were**: dialogs (rename, unsaved changes), snack bars, the popup
@@ -191,6 +193,16 @@ still frame, no
 are now the text colour: a layer number in its own colour on the lit card,
 a section number in gold, and the current section's gold label on the
 strip's gold progress (Autumn).
+
+## Living blobs (UX-126)
+
+The library cards and the mist behind the stat wheel are alive: they morph on
+seeded noise, have drifting depth layers, lean and swell toward a finger on a
+spring, and the mist pulses with the instrument's envelope. One ticker per
+gallery, at most six visible cards animating, rest after 10 s, static depth
+under reduce motion, contrast checked. Details, tests and screenshots:
+[living-blobs.md](living-blobs.md). `OrganicCard(living: true)` opts in; other
+organic cards (Learn, rhythm) are unchanged.
 
 ## Colour roles: three colours, 60 : 30 : 10
 
