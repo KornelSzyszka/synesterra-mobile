@@ -146,10 +146,10 @@ class LivingFieldState extends State<LivingField>
   }
 
   @override
-  void didUpdateWidget(LivingField old) {
-    super.didUpdateWidget(old);
-    if (old.cap != widget.cap) _scheduleVisibility();
-    if (old.keepAwake != widget.keepAwake) wake();
+  void didUpdateWidget(LivingField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.cap != widget.cap) _scheduleVisibility();
+    if (oldWidget.keepAwake != widget.keepAwake) wake();
   }
 
   @override

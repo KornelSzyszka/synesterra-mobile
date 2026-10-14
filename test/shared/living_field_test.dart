@@ -254,6 +254,7 @@ void main() {
     final field = _field(tester);
     expect(_blobs(tester).any((b) => b.listening), isTrue);
     await tester.pumpWidget(const SizedBox());
+    expect(field.mounted, isFalse);
     expect(tester.binding.transientCallbackCount, 0);
     // A late toggle after disposal must not touch the dead field.
     livingBlobsEnabled.value = false;

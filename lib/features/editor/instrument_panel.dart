@@ -5,6 +5,7 @@ import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../shared/instrument_figure/instrument_sound_view.dart';
 import '../../shared/instrument_mist/mist_spec.dart';
+import '../../shared/living_blobs/living_motion.dart';
 import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/design_components.dart';
 import 'envelope_editor.dart';
@@ -478,6 +479,8 @@ class _WheelBody extends StatelessWidget {
                   traits: vm.traits,
                   color: tokens.layerColors[spec.colorIndex],
                   glow: spec,
+                  glowSeed: stableSeed(vm.instrument.id),
+                  pulseToken: vm.auditionCount,
                   preset: vm.activePreset?.name,
                   approximated: vm.approximated,
                   onChanged: vm.setTrait,

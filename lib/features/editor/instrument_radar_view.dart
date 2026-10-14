@@ -2,11 +2,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../shared/instrument_mist/mist_spec.dart';
 import '../../shared/instrument_radar/radar_geometry.dart';
 import '../../shared/instrument_radar/radar_painter.dart';
+import '../../shared/living_blobs/living_mist.dart';
 import '../../shared/theme/ambient_scope.dart';
 import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/round_shapes.dart';
@@ -68,7 +70,11 @@ String describeRadar(
 /// appears and after each change, then rests (no breathing and no glide
 /// under reduce motion). Letting go answers with the polarized tap accent on
 /// the handle, through the shared [FlashGate], and the glow of the
-/// instrument's mist ([glow]) swells once. Screen readers get one adjustable
+/// instrument's mist ([glow]) swells once. The mist is alive (UX-126): it
+/// drifts and morphs at three depths for a while after it appears or is
+/// touched, leans toward the finger dragging a vertex and swells while it is
+/// held (on springs), and pulses with the instrument's envelope each time
+/// [pulseToken] changes (an audition). Screen readers get one adjustable
 /// control per trait, stepping by one rank step, and a description of the
 /// whole shape.
 class InstrumentRadar extends StatefulWidget {
@@ -80,6 +86,8 @@ class InstrumentRadar extends StatefulWidget {
     required this.onRelease,
     this.onStep,
     this.glow,
+    this.glowSeed = 0,
+    this.pulseToken = 0,
     this.preset,
     this.approximated = false,
   });
@@ -91,6 +99,12 @@ class InstrumentRadar extends StatefulWidget {
 
   /// The instrument's mist, drawn as a soft glow behind the chart.
   final MistSpec? glow;
+
+  /// Seeds the mist's motion, so each instrument moves its own way.
+  final int glowSeed;
+
+  /// Every change plays the mist's pulse with the [glow]'s envelope.
+  final int pulseToken;
 
   /// The name of the preset the shape matches, for the description.
   final String? preset;
@@ -153,6 +167,11 @@ class _InstrumentRadarState extends State<InstrumentRadar>
     duration: InstrumentRadar.swell,
   );
 
+  /// The mist's motion and the one ticker that drives it while it moves.
+  final LivingMist _mist = LivingMist();
+  late final Ticker _mistTicker = createTicker(_onMistTick);
+  Duration _mistLast = Duration.zero;
+
   late List<double> _from = _snapped(widget.traits);
   late List<double> _to = _from;
   bool _reduceMotion = false;
@@ -211,15 +230,56 @@ class _InstrumentRadarState extends State<InstrumentRadar>
         ..stop()
         ..value = 0;
       _glide.value = 1;
+      _mistTicker.stop();
     } else {
       _breathe();
+      _mist.wake();
+      _runMist();
     }
+  }
+
+  /// Runs the mist's ticker while it has motion to show.
+  void _runMist() {
+    if (_reduceMotion || widget.glow == null || _mist.resting) return;
+    if (_mistTicker.isActive) return;
+    _mistLast = Duration.zero;
+    _mistTicker.start();
+  }
+
+  void _onMistTick(Duration elapsed) {
+    var step = elapsed - _mistLast;
+    _mistLast = elapsed;
+    // The first tick after the route was covered spans the whole pause.
+    if (step > const Duration(milliseconds: 250)) {
+      step = const Duration(milliseconds: 16);
+    }
+    _mist.tick(step);
+    if (_mist.resting) _mistTicker.stop();
+  }
+
+  /// The mist leans toward a finger at [local] on the wheel.
+  void _touchMist(Offset local, WheelLayout layout) {
+    if (_reduceMotion) return;
+    final reach = layout.reach <= 0 ? 1.0 : layout.reach;
+    _mist.touch((local - layout.centre) / reach);
+    _runMist();
+  }
+
+  void _releaseMist() {
+    if (_reduceMotion) return;
+    _mist.release();
+    _runMist();
   }
 
   @override
   void didUpdateWidget(InstrumentRadar old) {
     super.didUpdateWidget(old);
     _sentSteps.clear();
+    final glow = widget.glow;
+    if (old.pulseToken != widget.pulseToken && glow != null && !_reduceMotion) {
+      _mist.pulseWith(glow.attack, glow.decay);
+      _runMist();
+    }
     final next = _snapped(widget.traits);
     if (listEquals(next, _to)) return;
     if (_reduceMotion || next.length != _to.length) {
@@ -243,6 +303,8 @@ class _InstrumentRadarState extends State<InstrumentRadar>
     _breath.dispose();
     _flash.dispose();
     _swell.dispose();
+    _mistTicker.dispose();
+    _mist.dispose();
     super.dispose();
   }
 
@@ -436,6 +498,8 @@ class _InstrumentRadarState extends State<InstrumentRadar>
                               spec: glow,
                               color: widget.color,
                               swell: _reduceMotion ? null : _swell,
+                              motion: _reduceMotion ? null : _mist,
+                              motionSeed: widget.glowSeed,
                               textScale: textScale,
                             ),
                           ),
@@ -446,10 +510,22 @@ class _InstrumentRadarState extends State<InstrumentRadar>
                 Positioned.fill(
                   child: ExcludeSemantics(
                     child: ImmediatePanDetector(
-                      onDown: (local) => _down(local, size, reach),
-                      onUpdate: (local) => _move(local, size, reach),
-                      onEnd: () => _up(size, reach),
-                      onCancel: _cancel,
+                      onDown: (local) {
+                        _touchMist(local, layout);
+                        _down(local, size, reach);
+                      },
+                      onUpdate: (local) {
+                        _touchMist(local, layout);
+                        _move(local, size, reach);
+                      },
+                      onEnd: () {
+                        _releaseMist();
+                        _up(size, reach);
+                      },
+                      onCancel: () {
+                        _releaseMist();
+                        _cancel();
+                      },
                       child: Stack(
                         children: [
                           RepaintBoundary(
