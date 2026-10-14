@@ -1,6 +1,8 @@
-# Design lab (debug only)
+# Design lab (unreachable from the app)
 
-A debug-only screen that renders **the same components** in three visual
+**Status (AGT-138, Founder request):** the lab is no longer reachable from the app. The Start-screen long press, the route and the `debugHideDesignLab` flag were removed from `lib/app/` and `HomeView`. The code in `lib/features/design_lab/` and its tests stay, so the variants are not lost. To look at the lab again, add a temporary route to `DesignLabView` in a local build; nothing in the shipped app does.
+
+A former debug-only screen that renders **the same components** in three visual
 directions, so the Founder can compare them on a phone and pick one or a blend.
 Brief (Founder, 2026-10-13): round shapes (circles and soft organic curves, not
 rounded rectangles), minimal (few elements, much space, almost no chrome) and a
@@ -40,13 +42,7 @@ the lab follows the app palette.
 
 ## How to open it
 
-1. `flutter run -d <device>` (a debug build; `flutter build apk --debug` and
-   install also works).
-2. On the Start screen, **long-press the title "◉ synesterra"**.
-3. In release builds the long press does nothing: the entry and the route are
-   behind the compile-time constant `kDebugMode` in `lib/app/`, so release
-   drops the lab. Tests simulate release with the test-only
-   `SynesterraApp(debugHideDesignLab: true)`, which can only hide the lab.
+It cannot be opened from the app (AGT-138). Until then, a debug build opened it with a long press on the Start screen title; the entry, the route and the test-only `debugHideDesignLab` flag were removed. `test/features/design_lab/` still builds `DesignLabView` directly.
 
 Top of the lab: back, the ground switch (sun / moon icon: dark or light),
 the switch **Blend · Glass · Organic · Material** (the lab opens on the Blend), the **Tap flash** strength

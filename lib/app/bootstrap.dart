@@ -10,7 +10,6 @@ import '../data/repositories/impl/engine_playback_repository.dart';
 import '../data/repositories/impl/file_arrangement_library_repository.dart';
 import '../data/repositories/impl/file_instrument_library_repository.dart';
 import '../data/repositories/impl/file_loop_library_repository.dart';
-import '../data/repositories/impl/soloud_spike_repository.dart';
 import '../data/services/instrument_file_store.dart';
 import '../data/services/json_file_store.dart';
 import 'synesterra_app.dart';
@@ -36,7 +35,6 @@ Future<Widget> createApp() async {
     instrumentLibrary: library,
     loopLibrary: loops,
     arrangementLibrary: arrangements,
-    audioSpikeRepositoryFactory: SoloudSpikeRepository.new,
     // The engine starts on the first audition, never at launch.
     instrumentAudition: EngineInstrumentAuditionRepository(
       SoloudAuditionEngine(),

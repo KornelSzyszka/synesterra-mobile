@@ -20,8 +20,6 @@ class HomeView extends StatelessWidget {
     required this.onOpenEditor,
     required this.onOpenLibrary,
     required this.onOpenTraining,
-    this.onOpenAudioSpike,
-    this.onOpenDesignLab,
     this.palette = SynesterraPalette.graphite,
     this.onPaletteChanged,
   });
@@ -29,10 +27,6 @@ class HomeView extends StatelessWidget {
   final VoidCallback onOpenEditor;
   final VoidCallback onOpenLibrary;
   final VoidCallback onOpenTraining;
-  final VoidCallback? onOpenAudioSpike;
-
-  /// Debug builds only: a long press on the title opens the design lab.
-  final VoidCallback? onOpenDesignLab;
   final SynesterraPalette palette;
   final ValueChanged<SynesterraPalette>? onPaletteChanged;
 
@@ -63,7 +57,7 @@ class HomeView extends StatelessWidget {
                   Row(
                     children: [
                       const SizedBox(width: 48),
-                      Expanded(child: _Title(onLongPress: onOpenDesignLab)),
+                      Expanded(child: const _Title()),
                       SizedBox(
                         width: 48,
                         child: onPaletteChanged == null
@@ -124,14 +118,6 @@ class HomeView extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (onOpenAudioSpike != null) ...[
-                    const SizedBox(height: Space.xl),
-                    TactileChip(
-                      key: const Key('home-audio-spike'),
-                      label: 'Audio spike',
-                      onPressed: onOpenAudioSpike,
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -142,22 +128,16 @@ class HomeView extends StatelessWidget {
   }
 }
 
-/// The title with a soft gold glow. A long press opens the design lab in a
-/// debug build.
+/// The title with a soft gold glow.
 class _Title extends StatelessWidget {
-  const _Title({required this.onLongPress});
-
-  final VoidCallback? onLongPress;
+  const _Title();
 
   @override
   Widget build(BuildContext context) {
     final palette = groundOf(context);
     return Semantics(
-      onLongPressHint: onLongPress == null ? null : 'open design lab',
-      child: GestureDetector(
+      child: KeyedSubtree(
         key: const Key('home-title'),
-        behavior: HitTestBehavior.opaque,
-        onLongPress: onLongPress,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 48),
           child: Center(

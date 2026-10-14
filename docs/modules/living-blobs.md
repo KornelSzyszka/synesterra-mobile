@@ -62,7 +62,9 @@ are light and tint. `livingFillSamples` stacks every ink at its strongest
 (pressed glow included) and a test checks that text and secondary text keep
 4.5:1 for every palette, ground, aura and tint.
 
-## Compare it in the design lab (debug only)
+## Compare it in the design lab (unreachable from the app since AGT-138)
+
+The lab code and its tests are kept, but nothing in the app opens it; the steps below need a temporary route to `DesignLabView`.
 
 The lab's top bar has **Blobs: Flat · Living** (`livingBlobsEnabled`, living
 by default in every build; only the lab can switch it). It flips the lab's

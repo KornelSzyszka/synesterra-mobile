@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
@@ -11,14 +10,11 @@ import '../data/repositories/instrument_library_repository.dart';
 import '../data/repositories/loop.dart';
 import '../data/repositories/loop_library_repository.dart';
 import '../data/repositories/playback_repository.dart';
-import '../data/repositories/audio_spike_repository.dart';
 import '../features/editor/editor_view.dart';
 import '../features/home/home_view.dart';
 import '../features/arrangement/arrangement_panel.dart';
 import '../features/training/training_view.dart';
 import '../features/library/library_view.dart';
-import '../features/audio_spike/audio_spike_view.dart';
-import '../features/design_lab/design_lab_view.dart';
 import '../shared/theme/synesterra_theme.dart';
 import 'step_feedback.dart';
 
@@ -27,12 +23,10 @@ class SynesterraApp extends StatefulWidget {
     super.key,
     required this.instrumentLibrary,
     required this.instrumentAudition,
-    this.audioSpikeRepositoryFactory,
     this.loopLibrary,
     this.arrangementLibrary,
     this.playback,
     this.stepFeedback = hapticStepFeedback,
-    @visibleForTesting this.debugHideDesignLab = false,
     @visibleForTesting this.showArrangement = false,
   });
 
@@ -43,7 +37,6 @@ class SynesterraApp extends StatefulWidget {
   /// that do not care), an empty in-memory library is used.
   final LoopLibraryRepository? loopLibrary;
   final ArrangementLibraryRepository? arrangementLibrary;
-  final AudioSpikeRepository Function()? audioSpikeRepositoryFactory;
 
   /// The bootstrap passes the engine; when omitted, a silent stand-in.
   final PlaybackRepository? playback;
@@ -51,10 +44,6 @@ class SynesterraApp extends StatefulWidget {
   /// The light tick of the Instrument wheel on each snapped step: the
   /// platform's selection click unless a test gives its own.
   final VoidCallback stepFeedback;
-
-  /// Tests only: hides the design lab as a release build would. It can only
-  /// hide the lab; nothing can show it outside a debug build ([kDebugMode]).
-  final bool debugHideDesignLab;
 
   /// Arrangements are shelved (Founder, 2026-10-14); only tests turn them on.
   final bool showArrangement;
@@ -156,24 +145,6 @@ class _SynesterraAppState extends State<SynesterraApp> {
                 builder: (_) => TrainingView(playback: _playback),
               ),
             ),
-            // Both the entry and the route sit behind the compile-time
-            // constant, so a release build drops the lab entirely.
-            onOpenDesignLab: kDebugMode && !widget.debugHideDesignLab
-                ? () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const DesignLabView(),
-                    ),
-                  )
-                : null,
-            onOpenAudioSpike: widget.audioSpikeRepositoryFactory == null
-                ? null
-                : () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => AudioSpikeView(
-                        repository: widget.audioSpikeRepositoryFactory!(),
-                      ),
-                    ),
-                  ),
           );
         },
       ),

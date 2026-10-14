@@ -10,7 +10,7 @@ Turns a `SessionDocument` (scene A), or a sequence of them, into sound through t
 | `EnginePlaybackRepository` | `lib/data/repositories/impl/engine_playback_repository.dart` | Commands, instrument resolution, buffers, voice cap, status and position |
 | `NoopPlaybackRepository` | `lib/data/repositories/impl/noop_playback_repository.dart` | Silent stand-in for view tests and previews |
 | `SequenceTransport` | `lib/data/audio/sequence_transport.dart` | Tempo map, generation, beat timeline of section runs; the scheduler's state and event source |
-| `PlaybackEngine`, `SoloudPlaybackEngine` | `lib/data/audio/playback_engine.dart`, `soloud_playback_engine.dart` | The ports plus lifecycle, buffers and voice cap, built from the spike's `SoloudAudioClock` and `SoloudVoiceSink` |
+| `PlaybackEngine`, `SoloudPlaybackEngine` | `lib/data/audio/playback_engine.dart`, `soloud_playback_engine.dart` | The ports plus lifecycle, buffers and voice cap, built from the earlier spike's `SoloudAudioClock` and `SoloudVoiceSink` |
 | `flutterSoloudPlaybackEngine()` | `lib/data/audio/soloud_plugin_binding.dart` | The only file with plugin types |
 
 Composition for the UI task: `EnginePlaybackRepository(engine: flutterSoloudPlaybackEngine(), instruments: <InstrumentLibraryRepository>)`. `lib/app/bootstrap.dart` composes one instance and `SynesterraApp` passes it to the Editor, where the Loop and Arrangement panels share it. Nothing starts the engine before the first Play.
@@ -93,7 +93,7 @@ Gain staging (placeholders until the `musical` gate): `velocity × layer gain ×
 - **Generation rule:** the transport increments the generation on start, stop, tempo, structure and section switch; `PlaybackScheduler` cancels on every change except a section handover; `SoloudVoiceSink` drops batches older than its cutoff and stops pending older handles.
 - **Inverse rebase and late drop:** unchanged spike code. `SoloudVoiceSink` converts each event with `engineAt = event.at − offset` from the same `SoloudAudioClock` snapshot it uses to drop events already late against that snapshot, before `playScheduled`.
 - **Voice cap:** `concurrentVoiceLimit` from the program (layers, densest layer in hits per quarter, longest recipe ring capped at 6 s, BPM, 200 ms horizon, 8 audition voices); `setVoiceLimit` reads back the accepted value and Play fails with an error state if SoLoud did not accept it. A program that would need 1023 or more voices is capped at 1022 and reported as `voiceLimitSaturated`.
-- **Shared engine:** audition and playback share `SoLoud.instance`; playback never deinitializes it. If another owner deinitialized it (for example the spike screen on close), the next Play detects the lost sources and loads the buffers again.
+- **Shared engine:** audition and playback share `SoLoud.instance`; playback never deinitializes it. If another owner deinitialized it (the removed spike screen did so on close), the next Play detects the lost sources and loads the buffers again.
 
 ## Evidence and what is not measured
 
@@ -103,4 +103,4 @@ Unit tests with a fake clock, fake sink and fake engine (`test/data/engine_playb
 
 - Per-section tempo in a sequence needs a piecewise `TempoMap` in the core; today one tempo plays the whole sequence.
 - Interruptions, audio focus and background are not handled here yet (ADR 0002 lifecycle table); the UI should stop playback when the app leaves the foreground.
-- If the spike screen re-initializes SoLoud while playback is running, playback goes silent until the next Play.
+- The spike screen that could re-initialize SoLoud was removed (AGT-138); if another owner ever deinitializes it while playback is running, playback goes silent until the next Play.
