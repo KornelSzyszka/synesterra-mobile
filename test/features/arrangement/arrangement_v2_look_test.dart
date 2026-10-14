@@ -72,6 +72,14 @@ void main() {
       'arrangement-save',
       'arrangement-add-section',
     ]) {
+      // The ring (UX-123) pushes the last chip below the first screen.
+      await tester.scrollUntilVisible(
+        find.byKey(Key(key)),
+        200,
+        scrollable: find
+            .descendant(of: panel, matching: find.byType(Scrollable))
+            .first,
+      );
       expect(tester.widget(find.byKey(Key(key))), isA<TactileChip>());
     }
     for (final key in ['section-remove-0', 'section-up-1', 'section-down-0']) {
@@ -124,8 +132,35 @@ void main() {
         expect(rect.right, lessThanOrEqualTo(320), reason: key);
         expect(rect.width, greaterThanOrEqualTo(48), reason: key);
       }
+      final ring = tester.getRect(
+        find.byKey(const ValueKey('arrangement-ring-canvas')),
+      );
+      expect(ring.left, greaterThanOrEqualTo(0));
+      expect(ring.right, lessThanOrEqualTo(320));
     });
   }
+
+  testWidgets('a wide screen puts the ring beside the controls', (
+    tester,
+  ) async {
+    await _pumpPanel(tester, size: const Size(800, 600), ratio: 1);
+    final ring = tester.getRect(find.byKey(const Key('arrangement-ring')));
+    final transport = tester.getRect(
+      find.byKey(const Key('arrangement-transport')),
+    );
+    expect(ring.left, greaterThan(transport.right));
+    expect(ring.right, lessThanOrEqualTo(800));
+    expect(find.byKey(const Key('section-0')), findsOneWidget);
+  });
+
+  testWidgets('a phone puts the ring under the controls', (tester) async {
+    await _pumpPanel(tester);
+    final ring = tester.getRect(find.byKey(const Key('arrangement-ring')));
+    final transport = tester.getRect(
+      find.byKey(const Key('arrangement-transport')),
+    );
+    expect(ring.top, greaterThan(transport.bottom));
+  });
 
   testWidgets('every control is 48 dp and labelled', (tester) async {
     final semantics = tester.ensureSemantics();
