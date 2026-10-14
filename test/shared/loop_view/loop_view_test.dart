@@ -176,8 +176,11 @@ void main() {
       mode: LoopViewMode.polygons,
     );
     final size = tester.getSize(find.byKey(const ValueKey('loop-canvas')));
-    final cell = polygonCells(size, 2).first;
-    final vertices = polygonVertices(cell.center, polygonRadius(cell), 3);
+    final vertices = polygonVertices(
+      size.center(Offset.zero),
+      polygonLayerRadius(0, 2, polygonOuterRadius(size)),
+      3,
+    );
 
     source.set(playing: true, cyclePosition: 0);
     await tester.pump();
@@ -188,6 +191,29 @@ void main() {
     await tester.pump();
     final dotHalf = polygonDotPoint(vertices, 0.5);
     expect(canvasRender(tester), drawsCircle(dotHalf));
+  });
+
+  testWidgets('polygons are nested around one shared centre', (tester) async {
+    final source = FakePositionSource();
+    await pumpView(
+      tester,
+      state: state32(),
+      source: source,
+      mode: LoopViewMode.polygons,
+    );
+    final size = tester.getSize(find.byKey(const ValueKey('loop-canvas')));
+    final center = size.center(Offset.zero);
+    final outer = polygonOuterRadius(size);
+    final second = polygonVertices(center, polygonLayerRadius(1, 2, outer), 2);
+    source.set(playing: true, cyclePosition: 0);
+    await tester.pump();
+    // Both layers meet at the top; the second one lies inside the first.
+    expect(canvasRender(tester), drawsCircle(second.first));
+    expect(second.first.dx, center.dx);
+    expect(
+      (second.first - center).distance,
+      lessThan(polygonLayerRadius(0, 2, outer)),
+    );
   });
 
   testWidgets('semantics describe the loop and the state in words', (

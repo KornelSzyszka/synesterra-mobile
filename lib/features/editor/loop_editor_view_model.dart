@@ -32,7 +32,9 @@ class LoopEditorViewModel extends ChangeNotifier {
     Loop? loop,
     bool existing = false,
     int? firstRollSeed,
-  }) : _nextRollSeed = firstRollSeed ?? math.Random().nextInt(1 << 32) {
+    Duration Function()? clock,
+  }) : _nextRollSeed = firstRollSeed ?? math.Random().nextInt(1 << 32),
+       _clock = clock ?? _stopwatchClock() {
     checkRandomSeed(_nextRollSeed, 'firstRollSeed');
     _load(loop ?? factoryLoops.first, existing: existing);
     _instruments.snapshot.addListener(notifyListeners);
@@ -221,6 +223,29 @@ class LoopEditorViewModel extends ChangeNotifier {
   void setTempo(int bpm) {
     if (bpm < edits.minLoopTempo || bpm > edits.maxLoopTempo) return;
     _apply(edits.setLoopTempo(_document, bpm));
+  }
+
+  // Tap tempo.
+
+  /// The time of a tap. The core calculator reads no clock; this is the
+  /// panel's (a stopwatch, so wall-clock changes cannot disturb it).
+  final Duration Function() _clock;
+
+  static Duration Function() _stopwatchClock() {
+    final stopwatch = Stopwatch()..start();
+    return () => stopwatch.elapsed;
+  }
+
+  final TapTempo _tapTempo = TapTempo(
+    minBpm: edits.minLoopTempo,
+    maxBpm: edits.maxLoopTempo,
+  );
+
+  /// One tap of the tempo button: from the third tap in a row (taps less
+  /// than two seconds apart) the tempo follows the average interval.
+  void tapTempo() {
+    final bpm = _tapTempo.tap(_clock());
+    if (bpm != null) setTempo(bpm);
   }
 
   void setCycleBeats(int beats) {

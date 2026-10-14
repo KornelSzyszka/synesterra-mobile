@@ -37,6 +37,16 @@ class StepGrid extends StatefulWidget {
   final Color color;
   final ValueChanged<int> onToggle;
 
+  /// Hits per row: the grid wraps here, however wide the screen is.
+  static const hitsPerRow = 4;
+
+  /// The cell size, 48 dp, and the gap between cells.
+  static const cellSize = 48.0;
+  static const gap = Space.xs;
+
+  /// The widest a row of [hitsPerRow] cells gets.
+  static const maxRowWidth = hitsPerRow * cellSize + (hitsPerRow - 1) * gap;
+
   @override
   State<StepGrid> createState() => _StepGridState();
 }
@@ -79,23 +89,29 @@ class _StepGridState extends State<StepGrid>
     final mode = _mode;
     final amount = AmbientScope.tapStrengthOf(context).amount;
     return RepaintBoundary(
-      child: Wrap(
-        spacing: Space.xs,
-        runSpacing: Space.xs,
-        children: [
-          for (var s = 0; s < widget.marks.length; s++)
-            StepCell(
-              key: Key('step-${widget.layerIndex}-$s'),
-              label: '${widget.layerLabel}, hit ${s + 1}',
-              mark: widget.marks[s],
-              color: widget.color,
-              palette: palette,
-              onTap: () => _tap(s),
-              glitch: _flashing == s && mode != GlitchMode.none
-                  ? (flash: _flash, mode: mode, amount: amount, seed: _seed)
-                  : null,
-            ),
-        ],
+      child: Align(
+        alignment: AlignmentDirectional.topStart,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: StepGrid.maxRowWidth),
+          child: Wrap(
+            spacing: StepGrid.gap,
+            runSpacing: StepGrid.gap,
+            children: [
+              for (var s = 0; s < widget.marks.length; s++)
+                StepCell(
+                  key: Key('step-${widget.layerIndex}-$s'),
+                  label: '${widget.layerLabel}, hit ${s + 1}',
+                  mark: widget.marks[s],
+                  color: widget.color,
+                  palette: palette,
+                  onTap: () => _tap(s),
+                  glitch: _flashing == s && mode != GlitchMode.none
+                      ? (flash: _flash, mode: mode, amount: amount, seed: _seed)
+                      : null,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -153,7 +169,7 @@ class _StepCellState extends State<StepCell> {
       onTapCancel: () => _set(false),
       onTap: widget.onTap,
       child: SizedBox.square(
-        dimension: 48,
+        dimension: StepGrid.cellSize,
         child: CustomPaint(
           painter: StepPainter(
             surfaces: Surfaces(widget.palette),

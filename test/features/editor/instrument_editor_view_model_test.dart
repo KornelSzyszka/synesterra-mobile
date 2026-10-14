@@ -42,17 +42,96 @@ void main() {
   InstrumentEditorViewModel create({
     Instrument? instrument,
     bool existing = false,
+    int? firstRollSeed,
   }) => InstrumentEditorViewModel(
     repository: repository,
     audition: NoopInstrumentAuditionRepository(),
     instrument: instrument,
     existing: existing,
     newId: newId,
+    firstRollSeed: firstRollSeed,
   );
 
   setUp(() {
     repository = InMemoryInstrumentLibraryRepository();
     counter = 0;
+  });
+
+  group('randomize', () {
+    test(
+      'a roll sets the seeded traits, keeps id and name, marks it dirty',
+      () {
+        final vm = create(
+          instrument: stored(),
+          existing: true,
+          firstRollSeed: 5,
+        );
+        expect(vm.canUndoRandomize, isFalse);
+        vm.randomize();
+        final traits = randomInstrumentTraits(seed: 5);
+        expect(vm.traits, traits);
+        expect(
+          vm.instrument,
+          instrumentForTraits(traits, id: 'mine-1', name: 'Mine'),
+        );
+        expect(vm.approximated, isFalse);
+        expect(vm.dirty, isTrue);
+        expect(vm.canUndoRandomize, isTrue);
+      },
+    );
+
+    test('the next roll takes the next seed, wrapping inside uint32', () {
+      final vm = create(firstRollSeed: 0xffffffff);
+      vm
+        ..randomize()
+        ..randomize();
+      expect(vm.traits, randomInstrumentTraits(seed: 0));
+    });
+
+    test('the roll plays the new sound once', () {
+      final vm = create(firstRollSeed: 1);
+      final before = vm.auditionCount;
+      vm.randomize();
+      expect(vm.auditionCount, before + 1);
+    });
+
+    test('undo steps back through every roll to the exact original', () {
+      final original = stored();
+      final vm = create(instrument: original, existing: true, firstRollSeed: 9);
+      vm.randomize();
+      final first = vm.instrument;
+      vm
+        ..randomize()
+        ..undoRandomize();
+      expect(vm.instrument, first);
+      expect(vm.canUndoRandomize, isTrue);
+      vm.undoRandomize();
+      expect(vm.instrument, original);
+      expect(vm.dirty, isFalse);
+      expect(vm.canUndoRandomize, isFalse);
+      vm.undoRandomize(); // nothing left
+      expect(vm.instrument, original);
+    });
+
+    test('undo keeps the name and tags as they are now', () {
+      final vm = create(instrument: stored(), existing: true, firstRollSeed: 2)
+        ..randomize()
+        ..setName('Renamed');
+      vm.addTag('warm');
+      vm.undoRandomize();
+      expect(vm.instrument.name, 'Renamed');
+      expect(vm.tags, ['warm']);
+    });
+
+    test('starting from a preset forgets the rolls', () {
+      final vm = create(firstRollSeed: 2)..randomize();
+      vm.startFrom(factoryInstruments.first);
+      expect(vm.canUndoRandomize, isFalse);
+    });
+
+    test('rejects a first seed outside uint32', () {
+      expect(() => create(firstRollSeed: -1), throwsArgumentError);
+    });
   });
 
   group('starting', () {

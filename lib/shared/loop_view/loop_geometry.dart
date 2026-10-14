@@ -112,19 +112,13 @@ class TimelineLayout {
   double rowCenterY(int layerIndex) => top + rowHeight * (layerIndex + 0.5);
 }
 
-/// One cell per layer for the polygons view: one column for one layer, two
-/// columns from two, filled row by row.
-List<Rect> polygonCells(Size size, int layerCount) {
-  final columns = layerCount <= 1 ? 1 : 2;
-  final rows = (layerCount + columns - 1) ~/ columns;
-  final w = size.width / columns;
-  final h = size.height / rows;
-  return [
-    for (var i = 0; i < layerCount; i++)
-      Rect.fromLTWH((i % columns) * w, (i ~/ columns) * h, w, h),
-  ];
-}
+/// The outer polygon radius of the polygons view in [size]: the layers'
+/// polygons are nested around one centre ([Size.center]), and the outermost
+/// fits with room for the number and the dot.
+double polygonOuterRadius(Size size) =>
+    math.max(1, size.shortestSide / 2 - Space.xl);
 
-/// The polygon radius that fits [cell] with room for the number and the dot.
-double polygonRadius(Rect cell) =>
-    math.max(1, cell.shortestSide / 2 - Space.xl);
+/// The radius of layer [layerIndex]'s polygon: the first layer is outermost,
+/// the others step inwards like the rings of the circle view ([ringRadius]).
+double polygonLayerRadius(int layerIndex, int layerCount, double outerRadius) =>
+    ringRadius(layerIndex, layerCount, outerRadius);
