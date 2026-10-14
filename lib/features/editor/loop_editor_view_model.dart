@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:synesterra_core/synesterra_core.dart';
@@ -30,7 +31,9 @@ class LoopEditorViewModel extends ChangeNotifier {
     required this._playback,
     Loop? loop,
     bool existing = false,
-  }) {
+    int? firstRollSeed,
+  }) : _nextRollSeed = firstRollSeed ?? math.Random().nextInt(1 << 32) {
+    checkRandomSeed(_nextRollSeed, 'firstRollSeed');
     _load(loop ?? factoryLoops.first, existing: existing);
     _instruments.snapshot.addListener(notifyListeners);
     _playback.status.addListener(_onStatus);
@@ -75,6 +78,7 @@ class LoopEditorViewModel extends ChangeNotifier {
     _name = loop.name;
     _persisted = keep;
     _saveError = null;
+    _beforeRoll = null;
   }
 
   /// The loop as edited, under the last valid name.
@@ -230,9 +234,49 @@ class LoopEditorViewModel extends ChangeNotifier {
     if (canRemoveLayer) _apply(edits.removeLoopLayer(_document, index));
   }
 
-  void _apply(SessionDocument next) {
+  // Randomize.
+
+  /// The seed of the next roll; each roll takes the next one (uint32, so it
+  /// wraps). Random per panel unless given, which makes tests exact.
+  int _nextRollSeed;
+
+  /// The document before the last roll, while that roll can be undone.
+  SessionDocument? _beforeRoll;
+
+  bool get canUndoRandomize => _beforeRoll != null;
+
+  /// Replaces the loop with a random one from the core generator
+  /// (docs/modules/randomizer.md), drawn from the factory instruments and
+  /// mine. It is an unsaved change like any edit: the id and the name stay,
+  /// nothing starts playing, and a loop that plays restarts with it.
+  void randomize() {
+    final seed = _nextRollSeed;
+    _nextRollSeed = (seed + 1) & maxRandomSeed;
+    _apply(
+      randomLoopDocument(
+        seed: seed,
+        instrumentIds: [
+          for (final instrument in availableInstruments) instrument.id,
+        ],
+        title: _document.title,
+      ),
+      undo: _document,
+    );
+  }
+
+  /// Back to the loop from before the last roll. Only right after a roll:
+  /// any other edit, or another loop, ends the chance.
+  void undoRandomize() {
+    final before = _beforeRoll;
+    if (before != null) _apply(before);
+  }
+
+  /// Every change of the document goes through here. [undo] is what a roll
+  /// replaced; any other change forgets it.
+  void _apply(SessionDocument next, {SessionDocument? undo}) {
     if (next == _document) return;
     _document = next;
+    _beforeRoll = undo;
     notifyListeners();
     if (playing) _send();
   }
