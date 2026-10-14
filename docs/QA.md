@@ -317,7 +317,7 @@ Notes for this Windows host:
 - JDK 17 or 21 only (see [testing](testing.md)).
 - `D:\SynesterraBuilds\synesterra-pad-debug.apk` may exist, but it is the older pad-only build from before the loop, arrangement and Learn work. Do not install it for this review; build a fresh APK from the commit under review and write that commit hash in the result.
 - Use the phone, not the agent emulator `emulator-5560`, for anything about sound or feel. Never touch the Founder's emulator `emulator-5554`.
-- The app opens on the start screen and never plays by itself. The first sound comes from the first Play, a lift on the instrument radar, a preset chip or a test sound.
+- The app opens on the start screen and never plays by itself. The first sound comes from the first Play, a lift on the instrument wheel or a test sound.
 
 ### What ran and what it proves
 
@@ -337,7 +337,7 @@ The flows, as tests:
 1. Create a loop (the Editor's Loop panel starts from a copy of the factory 3:2 loop), switch a step off, Play (the engine starts only then; the first cycle holds exactly the edited number of hits), Stop (engine stopped, nothing pending, silent), Save, go to Library > Loops, tap the loop (it opens in place with the saved step state and name).
 2. Arrangement: add 3:2 and 5:4 from the picker, Save, Play. The section index is 0, moves to 1 after the first section's repeats (timed on the fake clock), both layers of the second loop sound, the sequence ends by itself and the engine stops. The saved arrangement opens from Library > Arrangements.
 3. Learn: open "Four against five (5:4)", press Try it. The Loop panel shows that lesson's 5:4 loop as an unsaved copy (the library is still empty), and it plays 5 + 4 hits in the first cycle.
-4. Instrument: shape a sound on the radar (drag a vertex, or pick a preset chip), name it, Save (the lift sounds once, the saved sound is the shape on screen), choose it as layer 1's sound in a loop, Play. The engine renders a buffer for exactly that sound and nothing is reported as a missing sound.
+4. Instrument: shape a sound on the stat wheel (drag a vertex along its spoke), name it, Save (the lift sounds once, the saved sound is the shape on screen), choose it as layer 1's sound in a loop, Play. The engine renders a buffer for exactly that sound and nothing is reported as a missing sound.
 
 Mutation check of the flow tests: with the loop save made a no-op, with the sequence reporting section 0 forever, and with Try it ignoring the lesson's loop, the matching flow failed each time (one mutation per run, then reverted).
 
@@ -371,10 +371,11 @@ Each flow: steps, then the expected result. Anything else is a finding; write it
 
 **Flow 4. Shape an instrument and use it**
 
-1. Editor > Instrument tab. Drag a vertex of the radar along its axis, then lift the finger. Expected: only that point moves, the mist changes under the finger and the sound plays once on lift. Tap a preset chip: the shape glides there and the sound plays once.
-2. Type a name, Save. Expected: "Saved".
-3. Loop tab, tap a layer's sound, pick your instrument, Play. Expected: that layer uses your sound (not silence, not "missing sound").
-4. Library > Instruments lists it.
+1. Editor > Instrument tab. Expected: only the name (a title), the stat wheel (trait names along the outer ring, rank letters E to A beside the top spoke, a hexagon at C for a new instrument) and one round Save button; no sliders, chips or hint text.
+2. Drag a vertex along its spoke, then lift the finger. Expected: only that point moves, along its spoke only; it snaps step by step (ten steps from the centre, E to A+) with a light haptic tick per step and none while it stays within a step; the glow behind the wheel changes under the finger; the sound plays once on lift. Dragging past the edge stops at A+, through the centre at the centre.
+3. Tap the name, type a new one, press Done, tap Save. Expected: a "Saved" message and Save turns quiet.
+4. Loop tab, tap a layer's sound, pick your instrument, Play. Expected: that layer uses your sound (not silence, not "missing sound").
+5. Library > Instruments lists it.
 
 ### Listening and looking checklist (Founder)
 
@@ -389,7 +390,7 @@ Listening:
 - Editing while playing (steps, instrument, note): is the restart at the cycle start audible as a glitch, or clean?
 - Volume slider while playing: does the change arrive quickly or only after a moment? (Known: only new hits follow it.)
 - Arrangement: the change from one section to the next is on the beat, with no gap and no double hit. Which tempo does the second section play at? (See known issues.)
-- Radar: does each axis change what its name says (Brightness, Fullness, Warmth, Air, Softness, Length), from the centre to the edge, in a useful range; is any end too harsh or too quiet? Does every lift sound exactly once, and does an interrupted drag (a call, a system swipe) stay silent? Do the presets ("neutral", "warm drone", "airy pad", "bass", "guitar", "click") sound like their names, and does the glide to them feel calm?
+- Radar: does each axis change what its name says (Brightness, Fullness, Warmth, Air, Softness, Length), from the centre to the edge, in a useful range; is any end too harsh or too quiet? Does every lift sound exactly once, and does an interrupted drag (a call, a system swipe) stay silent? Are the ten steps easy to hit, does the snapping and its haptic tick feel light, and are the rank letters and the names on the ring readable (also with larger system text)?
 - The three factory instruments (wood, bell, sine) at the default pitches: balanced against each other? Any clipping or distortion with 3-4 layers?
 - Interruptions: an incoming call or notification, the screen lock, switching apps. Does sound stop safely, and does Play start cleanly afterwards?
 
