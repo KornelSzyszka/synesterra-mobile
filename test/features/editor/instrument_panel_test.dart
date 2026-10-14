@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:synesterra/app/synesterra_app.dart';
 import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_repository.dart';
 import 'package:synesterra/data/repositories/impl/noop_instrument_audition_repository.dart';
+import 'package:synesterra/features/editor/instrument_editor_view_model.dart';
 import 'package:synesterra/features/editor/instrument_panel.dart';
+import 'package:synesterra_core/synesterra_core.dart';
 
 late InMemoryInstrumentLibraryRepository repository;
 
@@ -11,6 +13,9 @@ Future<void> openEditor(WidgetTester tester) async {
   // The technical controls are hidden in v1; these tests still cover them.
   showTechnicalControls = true;
   addTearDown(() => showTechnicalControls = false);
+  // These tests are written around the plain Sine (one harmonic).
+  newInstrumentTemplate = factoryInstruments[1];
+  addTearDown(() => newInstrumentTemplate = null);
   // The panel is a lazy list; a tall screen builds every control.
   tester.view
     ..devicePixelRatio = 1

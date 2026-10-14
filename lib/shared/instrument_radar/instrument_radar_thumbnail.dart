@@ -57,14 +57,14 @@ class _InstrumentRadarThumbnailState extends State<InstrumentRadarThumbnail> {
           painter: RadarFieldPainter(
             palette: palette,
             count: _values.length,
-            labelBox: Size.zero,
+            bare: true,
           ),
           foregroundPainter: RadarShapePainter(
             values: _values,
             palette: palette,
             color: color,
             handles: false,
-            labelBox: Size.zero,
+            bare: true,
           ),
         ),
       ),

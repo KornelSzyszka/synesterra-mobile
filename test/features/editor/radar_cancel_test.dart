@@ -27,7 +27,7 @@ void main() {
       ),
     );
     final rect = tester.getRect(find.byType(InstrumentRadar));
-    final reach = radarReach(rect.size, 6);
+    final reach = WheelLayout.of(rect.size).reach;
     Offset at(double value) =>
         radarPoint(0, 6, value, rect.size, reach) + rect.topLeft;
     RadarShapePainter shape() => tester

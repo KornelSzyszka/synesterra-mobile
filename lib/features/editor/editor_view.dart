@@ -93,6 +93,7 @@ class EditorView extends StatefulWidget {
     this.loopExisting = false,
     this.initialTab = EditorTab.instrument,
     this.arrangementPanel,
+    this.stepFeedback,
   });
 
   final InstrumentLibraryRepository instrumentLibrary;
@@ -120,6 +121,10 @@ class EditorView extends StatefulWidget {
 
   /// Builds the Arrangement tab; null shows [ArrangementTabPlaceholder].
   final EditorPanelBuilder? arrangementPanel;
+
+  /// The light haptic tick of the Instrument wheel, given by the app (the
+  /// UI may not reach the platform, decision 0001 R5). Null: no tick.
+  final VoidCallback? stepFeedback;
 
   @override
   State<EditorView> createState() => _EditorViewState();
@@ -303,7 +308,12 @@ class _EditorViewState extends State<EditorView>
             child: TabBarView(
               controller: _tabs,
               children: [
-                _KeepAlive(child: InstrumentPanel(viewModel: _instrument)),
+                _KeepAlive(
+                  child: InstrumentPanel(
+                    viewModel: _instrument,
+                    stepFeedback: widget.stepFeedback,
+                  ),
+                ),
                 _KeepAlive(
                   child: Theme(
                     data: round,

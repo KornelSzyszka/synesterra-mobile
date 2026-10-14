@@ -8,15 +8,22 @@ import '../../data/repositories/instrument_audition_repository.dart';
 import '../../data/repositories/instrument_library_repository.dart';
 import 'test_sound.dart';
 
+/// The recipe a brand-new instrument starts from instead of the neutral
+/// shape. Only the tests of the hidden technical controls set it (to the
+/// plain Sine, whose single harmonic those tests are written around).
+@visibleForTesting
+Instrument? newInstrumentTemplate;
+
 /// Edits one instrument. The draft is always a valid [Instrument]; only the
 /// name can be temporarily invalid, and then saving is disabled.
 class InstrumentEditorViewModel extends ChangeNotifier {
-  /// [instrument] null starts a new instrument from the plain Sine, which sits
-  /// exactly on the radar. A factory preset or a copy is passed with
-  /// [existing] false and gets a fresh id, so presets are never overwritten. A library instrument is passed with
-  /// [existing] true and keeps its id. An opened instrument is never changed
-  /// until the user moves the radar (and stored only on Save); the radar shows
-  /// its approximate traits ([traitsForInstrument]).
+  /// [instrument] null starts a new instrument from the `neutral` trait
+  /// preset (every trait in the middle). A factory preset or a copy is passed
+  /// with [existing] false and gets a fresh id, so presets are never
+  /// overwritten. A library instrument is passed with [existing] true and
+  /// keeps its id. An opened instrument is never changed until the user moves
+  /// the radar (and stored only on Save); the radar shows its approximate
+  /// traits ([traitsForInstrument]).
   InstrumentEditorViewModel({
     required this._repository,
     required this._audition,
@@ -24,16 +31,23 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     bool existing = false,
     String Function()? newId,
   }) : _newId = newId ?? _defaultId {
-    final source = instrument ?? factoryInstruments[1];
-    final draft = existing
-        ? source
-        : source.copyWith(
-            id: _newId(),
-            name: instrument == null ? 'New instrument' : source.name,
-            // A brand-new instrument starts untagged; a copy of a preset keeps
-            // the preset's tags.
-            tags: instrument == null ? const [] : source.tags,
-          );
+    final template = newInstrumentTemplate;
+    final draft = instrument == null
+        // A brand-new instrument starts untagged on the neutral shape.
+        ? template?.copyWith(
+                id: _newId(),
+                name: 'New instrument',
+                tags: const [],
+              ) ??
+              instrumentForTraits(
+                InstrumentTraits.neutral(),
+                id: _newId(),
+                name: 'New instrument',
+              )
+        : existing
+        ? instrument
+        // A copy of a preset keeps the preset's tags.
+        : instrument.copyWith(id: _newId());
     _draft = draft;
     _baseline = draft;
     _persisted = existing;
@@ -148,10 +162,8 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   /// with the mapped one, which clears this.
   bool get approximated => _approximated;
 
-  /// The named shapes offered as quick starts.
-  List<TraitPreset> get presets => traitPresets;
-
-  /// The preset whose shape is the current one, if any.
+  /// The preset whose shape is the current one, if any (named to screen
+  /// readers; the presets are not offered in the panel).
   TraitPreset? get activePreset {
     for (final preset in traitPresets) {
       if (preset.traits == _traits) return preset;
@@ -165,19 +177,6 @@ class InstrumentEditorViewModel extends ChangeNotifier {
   void setTrait(String id, double value) {
     final next = _traits.withValues({id: _clampDouble(value, 0, 1)});
     if (next == _traits && !_approximated) return;
-    _applyTraits(next);
-  }
-
-  /// The finger left the radar: plays the sound once.
-  void releaseTraits() => audition();
-
-  /// Moves every trait to [preset] and plays the sound once.
-  void applyPreset(TraitPreset preset) {
-    _applyTraits(preset.traits);
-    audition();
-  }
-
-  void _applyTraits(InstrumentTraits next) {
     _traits = next;
     _approximated = false;
     final mapped = instrumentForTraits(
@@ -189,6 +188,9 @@ class InstrumentEditorViewModel extends ChangeNotifier {
     _brightness = fitBrightness(mapped.harmonics);
     _edit((_) => mapped);
   }
+
+  /// The finger left the radar: plays the sound once.
+  void releaseTraits() => audition();
 
   /// Reads the radar shape from the draft after it was replaced from outside
   /// the radar (opened, copied, or edited with the technical controls).

@@ -5,6 +5,7 @@ import 'package:synesterra/data/repositories/impl/in_memory_instrument_library_r
 import 'package:synesterra/features/editor/instrument_editor_view_model.dart';
 import 'package:synesterra/features/editor/spectrum_editor.dart';
 import 'package:synesterra/features/editor/instrument_panel.dart';
+import 'package:synesterra_core/synesterra_core.dart';
 
 import 'audition_fakes.dart';
 
@@ -19,6 +20,9 @@ Future<void> openEditor(
   // The technical controls are hidden in v1; these tests still cover them.
   showTechnicalControls = true;
   addTearDown(() => showTechnicalControls = false);
+  // These tests are written around the plain Sine (one harmonic).
+  newInstrumentTemplate = factoryInstruments[1];
+  addTearDown(() => newInstrumentTemplate = null);
   tester.view
     ..devicePixelRatio = 1
     ..physicalSize = size;

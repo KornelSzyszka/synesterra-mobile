@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-14",
+  "task": "UX-117",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-opus-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": "Haptic tick blocked by decision 0001 R5 in the first round; the coordinator widened the write scope to lib/app and the EditorView wiring, and the tick is now given from the composition root (lib/app/step_feedback.dart).",
+  "error_type": null,
+  "review": "changes",
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Codex review (changes-requested, 2 major + 3 minor) fixed on the same branch: haptic tick wired from lib/app through SynesterraApp -> EditorView -> InstrumentPanel (test red first: once per step, none within a step, default is the platform selection click); ring names that cannot fit even at scale 0.6 are cut with an ellipsis (tests for narrow wheels and long names, red first); names and rank letters follow the system text scale up to 2x with a wider name band (geometry and widget tests, 1.5x render checked); stale preset-chip lines in docs/modules/instrument.md and docs/QA.md replaced by stat-wheel checks. Geometry tests written before the geometry; screen tests written alongside. Hidden technical-control tests keep the Sine via a test-only newInstrumentTemplate. App tests ran in a soloud-free scratch copy; feel, sound, haptics and frame rate on a phone not judged."
+}

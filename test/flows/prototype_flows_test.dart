@@ -333,27 +333,27 @@ void main() {
     expect(find.byKey(radar), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('instrument-name')), 'Glow');
-    // A new instrument is the plain Sine, at the centre of Fullness: drag
-    // that vertex toward the edge.
+    // A new instrument is the neutral shape, Fullness in the middle (rank C):
+    // drag that vertex toward the edge.
     InstrumentTraits shown() =>
         tester.widget<InstrumentRadar>(find.byKey(radar)).traits;
     final before = shown();
-    expect(before[TraitIds.fullness], 0);
+    expect(before[TraitIds.fullness], 0.5);
     final rect = tester.getRect(find.byKey(radar));
     final count = defaultTraitDefinitions.length;
-    final reach = radarReach(rect.size, count);
+    final reach = WheelLayout.of(rect.size).reach;
     Offset vertex(double value) =>
         radarPoint(1, count, value, rect.size, reach) + rect.topLeft;
-    final gesture = await tester.startGesture(vertex(0));
-    await gesture.moveTo(vertex(0.3));
-    await gesture.moveTo(vertex(0.6));
+    final gesture = await tester.startGesture(vertex(0.5));
+    await gesture.moveTo(vertex(0.7));
+    await gesture.moveTo(vertex(0.9));
     await tester.pump();
     expect(rig.audition.played, isEmpty, reason: 'nothing under the finger');
     await gesture.up();
     await tester.pump(const Duration(seconds: 1));
     expect(rig.audition.played, hasLength(1), reason: 'the lift sounds once');
     final traits = shown();
-    expect(traits[TraitIds.fullness], closeTo(0.6, 0.01));
+    expect(traits[TraitIds.fullness], 0.9, reason: 'snapped to a step');
     expect(
       before.withValues({TraitIds.fullness: traits[TraitIds.fullness]}),
       traits,
@@ -375,8 +375,10 @@ void main() {
     );
     expect(
       glow.harmonics.length,
-      greaterThan(1),
-      reason: 'the drag made the plain tone fuller',
+      greaterThan(
+        instrumentForTraits(before, id: 'x', name: 'x').harmonics.length,
+      ),
+      reason: 'the drag made the neutral tone fuller',
     );
 
     // Use it in the first layer of a new loop.

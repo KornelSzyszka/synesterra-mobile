@@ -56,11 +56,18 @@ void main() {
   });
 
   group('starting', () {
-    test('a new instrument starts from the sine preset under a new id', () {
+    test('a new instrument starts from the neutral shape under a new id', () {
       final vm = create();
       expect(vm.instrument.id, 'new-1');
       expect(vm.name, 'New instrument');
-      expect(vm.instrument.harmonics, factoryInstruments[1].harmonics);
+      expect(
+        vm.instrument,
+        instrumentForTraits(
+          InstrumentTraits.neutral(),
+          id: 'new-1',
+          name: 'New instrument',
+        ),
+      );
       expect(vm.dirty, isFalse);
       expect(vm.canSave, isTrue, reason: 'a new instrument can be saved as is');
     });
@@ -415,7 +422,8 @@ void main() {
     });
 
     test('the instrument can never become silent', () {
-      final vm = create();
+      // From the plain Sine: a single harmonic.
+      final vm = create(instrument: factoryInstruments[1]);
       expect(vm.instrument.harmonics, [1]);
       vm.setHarmonic(0, 0);
       expect(vm.instrument.harmonics, [1], reason: 'ignored, still audible');
