@@ -218,6 +218,29 @@ void main() {
     });
   });
 
+  testWidgets('larger system text scales the names and letters; the chart '
+      'makes room and still follows the finger', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await open(tester);
+    expect(painter<RadarFieldPainter>(tester).textScale, 1.5);
+    expect(painter<RadarRankPainter>(tester).textScale, 1.5);
+    expect(painter<RadarShapePainter>(tester).textScale, 1.5);
+    expect(painter<RadarGlowPainter>(tester).textScale, 1.5);
+
+    final rect = radarRect(tester);
+    final big = WheelLayout.of(rect.size, textScale: 1.5);
+    expect(big.reach, lessThan(reachOf(tester)));
+    Offset bigAt(double v) =>
+        radarPoint(2, 6, v, rect.size, big.reach) + rect.topLeft;
+    final gesture = await tester.startGesture(bigAt(0.5));
+    await gesture.moveTo(bigAt(0.65));
+    await gesture.moveTo(bigAt(0.8));
+    await gesture.up();
+    await tester.pump(const Duration(seconds: 1));
+    expect(shownTraits(tester)[TraitIds.warmth], 0.8);
+  });
+
   testWidgets('a new instrument starts on the neutral shape', (tester) async {
     await open(tester);
     final neutral = traitPresets.singleWhere((p) => p.name == 'neutral');

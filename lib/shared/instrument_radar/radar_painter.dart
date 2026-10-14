@@ -39,8 +39,8 @@ double radarBreathOffset(double t, int index) {
       math.sin(2 * math.pi * radarBreaths * t + index * 1.7);
 }
 
-WheelLayout _layout(Size size, bool bare) =>
-    bare ? WheelLayout.bare(size) : WheelLayout.of(size);
+WheelLayout _layout(Size size, bool bare, double textScale) =>
+    bare ? WheelLayout.bare(size) : WheelLayout.of(size, textScale: textScale);
 
 Color _ink(GroundPalette palette) =>
     palette.isDark ? palette.light : palette.shade;
@@ -49,19 +49,26 @@ Color _ink(GroundPalette palette) =>
 /// one blob per audible harmonic, in the instrument's [color]. [swell]
 /// (0..1, a bump) brightens and grows it for a moment after a release.
 class RadarGlowPainter extends CustomPainter {
-  RadarGlowPainter({required this.spec, required this.color, this.swell})
-    : super(repaint: swell);
+  RadarGlowPainter({
+    required this.spec,
+    required this.color,
+    this.swell,
+    this.textScale = 1,
+  }) : super(repaint: swell);
 
   final MistSpec spec;
   final Color color;
   final Animation<double>? swell;
+
+  /// The user's text size, which sizes the name band ([WheelLayout.of]).
+  final double textScale;
 
   /// The glow's strength at rest, a share of the mist's own opacity.
   static const strength = .85;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final layout = WheelLayout.of(size);
+    final layout = WheelLayout.of(size, textScale: textScale);
     if (layout.reach <= 0) return;
     final t = swell?.value ?? 0;
     final bump = t <= 0 || t >= 1 ? 0.0 : math.sin(math.pi * t);
@@ -102,7 +109,10 @@ class RadarGlowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(RadarGlowPainter old) =>
-      old.spec != spec || old.color != color || old.swell != swell;
+      old.spec != spec ||
+      old.color != color ||
+      old.swell != swell ||
+      old.textScale != textScale;
 }
 
 /// The static field. With [labels] (the editor) it is the whole wheel: the
@@ -116,6 +126,7 @@ class RadarFieldPainter extends CustomPainter {
     this.labels = const [],
     this.labelStyle,
     this.bare = false,
+    this.textScale = 1,
   });
 
   final GroundPalette palette;
@@ -127,13 +138,16 @@ class RadarFieldPainter extends CustomPainter {
   final TextStyle? labelStyle;
   final bool bare;
 
+  /// The user's text size: it scales the names (and their band).
+  final double textScale;
+
   /// Hint rings of a bare wheel, as shares of the reach.
   static const bareRings = [1 / 3, 2 / 3, 1.0];
 
   @override
   void paint(Canvas canvas, Size size) {
     if (count < 3) return;
-    final layout = _layout(size, bare);
+    final layout = _layout(size, bare, textScale);
     final reach = layout.reach;
     if (reach <= 0) return;
     final surfaces = Surfaces(palette);
@@ -247,25 +261,35 @@ class RadarFieldPainter extends CustomPainter {
   void _paintNames(Canvas canvas, WheelLayout layout, TextStyle style) {
     final color = Color.lerp(palette.muted, palette.text, .45)!;
     final glyphStyle = style.copyWith(color: color);
-    final names = [
+    final scaler = TextScaler.linear(textScale);
+    TextPainter glyph(String c) => TextPainter(
+      text: TextSpan(text: c, style: glyphStyle),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final all = [
       for (var i = 0; i < math.min(count, labels.length); i++)
-        [
-          for (final c in labels[i].toUpperCase().characters)
-            TextPainter(
-              text: TextSpan(text: c, style: glyphStyle),
-              textDirection: TextDirection.ltr,
-              maxLines: 1,
-            )..layout(),
-        ],
+        [for (final c in labels[i].toUpperCase().characters) glyph(c)],
     ];
-    final scale = ringLabelScale(
+    final ellipsis = glyph('…');
+    final fit = ringLabelFit(
       [
-        for (final glyphs in names) [for (final g in glyphs) g.width],
+        for (final glyphs in all) [for (final g in glyphs) g.width],
       ],
       radius: layout.nameRadius,
       count: count,
+      ellipsis: ellipsis.width,
     );
-    for (final (i, glyphs) in names.indexed) {
+    final scale = fit.scale;
+    for (final (i, full) in all.indexed) {
+      final keep = fit.keep[i];
+      if (keep == 0) continue;
+      // A name that does not fit is cut and ends with an ellipsis.
+      final glyphs = [
+        ...full.sublist(0, keep),
+        if (keep < full.length) ellipsis,
+      ];
       final placed = ringGlyphs(
         centre: layout.centre,
         radius: layout.nameRadius,
@@ -288,11 +312,12 @@ class RadarFieldPainter extends CustomPainter {
         canvas.restore();
       }
     }
-    for (final glyphs in names) {
+    for (final glyphs in all) {
       for (final g in glyphs) {
         g.dispose();
       }
     }
+    ellipsis.dispose();
   }
 
   @override
@@ -301,7 +326,8 @@ class RadarFieldPainter extends CustomPainter {
       old.count != count ||
       !listEquals(old.labels, labels) ||
       old.labelStyle != labelStyle ||
-      old.bare != bare;
+      old.bare != bare ||
+      old.textScale != textScale;
 }
 
 /// The rank letters E to A beside the first spoke, over the shape so they
@@ -312,16 +338,20 @@ class RadarRankPainter extends CustomPainter {
     required this.palette,
     required this.count,
     required this.style,
+    this.textScale = 1,
   });
 
   final GroundPalette palette;
   final int count;
   final TextStyle style;
 
+  /// The user's text size: it scales the letters (and the name band).
+  final double textScale;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (count < 3) return;
-    final reach = WheelLayout.of(size).reach;
+    final reach = WheelLayout.of(size, textScale: textScale).reach;
     if (reach <= 0) return;
     final letterStyle = style.copyWith(
       color: Color.lerp(palette.muted, palette.text, .25),
@@ -335,6 +365,7 @@ class RadarRankPainter extends CustomPainter {
       final text = TextPainter(
         text: TextSpan(text: rankLetters[rank], style: letterStyle),
         textDirection: TextDirection.ltr,
+        textScaler: TextScaler.linear(textScale),
         maxLines: 1,
       )..layout();
       final at = rankLetterPoint(rankLetterStep(rank), count, size, reach);
@@ -346,7 +377,10 @@ class RadarRankPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(RadarRankPainter old) =>
-      old.palette != palette || old.count != count || old.style != style;
+      old.palette != palette ||
+      old.count != count ||
+      old.style != style ||
+      old.textScale != textScale;
 }
 
 /// The shape: a soft polygon through the trait [values] (0 centre, 1 edge),
@@ -363,6 +397,7 @@ class RadarShapePainter extends CustomPainter {
     this.active,
     this.handles = true,
     this.bare = false,
+    this.textScale = 1,
   }) : super(repaint: breath);
 
   final List<double> values;
@@ -373,6 +408,9 @@ class RadarShapePainter extends CustomPainter {
   final bool handles;
   final bool bare;
 
+  /// The user's text size, which sizes the name band ([WheelLayout.of]).
+  final double textScale;
+
   /// The drawn radius of a handle; its touch target is [radarHandleTarget].
   static const handleRadius = 8.0;
 
@@ -380,7 +418,7 @@ class RadarShapePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final count = values.length;
     if (count < 3) return;
-    final layout = _layout(size, bare);
+    final layout = _layout(size, bare, textScale);
     final reach = layout.reach;
     if (reach <= 0) return;
     final centre = layout.centre;
@@ -490,5 +528,6 @@ class RadarShapePainter extends CustomPainter {
       old.breath != breath ||
       old.active != active ||
       old.handles != handles ||
-      old.bare != bare;
+      old.bare != bare ||
+      old.textScale != textScale;
 }

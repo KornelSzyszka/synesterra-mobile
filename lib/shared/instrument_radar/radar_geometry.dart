@@ -65,21 +65,27 @@ class WheelLayout {
     required this.outer,
     required this.ringInner,
     required this.nameRadius,
+    required this.nameHeight,
     required this.reach,
     required this.hasRing,
   });
 
   /// The full wheel, centred in [size] and as large as its shorter side.
-  factory WheelLayout.of(Size size) {
+  /// [textScale] is the user's text size (1 normal); a larger one widens
+  /// the name band and the chart makes room. Smaller text keeps the normal
+  /// band.
+  factory WheelLayout.of(Size size, {double textScale = 1}) {
+    final nameHeight = wheelNameHeight * max(1.0, textScale);
     final outer = max(0.0, size.shortestSide / 2 - wheelMargin);
     final ringInner = max(0.0, outer - wheelTickBand);
-    final nameRadius = max(0.0, ringInner - wheelRingGap - wheelNameHeight / 2);
+    final nameRadius = max(0.0, ringInner - wheelRingGap - nameHeight / 2);
     return WheelLayout._(
       centre: size.center(Offset.zero),
       outer: outer,
       ringInner: ringInner,
       nameRadius: nameRadius,
-      reach: max(0.0, nameRadius - wheelNameHeight / 2 - wheelNameGap),
+      nameHeight: nameHeight,
+      reach: max(0.0, nameRadius - nameHeight / 2 - wheelNameGap),
       hasRing: true,
     );
   }
@@ -92,6 +98,7 @@ class WheelLayout {
       outer: reach,
       ringInner: reach,
       nameRadius: reach,
+      nameHeight: 0,
       reach: reach,
       hasRing: false,
     );
@@ -101,6 +108,9 @@ class WheelLayout {
   final double outer;
   final double ringInner;
   final double nameRadius;
+
+  /// Height of the band the names are written in.
+  final double nameHeight;
   final double reach;
 
   /// False for a bare wheel.
@@ -322,7 +332,8 @@ List<RingTick> ringTicks(int count) {
 // ---------------------------------------------------------------------------
 // Names along the ring
 
-/// The smallest scale a name is drawn at before it is squeezed in anyway.
+/// The smallest scale a name is drawn at; a name that does not fit even
+/// then is cut with an ellipsis ([ringLabelFit]).
 const ringMinLabelScale = .6;
 
 /// The least arc, in logical pixels, kept free between two names.
@@ -342,22 +353,57 @@ double ringLabelSpan(List<double> advances, double radius) {
   return total / radius;
 }
 
-/// One scale for all names so the longest fits its sector with
-/// [ringLabelGap] to each neighbour: at most 1, at least
-/// [ringMinLabelScale].
-double ringLabelScale(
+/// The advance of the ellipsis that ends a cut name, at scale 1, when the
+/// painter does not measure its own.
+const ringEllipsis = 8.0;
+
+/// How the names fit the ring: one [scale] for all of them, and for each
+/// name how many of its glyphs are written ([keep]; fewer than its length
+/// means it ends with an ellipsis, 0 means it is not written at all). The
+/// full names stay with the screen reader.
+typedef RingLabelFit = ({double scale, List<int> keep});
+
+/// Fits names with glyph [advances] on a ring of [radius] with [count]
+/// sectors, keeping [ringLabelGap] between neighbours. All names share one
+/// scale, shrunk to fit the longest but never below [ringMinLabelScale];
+/// a name that still does not fit is cut to the longest prefix that fits
+/// with an ellipsis of advance [ellipsis].
+RingLabelFit ringLabelFit(
   List<List<double>> labels, {
   required double radius,
   required int count,
+  double ellipsis = ringEllipsis,
 }) {
-  if (radius <= 0) return ringMinLabelScale;
-  final room = 2 * pi / count - ringLabelGap / radius;
+  final room = radius <= 0 ? 0.0 : 2 * pi / count - ringLabelGap / radius;
+  if (room <= 0) {
+    return (scale: ringMinLabelScale, keep: List.filled(labels.length, 0));
+  }
   var scale = 1.0;
   for (final label in labels) {
     final span = ringLabelSpan(label, radius);
     if (span > room) scale = min(scale, room / span);
   }
-  return scale.clamp(ringMinLabelScale, 1.0);
+  scale = scale.clamp(ringMinLabelScale, 1.0);
+  bool fits(double width) => width / radius * scale <= room + 1e-12;
+  final keep = <int>[];
+  for (final label in labels) {
+    var total = 0.0;
+    for (final a in label) {
+      total += a;
+    }
+    if (fits(total)) {
+      keep.add(label.length);
+      continue;
+    }
+    var kept = 0;
+    var width = 0.0;
+    while (kept < label.length && fits(width + label[kept] + ellipsis)) {
+      width += label[kept];
+      kept++;
+    }
+    keep.add(kept);
+  }
+  return (scale: scale, keep: keep);
 }
 
 /// Where one letter of a name on the ring is drawn: its centre [position]

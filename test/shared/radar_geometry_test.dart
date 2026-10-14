@@ -68,6 +68,28 @@ void main() {
       expect(layout.outer, lessThanOrEqualTo(150));
     });
 
+    test('larger system text widens the name band; the chart makes room', () {
+      const size = Size(380, 380);
+      final normal = WheelLayout.of(size);
+      for (final scale in [1.5, 2.0]) {
+        final big = WheelLayout.of(size, textScale: scale);
+        final band = wheelNameHeight * scale;
+        expect(big.nameHeight, closeTo(band, 1e-9));
+        expect(big.nameRadius + band / 2, lessThan(big.ringInner));
+        expect(
+          big.reach + radarHandleTarget / 4,
+          lessThan(big.nameRadius - band / 2),
+        );
+        expect(big.reach, lessThan(normal.reach));
+      }
+      expect(normal.nameHeight, wheelNameHeight);
+      expect(
+        WheelLayout.of(size, textScale: .5).reach,
+        normal.reach,
+        reason: 'smaller text never grows the chart past its normal size',
+      );
+    });
+
     test('is never negative', () {
       final layout = WheelLayout.of(const Size(20, 20));
       expect(layout.reach, 0);
@@ -418,35 +440,87 @@ void main() {
       }
     });
 
+    /// The arc a name takes as drawn: its kept glyphs (and an ellipsis when
+    /// cut) at the shared scale.
+    double drawnSpan(List<double> label, RingLabelFit fit, int i, double r) {
+      final keep = fit.keep[i];
+      if (keep == 0) return 0;
+      final kept = ringLabelSpan(label.sublist(0, keep), r);
+      final cut = keep < label.length ? ringEllipsis / r : 0.0;
+      return (kept + cut) * fit.scale;
+    }
+
+    void expectNoOverlap(List<List<double>> labels, double r, String why) {
+      final count = labels.length;
+      final fit = ringLabelFit(labels, radius: r, count: count);
+      expect(fit.scale, inInclusiveRange(ringMinLabelScale, 1), reason: why);
+      for (var i = 0; i < count; i++) {
+        final j = (i + 1) % count;
+        final gap =
+            2 * pi / count -
+            drawnSpan(labels[i], fit, i, r) / 2 -
+            drawnSpan(labels[j], fit, j, r) / 2;
+        expect(
+          gap,
+          greaterThanOrEqualTo(ringLabelGap / r - 1e-9),
+          reason: '$why: $count names, between $i and $j',
+        );
+      }
+    }
+
     test('for N = 3..10 the names never overlap once scaled to fit', () {
       for (var count = 3; count <= 10; count++) {
         final labels = [for (var i = 0; i < count; i++) advances(names[i])];
-        final scale = ringLabelScale(labels, radius: radius, count: count);
-        expect(scale, inInclusiveRange(ringMinLabelScale, 1));
-        final spans = [
-          for (final l in labels) ringLabelSpan(l, radius) * scale,
-        ];
-        for (var i = 0; i < count; i++) {
-          final j = (i + 1) % count;
-          final gap = 2 * pi / count - spans[i] / 2 - spans[j] / 2;
-          expect(
-            gap,
-            greaterThanOrEqualTo(ringLabelGap / radius - 1e-9),
-            reason: '$count names, between ${names[i]} and ${names[j]}',
-          );
-        }
+        expectNoOverlap(labels, radius, 'phone');
+        final fit = ringLabelFit(labels, radius: radius, count: count);
+        expect(fit.keep, [for (final l in labels) l.length], reason: 'whole');
       }
     });
 
+    test('long names on a narrow wheel are cut with an ellipsis, never '
+        'overlapping', () {
+      const long = [
+        'RESONANT BRIGHTNESS',
+        'FULLNESS OF BODY',
+        'WARMTH BELOW',
+        'AIR ABOVE IT ALL',
+        'SOFTNESS OF ATTACK',
+        'LENGTH OF TAIL',
+        'SPARKLE AND GLINT',
+        'GRIT AND GRAIN',
+        'SHIMMERING MOTION',
+        'DEPTH OF FIELD',
+      ];
+      for (final r in [60.0, 90.0, 120.0, radius]) {
+        for (var count = 3; count <= 10; count++) {
+          final labels = [for (var i = 0; i < count; i++) advances(long[i])];
+          expectNoOverlap(labels, r, 'radius $r');
+        }
+      }
+      final labels = [for (final name in long) advances(name)];
+      final fit = ringLabelFit(labels, radius: 90, count: 10);
+      expect(fit.scale, ringMinLabelScale);
+      for (final (i, keep) in fit.keep.indexed) {
+        expect(keep, lessThan(labels[i].length), reason: long[i]);
+        expect(keep, greaterThan(0), reason: 'a prefix stays readable');
+      }
+    });
+
+    test('with no room at all nothing is written', () {
+      final labels = [for (var i = 0; i < 10; i++) advances(names[i])];
+      final fit = ringLabelFit(labels, radius: 20, count: 10);
+      expect(fit.keep, List.filled(10, 0));
+      expect(ringLabelFit(labels, radius: 0, count: 10).keep, everyElement(0));
+    });
+
     test('short names on few spokes keep full size', () {
-      expect(
-        ringLabelScale(
-          [advances('AIR'), advances('GRIT'), advances('DEPTH')],
-          radius: radius,
-          count: 3,
-        ),
-        1,
+      final fit = ringLabelFit(
+        [advances('AIR'), advances('GRIT'), advances('DEPTH')],
+        radius: radius,
+        count: 3,
       );
+      expect(fit.scale, 1);
+      expect(fit.keep, [3, 4, 5]);
     });
   });
 }

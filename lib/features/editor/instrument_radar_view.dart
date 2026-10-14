@@ -118,6 +118,10 @@ class InstrumentRadar extends StatefulWidget {
   /// The swell of the glow after a release.
   static const swell = Duration(milliseconds: 900);
 
+  /// The largest text scale the wheel follows; beyond it the names would
+  /// leave no room for the chart.
+  static const maxTextScale = 2.0;
+
   /// How far a touch on stacked handles moves before it picks a spoke.
   static const pickSlop = 4.0;
 
@@ -370,6 +374,14 @@ class _InstrumentRadarState extends State<InstrumentRadar>
       weight: FontWeight.w600,
       spacing: 1.6,
     );
+    // The user's text size scales the names and the letters; the name band
+    // widens and the chart makes room (up to twice the normal size).
+    final fontSize = nameStyle.fontSize!;
+    final textScale =
+        (MediaQuery.textScalerOf(context).scale(fontSize) / fontSize).clamp(
+          1.0,
+          InstrumentRadar.maxTextScale,
+        );
     final glow = widget.glow;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -378,7 +390,7 @@ class _InstrumentRadarState extends State<InstrumentRadar>
             ? math.min(constraints.maxWidth, constraints.maxHeight)
             : constraints.maxWidth;
         final size = Size.square(side);
-        final layout = WheelLayout.of(size);
+        final layout = WheelLayout.of(size, textScale: textScale);
         final reach = layout.reach;
         final flashAt = _flashAt;
         return Semantics(
@@ -403,6 +415,7 @@ class _InstrumentRadarState extends State<InstrumentRadar>
                               spec: glow,
                               color: widget.color,
                               swell: _reduceMotion ? null : _swell,
+                              textScale: textScale,
                             ),
                           ),
                         ),
@@ -426,6 +439,7 @@ class _InstrumentRadarState extends State<InstrumentRadar>
                                 count: count,
                                 labels: labels,
                                 labelStyle: nameStyle,
+                                textScale: textScale,
                               ),
                             ),
                           ),
@@ -440,6 +454,7 @@ class _InstrumentRadarState extends State<InstrumentRadar>
                                   color: widget.color,
                                   breath: _reduceMotion ? null : _breath,
                                   active: _active,
+                                  textScale: textScale,
                                 ),
                               ),
                             ),
@@ -451,6 +466,7 @@ class _InstrumentRadarState extends State<InstrumentRadar>
                                 palette: palette,
                                 count: count,
                                 style: nameStyle,
+                                textScale: textScale,
                               ),
                             ),
                           ),
