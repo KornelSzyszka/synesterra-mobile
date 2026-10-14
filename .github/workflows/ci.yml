@@ -33,7 +33,7 @@ env:
 
 jobs:
   verify:
-    name: Analyze, test, build APK
+    name: Analyze and test
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
