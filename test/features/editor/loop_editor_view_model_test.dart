@@ -399,6 +399,23 @@ void main() {
       expect(vm.canUndoRandomize, isFalse);
     });
 
+    test('a save clears only the rolls made before it began', () async {
+      final slow = SlowLoops();
+      loops = slow;
+      final vm = create(firstRollSeed: 11);
+      vm.randomize(); // before the save: cleared by it
+      final saved = vm.document;
+      final saving = vm.save();
+      vm.randomize(); // during the save: still unsaved, still undoable
+      slow.gate.complete();
+      expect(await saving, isTrue);
+      expect(vm.dirty, isTrue);
+      expect(vm.canUndoRandomize, isTrue);
+      vm.undoRandomize();
+      expect(vm.document.scenes, saved.scenes);
+      expect(vm.canUndoRandomize, isFalse);
+    });
+
     test('while playing, a roll and its undo are sent like any edit', () async {
       final vm = create(firstRollSeed: 9);
       await vm.play();

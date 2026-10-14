@@ -123,6 +123,7 @@ class LoopEditorViewModel extends ChangeNotifier {
     );
     final documentAtSave = _document;
     final session = _session;
+    final rollsAtSave = _rolls;
     _savingSession = session;
     _saveError = null;
     notifyListeners();
@@ -138,7 +139,9 @@ class LoopEditorViewModel extends ChangeNotifier {
           ? saved.document
           : edits.withTitle(_document, name);
       _persisted = true;
-      _beforeRolls.clear();
+      // Only rolls made before the save began; a roll made while it ran is
+      // not in the saved loop and stays undoable.
+      _beforeRolls.removeWhere((entry) => entry.$1 <= rollsAtSave);
       return true;
     } catch (_) {
       if (session == _session) {
@@ -243,8 +246,12 @@ class LoopEditorViewModel extends ChangeNotifier {
 
   /// The document just before each roll, the last roll last. Kept through
   /// other edits, so a roll never loses unsaved work; cleared on save and
-  /// when another loop is opened.
-  final List<SessionDocument> _beforeRolls = [];
+  /// when another loop is opened (a save clears only the rolls made before
+  /// it began). Each entry is numbered by [_rolls].
+  final List<(int, SessionDocument)> _beforeRolls = [];
+
+  /// How many rolls this panel has made.
+  int _rolls = 0;
 
   bool get canUndoRandomize => _beforeRolls.isNotEmpty;
 
@@ -255,7 +262,7 @@ class LoopEditorViewModel extends ChangeNotifier {
   void randomize() {
     final seed = _nextRollSeed;
     _nextRollSeed = (seed + 1) & maxRandomSeed;
-    _beforeRolls.add(_document);
+    _beforeRolls.add((++_rolls, _document));
     final next = randomLoopDocument(
       seed: seed,
       instrumentIds: [
@@ -275,7 +282,7 @@ class LoopEditorViewModel extends ChangeNotifier {
   /// roll to the loop as it was before the first one.
   void undoRandomize() {
     if (_beforeRolls.isEmpty) return;
-    final before = _beforeRolls.removeLast();
+    final (_, before) = _beforeRolls.removeLast();
     if (before == _document) {
       notifyListeners();
     } else {
