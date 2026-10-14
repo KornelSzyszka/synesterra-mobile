@@ -64,6 +64,16 @@ Draw order: layer count, cycle, step counts, patterns (layer by layer), pitches,
 
 A round dice (`RoundIconButton`, label *Randomize loop*) sits under the loop's name. A roll replaces the loop being edited as an unsaved change: the id and the name stay, the status says *Changed, not saved yet*, and nothing starts playing. Each roll asks the generator with the next seed (the first is random per panel, wrapping in uint32). Instruments come from the factory and the user's library. *Undo randomize* appears after a roll and restores the exact document from just before the last roll (edits made after that roll go with it). Every roll keeps its own snapshot, so repeated undo steps back to the loop as it was before the first roll, unsaved edits included: a roll never destroys work. Opening another loop clears the snapshots; a save clears those taken before it began (a roll made while a save runs stays undoable). The roll and its undo go through the same edit path as any change, so while the loop plays they restart it from the cycle start under a new generation (playback's generation rule). The tap flash is the shared `TapGlitch` and its `FlashGate`.
 
+## Instrument dice (UX-131)
+
+`randomInstrumentTraits({seed, definitions = defaultTraitDefinitions})` (`randomizer/instrument_randomizer.dart`) returns `InstrumentTraits`: each trait, drawn in the order of the definitions, takes `(5 + nextInt(91)) / 100`, so 0.05..0.95 in hundredths (`randomTraitMin/Max`); the edges and exact centre are avoided because the extremes sound thin or dull. `instrumentForTraits` turns it into the sound, so the dice never touches the recipe directly. Same seed, same traits, on every platform (it uses `SeededRandom`); the draw order is part of that contract.
+
+UI: a round dice left of Save in the Instrument panel (`instrument-randomize`, label *Randomize instrument*), and *Undo randomize* to the right once a roll exists (`InstrumentEditorViewModel.randomize` / `undoRandomize`). Like the Loop dice, each roll takes the next seed (first one random per panel, wrapping in uint32), is an unsaved change that keeps id, name and tags, and keeps its own snapshot, so repeated undo steps back to the exact recipe before the first roll. Unlike the Loop dice, a roll and its undo **play the sound once** (the sound is the point of an instrument roll). Starting from a preset forgets the snapshots.
+
+## Tap tempo (UX-131)
+
+`TapTempo` (`rhythm/tap_tempo.dart`, pure; the caller passes each tap's `Duration`, the core reads no clock): `tap(at)` returns whole BPM from the average interval of the last `maxTaps` (8) taps once `minTaps` (3) are counted, else null. A gap longer than `resetAfter` (2 s) or a time that does not move forward starts a new count with that tap. The result is clamped to `minBpm..maxBpm` (the Loop panel passes 20..300). `LoopEditorViewModel.tapTempo` feeds it a stopwatch and calls `setTempo`; the button (`loop-tap-tempo`, *Tap tempo*) sits left of the BPM stepper in the transport bar and wraps above it on a very narrow screen or a large text size.
+
 ## Not here
 
 The dice in the Arrangement panel (a later task, after the arrangement visualization lands); rolling only part of a loop; a seed field in the UI; machine-learning generators.
