@@ -17,6 +17,9 @@ class FakeMicrophone implements MicrophoneRepository {
   MicrophoneAccess access = MicrophoneAccess.granted;
   bool failOpen = false;
   int requests = 0;
+
+  /// When set, the permission answer waits for this completer (once).
+  Completer<MicrophoneAccess>? holdAccess;
   int opens = 0;
   int closes = 0;
   StreamController<Float32List>? _controller;
@@ -30,6 +33,8 @@ class FakeMicrophone implements MicrophoneRepository {
   @override
   Future<MicrophoneAccess> requestAccess() async {
     requests++;
+    final held = holdAccess;
+    if (held != null && !held.isCompleted) return held.future;
     return access;
   }
 
@@ -225,6 +230,26 @@ void main() {
     await tick(tester);
     await tick(tester);
     expect(mic.open, isTrue);
+  });
+
+  testWidgets('backgrounding during the permission request opens nothing', (
+    tester,
+  ) async {
+    final mic = FakeMicrophone()..holdAccess = Completer<MicrophoneAccess>();
+    await pumpTuner(tester, microphone: mic);
+    expect(mic.requests, 1);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tick(tester);
+    mic.holdAccess!.complete(MicrophoneAccess.granted);
+    await tick(tester);
+    await tick(tester);
+    expect(mic.opens, 0, reason: 'no capture while paused');
+    expect(mic.open, isFalse);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tick(tester);
+    await tick(tester);
+    expect(mic.opens, 1, reason: 'returning restarts the tuner');
   });
 
   testWidgets('fits 320 dp wide at large text and under reduce motion', (

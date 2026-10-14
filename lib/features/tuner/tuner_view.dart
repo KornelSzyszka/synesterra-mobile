@@ -55,7 +55,13 @@ class _TunerViewState extends State<TunerView> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       if (_resume) _model.start();
       _resume = false;
-    } else if (_model.listening) {
+    } else if (_model.listening ||
+        // The permission dialog itself only makes the app inactive; going to
+        // the background (hidden, paused) must not let a pending start open
+        // the microphone when the answer arrives.
+        (_model.starting &&
+            (state == AppLifecycleState.hidden ||
+                state == AppLifecycleState.paused))) {
       _resume = true;
       _model.stop();
     }

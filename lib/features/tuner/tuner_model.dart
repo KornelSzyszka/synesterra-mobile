@@ -74,6 +74,9 @@ class TunerModel extends ChangeNotifier {
 
   bool get listening => _phase == TunerPhase.listening;
 
+  /// Waiting for the permission answer or for the microphone to open.
+  bool get starting => _phase == TunerPhase.starting;
+
   /// True while the reference tone sounds.
   bool get toneOn => _toneOn;
 
