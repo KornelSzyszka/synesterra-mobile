@@ -47,21 +47,24 @@ void main() {
     expect(model.lastResult!.errorMs, closeTo(20, 1e-6));
   });
 
-  test('a tap just before the scoring boundary is dropped, not scored', () async {
-    await model.start();
-    tapAt(cycle - 50);
-    expect(model.phase, TapPhase.countIn);
-    expect(model.lastResult, isNull);
-    for (var c = 1; c <= 4; c++) {
-      for (final t in preset.targetTimesMs) {
-        tapAt(c * cycle + t);
+  test(
+    'a tap just before the scoring boundary is dropped, not scored',
+    () async {
+      await model.start();
+      tapAt(cycle - 50);
+      expect(model.phase, TapPhase.countIn);
+      expect(model.lastResult, isNull);
+      for (var c = 1; c <= 4; c++) {
+        for (final t in preset.targetTimesMs) {
+          tapAt(c * cycle + t);
+        }
       }
-    }
-    playback.at(5 * cycle + 300, cycleMs: cycle);
-    expect(model.score!.results, hasLength(16));
-    expect(model.score!.extraTaps, 0);
-    expect(model.score!.meanAbsoluteErrorMs, 0);
-  });
+      playback.at(5 * cycle + 300, cycleMs: cycle);
+      expect(model.score!.results, hasLength(16));
+      expect(model.score!.extraTaps, 0);
+      expect(model.score!.meanAbsoluteErrorMs, 0);
+    },
+  );
 
   test('a tap exactly on the boundary scores and starts scoring', () async {
     await model.start();
