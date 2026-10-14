@@ -50,7 +50,8 @@ the lab follows the app palette.
 
 Top of the lab: back, the ground switch (sun / moon icon: dark or light),
 the switch **Blend · Glass · Organic · Material** (the lab opens on the Blend), the **Tap flash** strength
-(**Off · Subtle · Strong**) and a small frame-time line (average build and
+(**Off · Subtle · Strong**), the **Blobs** switch (**Flat · Living**, UX-126;
+see [living-blobs.md](living-blobs.md)) and a small frame-time line (average build and
 raster time of the last reported frames, and the worst raster time).
 
 ## The components

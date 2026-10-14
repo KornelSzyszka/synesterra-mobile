@@ -5,6 +5,8 @@ import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../shared/instrument_mist/instrument_mist.dart';
 import '../../shared/instrument_mist/mist_spec.dart';
+import '../../shared/living_blobs/living_field.dart';
+import '../../shared/living_blobs/living_motion.dart';
 import '../../shared/theme/ambient_scope.dart';
 import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/round_shapes.dart';
@@ -131,6 +133,10 @@ class BlendCanvas extends StatelessWidget {
             const BlendHeader('Library'),
             small,
             _BlendCard(instrument: instrument),
+            gap,
+            const BlendHeader('Living gallery'),
+            small,
+            const LivingGallery(key: Key('lab-living-gallery')),
             gap,
             const BlendHeader('Transport'),
             small,
@@ -339,6 +345,75 @@ class _BlendCard extends StatelessWidget {
             size: 44,
             onPressed: () {},
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A few factory instruments as living library cards (UX-126), in a field
+/// that never settles, so the frame time of the motion can be read on the
+/// phone. The lab's Flat / Living switch flips them, and the library, too.
+class LivingGallery extends StatelessWidget {
+  const LivingGallery({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = SynesterraTokens.of(context);
+    return LivingField(
+      keepAwake: true,
+      child: Column(
+        children: [
+          for (final instrument in factoryInstruments.take(4))
+            Padding(
+              padding: const EdgeInsets.only(bottom: Space.md),
+              child: OrganicCard(
+                key: Key('lab-living-card-${instrument.id}'),
+                label: 'Open ${instrument.name}',
+                onTap: () {},
+                seed: stableSeed(instrument.id) & 0xff,
+                living: true,
+                morphSeed: stableSeed(instrument.id),
+                tint: tokens.layerColors[identityColorIndex(instrument.id)],
+                padding: const EdgeInsets.fromLTRB(
+                  Space.xl,
+                  Space.md,
+                  Space.lg,
+                  Space.md,
+                ),
+                child: Row(
+                  children: [
+                    SizedBox.square(
+                      dimension: 52,
+                      child: RoundSurface(
+                        style: SurfaceStyle.glass,
+                        shape: RoundShape.circle,
+                        child: Center(
+                          child: InstrumentMist(
+                            instrument: instrument,
+                            size: 42,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: Space.lg),
+                    Expanded(
+                      child: ExcludeSemantics(
+                        child: Text(
+                          instrument.name,
+                          style: roundText(
+                            context,
+                            color: textOn(context, SurfaceStyle.organic),
+                            size: TypeScale.bodyLarge,
+                            serif: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

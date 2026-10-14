@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../living_blobs/living_field.dart';
+import '../living_blobs/living_surface.dart';
 import '../theme/ambient_scope.dart';
 import '../theme/design_scale.dart';
 import '../theme/ground_palette.dart';
@@ -566,6 +568,11 @@ class GlassPanel extends StatelessWidget {
 /// [onTap] it is one button read as [label]; its children stay reachable
 /// for screen readers. [breathes] lets the edge move with the drift; keep
 /// that to one card on screen.
+///
+/// A [living] card inside a `LivingField` is a `LivingBlob` (UX-126): it
+/// morphs, has depth, leans toward the finger and glows when pressed, in
+/// [tint]; [morphSeed] gives it its own motion. Elsewhere, or with the flat
+/// comparison on, it is the still card.
 class OrganicCard extends StatelessWidget {
   const OrganicCard({
     super.key,
@@ -574,6 +581,9 @@ class OrganicCard extends StatelessWidget {
     this.onTap,
     this.seed = 7,
     this.breathes = false,
+    this.living = false,
+    this.morphSeed,
+    this.tint,
     this.padding = const EdgeInsets.fromLTRB(
       Space.xl,
       Space.lg,
@@ -587,19 +597,36 @@ class OrganicCard extends StatelessWidget {
   final VoidCallback? onTap;
   final int seed;
   final bool breathes;
+  final bool living;
+
+  /// Seeds a living card's motion; [seed] when null.
+  final int? morphSeed;
+
+  /// The colour of a living card's depth and glow; the aura when null.
+  final Color? tint;
   final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
     final shape = BlobShape(seed: seed, amount: BlobAmount.wide);
-    Widget surface(bool pressed) => RoundSurface(
-      style: SurfaceStyle.organic,
-      shape: shape,
-      pressed: pressed,
-      breathes: breathes,
-      padding: padding,
-      child: child,
-    );
+    final alive = living && (LivingField.maybeOf(context)?.living ?? false);
+    Widget surface(bool pressed) => alive
+        ? LivingBlob(
+            shape: shape,
+            morphSeed: morphSeed ?? seed,
+            tint: tint,
+            pressed: pressed,
+            padding: padding,
+            child: child,
+          )
+        : RoundSurface(
+            style: SurfaceStyle.organic,
+            shape: shape,
+            pressed: pressed,
+            breathes: breathes,
+            padding: padding,
+            child: child,
+          );
     final onTap = this.onTap;
     if (onTap == null) return surface(false);
     return _Pressable(

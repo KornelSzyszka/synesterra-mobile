@@ -119,6 +119,7 @@ class _LoopCard extends StatelessWidget {
       key: Key('loop-tile-${loop.id}'),
       leading: const CardBadge(icon: Icons.autorenew),
       seed: loop.id.hashCode & 0xff,
+      motionId: loop.id,
       title: loop.name,
       lines: [CardLine(loopSummary(loop))],
       onTap: onTap,

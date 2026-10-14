@@ -59,6 +59,24 @@ Path blobPath(
   double amount = .07,
   double phase = 0,
   int samples = 64,
+}) => smoothClosedPath(
+  blobSamples(
+    rect,
+    seed: seed,
+    amount: amount,
+    phase: phase,
+    samples: samples,
+  ).points,
+);
+
+/// The points [blobPath] smooths, with the outward unit normal of the
+/// capsule at each: the base a living blob moves its edge from.
+({List<Offset> points, List<Offset> normals}) blobSamples(
+  Rect rect, {
+  required int seed,
+  double amount = .07,
+  double phase = 0,
+  int samples = 64,
 }) {
   final base = capsulePath(rect);
   final metric = base.computeMetrics().first;
@@ -66,6 +84,7 @@ Path blobPath(
   final waves = _waves(seed);
   const speeds = [1, -1, 2];
   final points = <Offset>[];
+  final normals = <Offset>[];
   for (var i = 0; i < samples; i++) {
     final u = i / samples;
     final tangent = metric.getTangentForOffset(metric.length * u)!;
@@ -82,8 +101,9 @@ Path blobPath(
           weight * math.sin(k * 2 * math.pi * u + offset + speeds[w] * phase);
     }
     points.add(tangent.position + normal * (push * reach));
+    normals.add(normal);
   }
-  return smoothClosedPath(points);
+  return (points: points, normals: normals);
 }
 
 /// A pebble: a superellipse `|x/a|^n + |y/b|^n = 1` (n = 2 is an ellipse,

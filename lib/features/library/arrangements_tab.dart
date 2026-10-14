@@ -106,6 +106,7 @@ class _ArrangementCard extends StatelessWidget {
       key: Key('arrangement-tile-$id'),
       leading: const CardBadge(icon: Icons.queue_music),
       seed: id.hashCode & 0xff,
+      motionId: id,
       title: arrangement.name,
       lines: [
         CardLine(arrangementSummary(arrangement)),

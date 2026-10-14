@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-14",
+  "task": "UX-126",
+  "prefix": "UX",
+  "size": "M",
+  "risk": "risk-ux",
+  "agent": "claude",
+  "model": "claude-opus-5-5",
+  "reasoning": null,
+  "success": true,
+  "attempts": 1,
+  "escalation": null,
+  "error_type": null,
+  "review": null,
+  "ci": null,
+  "evidence": "widget",
+  "failure_cost": null,
+  "minutes": null,
+  "tokens": null,
+  "notes": "Living library cards (shared LivingField clock, visibility cap 6, spring touch, seeded morph, parallax depth, staggered entrance, rest after 10 s) and a living mist behind the stat wheel (lean/hold springs, audition pulse, drift). Pure helper tests written red first; widget tests written right after the implementation (several failed on first run and drove fixes: pause handling, cap update, contrast). First contrast run failed badly on the dark ground; inks redesigned (tint darkened to the fill luminance). Interrupted once by a usage limit. Playback-driven breathing of a loop card not done (Library has no playback source). App tests ran in a soloud-free scratch copy; look, feel and frame rate on a phone not judged. Review pending (Codex)."
+}

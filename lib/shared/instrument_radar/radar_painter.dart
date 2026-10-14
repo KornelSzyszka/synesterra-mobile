@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/widgets.dart';
 
 import '../instrument_mist/mist_spec.dart';
+import '../living_blobs/living_mist.dart';
+import '../living_blobs/living_motion.dart';
 import '../theme/ground_palette.dart';
 import '../theme/round_shapes.dart';
 import '../theme/surfaces.dart';
@@ -53,12 +55,22 @@ class RadarGlowPainter extends CustomPainter {
     required this.spec,
     required this.color,
     this.swell,
+    this.motion,
+    this.motionSeed = 0,
     this.textScale = 1,
-  }) : super(repaint: swell);
+  }) : super(repaint: Listenable.merge([swell, motion]));
 
   final MistSpec spec;
   final Color color;
   final Animation<double>? swell;
+
+  /// The living motion (UX-126): drift and morph at three depths, the lean
+  /// toward the finger, the hold and the audition pulse. Null is still
+  /// (reduce motion).
+  final LivingMist? motion;
+
+  /// Seeds the drift and morph: each instrument moves its own way.
+  final int motionSeed;
 
   /// The user's text size, which sizes the name band ([WheelLayout.of]).
   final double textScale;
@@ -69,11 +81,37 @@ class RadarGlowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final layout = WheelLayout.of(size, textScale: textScale);
-    if (layout.reach <= 0) return;
+    final reach = layout.reach;
+    if (reach <= 0) return;
     final t = swell?.value ?? 0;
     final bump = t <= 0 || t >= 1 ? 0.0 : math.sin(math.pi * t);
-    final radius = layout.reach * (1.3 + .08 * bump);
-    final glow = strength * (1 + .5 * bump);
+    final m = motion;
+    final time = m?.time ?? 0;
+    final life = m?.life ?? 0;
+    final lean = m?.lean ?? Offset.zero;
+    final hold = m?.hold ?? 0;
+    final pulse = m?.pulse ?? 0;
+    final radius = reach * (1.3 + .08 * bump + .08 * pulse + .04 * hold);
+    final glow = strength * (1 + .5 * bump + .7 * pulse + .25 * hold);
+
+    /// Where a blob at depth [layer] sits: drifting on its own while alive
+    /// and following the finger, the front layers more (parallax).
+    Offset depth(int layer, double share) {
+      final drift = parallaxOffset(
+        layer: layer,
+        time: time,
+        seed: motionSeed,
+        lean: Offset.zero,
+      );
+      final follow = parallaxOffset(
+        layer: layer,
+        time: 0,
+        seed: motionSeed,
+        lean: lean,
+      );
+      return (drift * life + follow) * (reach * share);
+    }
+
     void blob(Offset at, double share, double opacity) {
       final r = share * radius;
       if (r <= 0) return;
@@ -94,17 +132,24 @@ class RadarGlowPainter extends CustomPainter {
     }
 
     final centre = layout.centre;
-    blob(centre, spec.haloRadius * 1.1, spec.haloOpacity);
+    blob(centre + depth(2, .1), spec.haloRadius * 1.1, spec.haloOpacity);
     for (final lobe in spec.lobes) {
+      // The lobes breathe in and out on the instrument's own slow noise.
+      final morph = life == 0
+          ? 0.0
+          : .14 *
+                life *
+                morphNoise(motionSeed, lobe.angle / (2 * math.pi), time);
       blob(
         centre +
             Offset(math.cos(lobe.angle), math.sin(lobe.angle)) *
-                (lobe.distance * radius * .55),
+                (lobe.distance * radius * .55 * (1 + morph)) +
+            depth(lobe.harmonic % LivingDepth.layers, .16),
         lobe.radius * 1.2,
         lobe.opacity * .8,
       );
     }
-    blob(centre, spec.coreRadius * 2.4, spec.coreOpacity * .8);
+    blob(centre + depth(0, .06), spec.coreRadius * 2.4, spec.coreOpacity * .8);
   }
 
   @override
@@ -112,6 +157,8 @@ class RadarGlowPainter extends CustomPainter {
       old.spec != spec ||
       old.color != color ||
       old.swell != swell ||
+      old.motion != motion ||
+      old.motionSeed != motionSeed ||
       old.textScale != textScale;
 }
 

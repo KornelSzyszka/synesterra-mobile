@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../shared/instrument_mist/mist_spec.dart';
+import '../../shared/living_blobs/living_field.dart';
 import '../../shared/theme/ambient_scope.dart';
 import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/synesterra_theme.dart';
@@ -483,6 +484,39 @@ class _Chrome extends StatelessWidget {
                   onTap: () => onGlitch(g),
                 ),
             ],
+          ),
+          // Living or flat blobs (UX-126): flips the lab's living gallery
+          // and the library's cards, to compare them with the frame time.
+          ValueListenableBuilder<bool>(
+            valueListenable: livingBlobsEnabled,
+            builder: (context, living, _) => Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Blobs',
+                  style: labText(
+                    context,
+                    color: palette.muted,
+                    size: TypeScale.caption,
+                  ),
+                ),
+                const SizedBox(width: Space.sm),
+                for (final (value, label) in const [
+                  (false, 'Flat'),
+                  (true, 'Living'),
+                ])
+                  _Tab(
+                    key: ValueKey('lab-blobs-${label.toLowerCase()}'),
+                    label: label,
+                    semanticLabel: 'Blobs ${label.toLowerCase()}',
+                    selected: living == value,
+                    palette: palette,
+                    small: true,
+                    onTap: () => livingBlobsEnabled.value = value,
+                  ),
+              ],
+            ),
           ),
           ValueListenableBuilder<String>(
             valueListenable: frames,

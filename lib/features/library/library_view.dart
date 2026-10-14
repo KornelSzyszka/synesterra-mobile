@@ -4,10 +4,13 @@ import 'package:synesterra_core/synesterra_core.dart';
 import '../../data/repositories/arrangement_library_repository.dart';
 import '../../data/repositories/instrument_library_repository.dart';
 import '../../data/repositories/loop_library_repository.dart';
+import '../../shared/instrument_mist/mist_spec.dart';
 import '../../shared/instrument_radar/instrument_radar_thumbnail.dart';
+import '../../shared/living_blobs/living_field.dart';
 import '../../shared/theme/design_scale.dart';
 import '../../shared/theme/round_shapes.dart';
 import '../../shared/theme/surfaces.dart';
+import '../../shared/theme/synesterra_theme.dart';
 import '../../shared/widgets/round_components.dart';
 import '../../shared/widgets/round_screen.dart';
 import 'arrangements_tab.dart';
@@ -54,19 +57,22 @@ class LibraryView extends StatelessWidget {
             (Key('library-tab-arrangements'), 'Arrangements'),
           ],
         ),
-        child: TabBarView(
-          children: [
-            _InstrumentsTab(
-              library: instrumentLibrary,
-              onOpen: onOpenInstrument,
-            ),
-            LoopsTab(library: loopLibrary, onOpen: onOpenLoop),
-            ArrangementsTab(
-              library: arrangementLibrary,
-              loops: loopLibrary,
-              onOpen: onOpenArrangement,
-            ),
-          ],
+        // One field, one clock for every card of the gallery.
+        child: LivingField(
+          child: TabBarView(
+            children: [
+              _InstrumentsTab(
+                library: instrumentLibrary,
+                onOpen: onOpenInstrument,
+              ),
+              LoopsTab(library: loopLibrary, onOpen: onOpenLoop),
+              ArrangementsTab(
+                library: arrangementLibrary,
+                loops: loopLibrary,
+                onOpen: onOpenArrangement,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -194,6 +200,9 @@ class _InstrumentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return LibraryCard(
       seed: instrument.id.hashCode & 0xff,
+      motionId: instrument.id,
+      tint: SynesterraTokens.of(context)
+          .layerColors[identityColorIndex(instrument.id)],
       leading: SizedBox.square(
         dimension: 60,
         child: RoundSurface(
