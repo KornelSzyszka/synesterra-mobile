@@ -632,7 +632,11 @@ void main() {
       tester,
     ) async {
       final handle = tester.ensureSemantics();
-      await open(tester, instrument: factoryInstruments[2], existing: true);
+      await open(
+        tester,
+        instrument: factoryInstruments[2].copyWith(id: 'saved-bell'),
+        existing: true,
+      );
       final banned = RegExp(
         r'harmonic|attack|decay|envelope|spectrum|\bEQ\b|\bdB\b|\bHz\b|'
         r'\bms\b|shelf|trait',
