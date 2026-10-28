@@ -68,8 +68,13 @@ RhythmLayer _muted(RhythmLayer layer) => RhythmLayer(
   ),
 );
 
-/// Tempo of an ear-training chord: one chord is one two-beat cycle.
+/// Tempo of an ear-training chord.
 const earBpm = 72;
+
+/// Beats in one ear-training section: 4 beats at [earBpm] is about 3.3 s, so
+/// the next chord starts when the previous tone has decayed to about -57 dB
+/// (the instrument's decay is the time to -60 dB).
+const earCycleBeats = 4;
 
 /// One chord (or note) as a one-cycle document. A scene needs 2..4 layers, so
 /// a single note gets a muted twin. Pitches are 1..3 distinct values.
@@ -81,13 +86,17 @@ SessionDocument earSectionDocument(List<int> pitches) {
   final document = simpleLoopDocument(
     title: 'Ear training',
     bpm: earBpm,
-    cycleBeats: 2,
+    cycleBeats: earCycleBeats,
     layers: [
       for (final pitch in distinct)
-        LoopLayerSpec(instrumentId: 'factory-sine', pitch: pitch, hits: 1),
+        LoopLayerSpec(
+          instrumentId: sustainedToneInstrument.id,
+          pitch: pitch,
+          hits: 1,
+        ),
       if (distinct.length == 1)
         LoopLayerSpec(
-          instrumentId: 'factory-sine',
+          instrumentId: sustainedToneInstrument.id,
           pitch: distinct.first,
           hits: 1,
         ),

@@ -406,7 +406,7 @@ final class EnginePlaybackRepository implements PlaybackRepository {
   }
 
   Instrument? _resolve(String id) {
-    for (final instrument in factoryInstruments) {
+    for (final instrument in builtInInstruments) {
       if (instrument.id == id) return instrument;
     }
     for (final instrument in _instruments.snapshot.value.instruments) {

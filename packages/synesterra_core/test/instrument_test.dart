@@ -336,4 +336,26 @@ void main() {
       expect(() => factoryInstruments.add(sample()), throwsUnsupportedError);
     });
   });
+
+  group('sustained tone', () {
+    test('is long, soft and pure, and survives a JSON round trip', () {
+      final tone = sustainedToneInstrument;
+      expect(tone.id, 'factory-tone');
+      expect(tone.attackMs, inInclusiveRange(20, 40));
+      expect(tone.decayMs, greaterThanOrEqualTo(2500));
+      expect(tone.decayMs, lessThanOrEqualTo(Instrument.maxDecayMs));
+      expect(tone.harmonics.first, 1);
+      expect(tone.harmonics.skip(1).every((h) => h <= 0.15), isTrue);
+      expect(Instrument.fromJson(jsonDecode(jsonEncode(tone.toJson()))), tone);
+    });
+
+    test('is resolvable but not a factory preset', () {
+      expect(
+        factoryInstruments.map((i) => i.id),
+        isNot(contains('factory-tone')),
+      );
+      expect(builtInInstruments.map((i) => i.id), contains('factory-tone'));
+      expect(builtInInstruments.map((i) => i.id).toSet(), hasLength(4));
+    });
+  });
 }
