@@ -142,6 +142,27 @@ void main() {
         );
       },
     );
+
+    test('rejects saving a reserved factory id and writes nothing', () async {
+      await expectLater(
+        repository.save(instrument('factory-tone', 'Shadow')),
+        throwsArgumentError,
+      );
+      expect(file('factory-tone.json').existsSync(), isFalse);
+      expect(repository.snapshot.value.instruments, isEmpty);
+    });
+
+    test('a stored factory id is skipped on load, counted and kept', () async {
+      await repository.save(instrument('good', 'Good'));
+      await file('factory-tone.json')
+          .writeAsString(jsonEncode(instrument('factory-tone', 'S').toJson()));
+
+      final reopened = open();
+      await reopened.load();
+      expect(reopened.snapshot.value.instruments.map((i) => i.id), ['good']);
+      expect(reopened.snapshot.value.unreadableCount, 1);
+      expect(file('factory-tone.json').existsSync(), isTrue);
+    });
   });
 
   group('in-memory repository', () {
@@ -162,6 +183,19 @@ void main() {
         expect(memory.snapshot.value.instruments, hasLength(1));
       },
     );
+
+    test('rejects a reserved factory id and skips initial ones', () async {
+      final memory = InMemoryInstrumentLibraryRepository([
+        instrument('factory-tone', 'Shadow'),
+        instrument('a', 'A'),
+      ]);
+      expect(memory.snapshot.value.instruments.map((i) => i.id), ['a']);
+      await expectLater(
+        memory.save(instrument('factory-tone', 'Shadow')),
+        throwsArgumentError,
+      );
+      expect(memory.snapshot.value.instruments.map((i) => i.id), ['a']);
+    });
   });
 
   group('files written before tags and without a pitch', () {
