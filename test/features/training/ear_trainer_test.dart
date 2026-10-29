@@ -23,7 +23,7 @@ void main() {
       expect(layers.map((l) => l.pitch), [60, 64, 67]);
       expect(layers.every((l) => !l.mix.muted), isTrue);
       expect(layers.every((l) => l.pattern.steps.length == 1), isTrue);
-      expect(doc.transport.practiceCycleBeats, Rational(2, 1));
+      expect(doc.transport.practiceCycleBeats, Rational(4, 1));
     });
 
     test('every generated question maps to valid one-cycle sections', () {
@@ -35,6 +35,24 @@ void main() {
           expect(sections, hasLength(q.steps.length));
           expect(sections.every((s) => s.repeats == 1), isTrue);
         }
+      }
+    });
+
+    test('every section uses the sustained tone and lets it ring', () {
+      for (final pitches in [
+        [60],
+        [60, 64, 67],
+      ]) {
+        final doc = earSectionDocument(pitches);
+        final ids = doc.scenes.first.layers.map((l) => l.instrumentId);
+        expect(ids.toSet(), {sustainedToneInstrument.id});
+        final cycleMs =
+            doc.transport.practiceCycleBeats.value * 60000 / doc.transport.bpm;
+        // The next chord starts when the tone is nearly at -60 dB.
+        expect(
+          cycleMs,
+          greaterThanOrEqualTo(sustainedToneInstrument.decayMs * 0.9),
+        );
       }
     });
 

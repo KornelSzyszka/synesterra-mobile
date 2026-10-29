@@ -351,3 +351,28 @@ final List<Instrument> factoryInstruments = List.unmodifiable([
     eq: InstrumentEq(highDb: 3),
   ),
 ]);
+
+/// A long, soft, nearly pure tone for ear training and the tuner's reference.
+///
+/// It is deliberately not in [factoryInstruments]: that list feeds the
+/// randomizer pool, the library and the editor presets, which should keep
+/// offering the percussive voices. The playback layer resolves it by id
+/// (see [builtInInstruments]). The decay is the time to -60 dB, so a hit is
+/// inaudible by about 3.5 s; the 2nd and 3rd harmonics are very soft so
+/// stacked chord notes stay clear. The numbers are unproven by ear
+/// (`musical` gate).
+final Instrument sustainedToneInstrument = Instrument(
+  id: 'factory-tone',
+  name: 'Tone',
+  tags: ['tone', 'soft'],
+  harmonics: [1, 0.1, 0.05],
+  attackMs: 30,
+  decayMs: 3500,
+);
+
+/// Every instrument playback can resolve without the library: the factory
+/// presets and [sustainedToneInstrument].
+final List<Instrument> builtInInstruments = List.unmodifiable([
+  ...factoryInstruments,
+  sustainedToneInstrument,
+]);

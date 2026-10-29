@@ -46,15 +46,20 @@ class TunerModel extends ChangeNotifier {
   final PlaybackRepository playback;
   final PitchTracker _tracker;
 
-  /// Reference-tone pulse: A4 sine every 1.5 s. Layers are pitched in whole
-  /// semitones, so the tone is 440 Hz only.
+  /// Reference tone: a sustained A4 struck every 4 s (4 beats at 60 BPM; the
+  /// tone decays to -60 dB in 3.5 s, so it rings almost to the next strike).
+  /// Layers are pitched in whole semitones, so the tone is 440 Hz only.
   static final SessionDocument toneDocument = simpleLoopDocument(
     title: 'Tuner tone',
-    bpm: 80,
-    cycleBeats: 2,
+    bpm: 60,
+    cycleBeats: 4,
     layers: [
       for (var i = 0; i < 2; i++)
-        const LoopLayerSpec(instrumentId: 'factory-sine', pitch: 69, hits: 1),
+        LoopLayerSpec(
+          instrumentId: sustainedToneInstrument.id,
+          pitch: 69,
+          hits: 1,
+        ),
     ],
   );
 

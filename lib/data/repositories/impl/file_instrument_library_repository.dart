@@ -5,6 +5,7 @@ import 'package:synesterra_core/synesterra_core.dart';
 
 import '../../services/instrument_file_store.dart';
 import '../instrument_library_repository.dart';
+import '../library_item.dart';
 
 class FileInstrumentLibraryRepository implements InstrumentLibraryRepository {
   FileInstrumentLibraryRepository(this._store);
@@ -27,6 +28,12 @@ class FileInstrumentLibraryRepository implements InstrumentLibraryRepository {
       }
       try {
         final instrument = Instrument.fromJson(jsonDecode(text));
+        // A reserved id would shadow a built-in instrument: keep the file,
+        // do not show it.
+        if (isFactoryId(instrument.id)) {
+          unreadable++;
+          continue;
+        }
         // A second file with the same id is kept on disk but not shown.
         if (byId.containsKey(instrument.id)) {
           unreadable++;
@@ -42,6 +49,7 @@ class FileInstrumentLibraryRepository implements InstrumentLibraryRepository {
 
   @override
   Future<void> save(Instrument instrument) async {
+    checkInstrumentWritable(instrument.id);
     await _store.write(instrument.id, jsonEncode(instrument.toJson()));
     _publish([
       ..._snapshot.value.instruments.where((i) => i.id != instrument.id),

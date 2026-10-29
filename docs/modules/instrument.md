@@ -38,7 +38,7 @@ Instrument { version: 2, id: string, name: string, tags: string[],
 
 ## Factory instruments
 
-`factoryInstruments` has `factory-wood`, `factory-sine` and `factory-bell`, the three sounds of the web laboratory, as starting points for a new instrument, each with tags. Their numbers are placeholders; tuning by ear needs the `musical` gate.
+`factoryInstruments` has `factory-wood`, `factory-sine` and `factory-bell`, the three sounds of the web laboratory, as starting points for a new instrument, each with tags. `sustainedToneInstrument` (`factory-tone`, a long soft sine for ear training and the tuner) is not in that list, so the randomizer, library and presets do not offer it; `builtInInstruments` is the factory list plus the tone, which playback resolves. The `factory-` id prefix is reserved: the instrument repositories (file and in-memory) reject saving it and skip it on load (counted as unreadable, the file is kept), so a user instrument can never shadow a built-in one. Their numbers are placeholders; tuning by ear needs the `musical` gate.
 
 ## EQ response and shaped harmonics
 
